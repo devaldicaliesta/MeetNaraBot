@@ -459,8 +459,9 @@ export async function generateSuggestions(env: Bindings, settings: BotSettings, 
     const clean = (block: string) =>
       block
         .split('\n')
-        .map((l) => l.replace(/^\s*(?:[-*•]|\d+[.)])\s*/, '').replace(/^["']|["']$/g, '').trim())
-        .filter((l) => l.length > 8 && l.length <= 90)
+        .map((l) => l.replace(/\*\*/g, '').replace(/^\s*(?:[-*•]|\d+[.)])\s*/, '').replace(/^["']|["']$/g, '').trim())
+        // Drop preambles some models add ("Berikut adalah 4 pertanyaan:", "Here are the questions:").
+        .filter((l) => l.length > 8 && l.length <= 90 && !/:\s*$/.test(l) && !/^(berikut|here (are|is)|pertanyaan dalam|questions in|indonesian|english|bahasa)\b/i.test(l))
         .slice(0, 4);
     const [idPart, enPart = ''] = text.split(/^\s*-{3,}\s*$/m);
     const out = { id: clean(idPart), en: clean(enPart) };
