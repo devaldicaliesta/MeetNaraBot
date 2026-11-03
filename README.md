@@ -29,7 +29,7 @@ Chatbot yang menjawab pertanyaan pengunjung **hanya dari satu dokumen milik Anda
 
 ## Pasang dari nol
 
-Prasyarat: Node.js 20+, akun Cloudflare, dan kunci Gemini dari [Google AI Studio](https://aistudio.google.com/apikey).
+Prasyarat: Node.js 22.18+, akun Cloudflare, dan kunci Gemini dari [Google AI Studio](https://aistudio.google.com/apikey).
 
 ```bash
 npm install
@@ -56,6 +56,19 @@ Lalu buka `https://<nama-worker>.workers.dev/admin.html`:
 3. **Uji coba** → tanyakan beberapa hal, lalu lihat panel *Hasil pencarian* untuk menyetel ambang.
 4. **Pasang widget** → isi domain website Anda, lalu salin kodenya.
 
+### Deploy otomatis dari GitHub (disarankan)
+Workflow `.github/workflows/deploy.yml` menerbitkan Worker setiap kali ada push ke `main`, jadi Anda tidak perlu menjalankan perintah di atas satu per satu. Workflow ini membuat database D1 dan indeks Vectorize bila belum ada, menjalankan migrasi, lalu `wrangler deploy`.
+
+1. Buat API token di Cloudflare (**My Profile → API Tokens → Create Token → Custom token**) dengan izin akun: *Workers Scripts: Edit*, *D1: Edit*, *Vectorize: Edit*, *Workers AI: Read*, *Account Settings: Read*.
+2. Salin **Account ID** dari halaman Workers & Pages di dashboard Cloudflare.
+3. Di GitHub, buka **Settings → Secrets and variables → Actions → New repository secret**, lalu tambahkan:
+   - `CLOUDFLARE_API_TOKEN` dan `CLOUDFLARE_ACCOUNT_ID` (wajib)
+   - `ADMIN_PASSWORD` (wajib sekali sebelum masuk dashboard pertama kali)
+   - `GEMINI_API_KEY` (opsional; bisa juga ditempel di dashboard)
+4. Push ke `main`, atau buka tab **Actions → Deploy to Cloudflare → Run workflow**. Alamat Worker muncul di log langkah *Deploy Worker*.
+
+`database_id` di `wrangler.jsonc` sengaja dibiarkan `REPLACE_WITH_D1_ID`; workflow mengisinya sendiri saat deploy.
+
 ### Upgrade dari v1
 Jalankan `npm run db:migrate`. Migrasi `0002` menambah tabel baru dan mengisi indeks kata kunci dari potongan yang sudah ada. Konfigurasi lama (`bot_config`) dipindahkan otomatis saat dashboard pertama kali dibuka, dan kunci API lama ikut dipindah ke penyimpanan kunci. Nama binding di `wrangler.jsonc` berubah (`tanyasaya-db`, `tanyasaya-index`); jika ingin tetap memakai `rag-db`/`rag-index` milik v1, ganti saja namanya di file itu.
 
@@ -81,6 +94,7 @@ pertanyaan ─► tulis ulang (jika ada riwayat) ─┬─► vektor (Gemini / b
 ```
 - **Gerbang skor**: jika tidak ada potongan yang cukup mirip, bot langsung menjawab dengan pesan penolakan tanpa memanggil AI. Ini menghemat kuota dan mencegah jawaban karangan.
 - **Sitasi**: AI wajib menulis `[n]` setelah tiap fakta; widget mengubahnya menjadi tombol yang membuka potongan sumber.
+- **Basa-basi**: pesan pendek yang isinya hanya sapaan ("halo", "selamat pagi kak", "mau tanya dong"), terima kasih, salam penutup, "kamu siapa?", atau "oke" dijawab dengan balasan tetap yang ramah sebelum masuk pencarian, lengkap dengan contoh pertanyaan. Tidak ada panggilan AI dan kuota tidak terpakai. Pesan yang berisi pertanyaan sungguhan ("halo, berapa biayanya?") tetap diproses RAG seperti biasa. Polanya ada di `src/smalltalk.ts`.
 
 ## Anti-bot & interaksi organik
 Tidak ada kode yang membuat interaksi buatan. Endpoint chat publik dilindungi:
@@ -91,7 +105,7 @@ Tidak ada kode yang membuat interaksi buatan. Endpoint chat publik dilindungi:
 - Statistik dashboard hanya menghitung pertanyaan dari widget. Uji coba admin dicatat terpisah.
 
 ## Pengembangan lokal
-- `npm run dev:mock`: server mock tanpa akun Cloudflare (`ADMIN_PASSWORD=dev`). Jawabannya dirakit dari potongan teratas, bukan dari Gemini. Cocok untuk mengerjakan tampilan.
+- `npm run dev:mock`: server mock tanpa akun Cloudflare (`ADMIN_PASSWORD=dev`, butuh Node.js 22.18+ karena memuat `src/smalltalk.ts` langsung). Jawabannya dirakit dari potongan teratas, bukan dari Gemini. Cocok untuk mengerjakan tampilan.
 - `npm run dev`: Worker asli dengan binding jarak jauh (`wrangler dev --remote`). Salin `.env.example` ke `.dev.vars`.
 - `npm run typecheck`
 
@@ -106,6 +120,7 @@ Tidak ada kode yang membuat interaksi buatan. Endpoint chat publik dilindungi:
 ## Pemecahan masalah
 | Gejala | Penyebab & solusi |
 |---|---|
+| Sapaan dijawab "tidak ada di dokumen" | Sudah ditangani sejak versi ini (`src/smalltalk.ts`). Jika ada sapaan daerah yang belum dikenali, tambahkan polanya di file itu. |
 | Bot sering menjawab "tidak ada di dokumen" | Turunkan *Ambang kemiripan* di menu Pencarian; cek skor nyata di Uji coba. Pastikan dokumen punya judul bagian. |
 | Jawaban mengambil potongan yang salah | Naikkan ambang, aktifkan pencarian hibrida, perkecil ukuran potongan, lalu unggah ulang. |
 | Widget di website lain: "Domain ini belum diizinkan" | Tambahkan domain persis (`https://…`, tanpa garis miring di akhir) di menu Pasang widget. |

@@ -8,7 +8,7 @@
 > | 1 | `<role>` | Who the model is while building |
 > | 2 | `<context>` | Who the product is for and the constraints it lives in |
 > | 3 | `<task>` | What to deliver |
-> | 4 | `<knowledge>` | The full technical spec: architecture, data, API, RAG algorithm, runtime prompt, UI |
+> | 4 | `<knowledge>` | The full technical spec: architecture, data, API, RAG algorithm (incl. small talk), runtime prompt, design system, responsive rules, UI |
 > | 5 | `<rules>` | Non-negotiables: security, secrets, anti-abuse, fair play, free-tier limits |
 > | 6 | `<output_format>` | File tree and how to present the result |
 > | 7 | `<examples>` + `<quality_check>` | Reference behaviour, acceptance tests and a self-review before finishing |
@@ -77,7 +77,9 @@ Visitor widget --> Worker /api/public/chat --> rewrite -> hybrid retrieve -> rer
                    neighbour merge -> 7-layer prompt -> LLM chain (stream) -> NDJSON
 Source files: src/index.ts (routes), src/settings.ts (settings, providers, legacy
 migration), src/llm.ts (failover streaming, embeddings), src/rag.ts (retrieval,
-prompt assembly, answer pipeline, suggestion generation), src/types.ts.
+prompt assembly, answer pipeline, suggestion generation), src/smalltalk.ts (greeting /
+thanks / identity detection and fixed bilingual replies), src/types.ts.
+Delivery: GitHub repository -> GitHub Actions workflow -> Cloudflare (wrangler deploy).
 </architecture>
 
 <data_model>
@@ -105,7 +107,7 @@ the bot_config row.
 
 <settings_schema>
 BotSettings (validated and clamped server-side by normalizeSettings):
-name, language 'id'|'en' (default visitor language), themeColor (#RRGGBB),
+name, language 'id'|'en' (default visitor language), themeColor (#RRGGBB, default #5B3FE0),
 greeting / greetingEn, suggestions[<=6] / suggestionsEn[<=6], refusalMessage / refusalMessageEn
 ("Sorry, that information isn't in the document I have."), launcherLabel / launcherLabelEn,
 prompt{role, context, task, rules, format, examples},          // runtime layers 1,2,3,5,6,7
@@ -177,6 +179,22 @@ If query embedding fails, continue with keyword-only retrieval instead of errori
 </embeddings>
 
 <rag_algorithm>
+0. Small talk (src/smalltalk.ts), checked BEFORE rewrite and retrieval. A greeting can never
+   match the document, so without this step "halo" would get the refusal message. Normalise the
+   message (lowercase, strip diacritics, punctuation and emoji, squeeze spaces); only messages of
+   at most 7 words / 60 characters that consist ENTIRELY of small talk qualify. Kinds:
+   greeting (hai, halo, hallo, permisi, assalamualaikum, selamat pagi/siang/sore/malam, apa kabar,
+   "mau tanya dong", hi, hello, good morning, how are you, with optional address words such as
+   kak, min, pak, bu, bot), thanks (terima kasih, makasih, thanks), bye (dadah, sampai jumpa, bye),
+   identity (kamu siapa, bisa bantu apa, who are you, what can you do), ack (oke, sip, baik, ok).
+   Each pattern carries a language: 'id' or 'en' when the wording is clearly one language, null
+   when ambiguous (hi, hello, thanks, ok are common in Indonesian chats too) so the interface
+   language decides. Reply from fixed templates in that language (no LLM call, no quota):
+   greeting/identity introduce {name} and the document and list up to 3 starter questions
+   (only when the reply language matches the interface language); thanks/bye/ack are one short
+   sentence. Emit sources [] -> delta -> done {refused:false, provider:"smalltalk", model:kind};
+   log provider "smalltalk:<kind>"; the admin debug event is {gate:"smalltalk", smallTalk:kind}.
+   A real question with a greeting ("halo, berapa biayanya?") is NOT small talk and goes through RAG.
 1. Query rewrite (if rag.queryRewrite and history is non-empty): one short non-streaming
    call through the same provider chain, temperature 0.1, max 120 tokens:
    "Rewrite the follow-up question into one standalone search query that keeps every
@@ -293,6 +311,48 @@ max 2,000 chunks; max file 10 MB. Upload in batches of 20 with one retry; on fai
 DELETE /api/admin/file to roll back.
 </browser_ingestion>
 
+<design_system>
+One visual language across the landing page, dashboard and widget: warm, friendly and
+editorial, in the spirit of modern workflow-automation marketing sites (cream canvas, big
+confident headlines, pastel colour blocks, pill buttons, sticker-style cards). Original
+artwork only: no third-party logos, illustrations or brand names.
+Tokens: ink #1F1B2D, ink-2 #575269, ink-3 #7F7A8C, canvas (cream) #F7F4EE, surface #FFFDF9,
+line #E7E0D4, primary violet #5B3FE0 (white text 6.5:1), lilac #E4DCFF, mint #CDEEDB,
+peach #FFD9C4, sky #D4E7FF, butter #FFE48F, highlight (citations, "sent to AI") #FFD25E,
+error #B42318.
+Type: Plus Jakarta Sans 400-800 (Indonesian-designed). Headlines 800 weight with tight
+tracking (-0.035em to -0.045em, line-height ~1.02); hero clamp(42px, 7.2vw, 84px).
+Shapes: primary buttons are dark ink pills (radius 999px, 1.5px ink border), secondary
+buttons are outlined ink pills; panels radius 24px with hairline borders; feature blocks and
+stat tiles are flat pastel fills radius 28-40px; "sticker" cards use a 1.5px ink border plus
+a hard 6px 6px 0 ink offset shadow (4px on phones). The highlight colour is drawn as a
+marker stroke under key words and behind citation numbers.
+</design_system>
+
+<landing_spec>
+public/index.html, fully bilingual through data-en attributes and synced with the widget
+language. Sections: floating rounded nav bar (brand, Fitur / Cara kerja anchors, ID|EN
+switch, "Dashboard pemilik" pill) -> centred hero (eyebrow pill, headline with a marker
+highlight on "dokumen Anda menjawab", lede, dark "Coba tanya sekarang" pill that opens the
+widget + outlined "Lihat cara kerjanya") -> lilac stage block with two sticker cards (a
+document excerpt with a highlighted fact and a chat answer with citation [1] and its source)
+-> "Kenapa TanyaSaya" with three pastel feature blocks (mint, peach, sky) -> "Cara kerja",
+three numbered step cards -> dark ink closing band with a butter CTA -> footer disclaimer.
+</landing_spec>
+
+<responsive_spec>
+Must work from 360 px to 1440 px+ with no horizontal page scroll at any width (verify
+document.documentElement.scrollWidth === innerWidth at 390 px and 1440 px).
+- Landing: grids collapse to one column under 900 px; nav anchors hide; the dashboard pill
+  hides under 560 px; 16 px side gutter on phones.
+- Dashboard: under 900 px the sidebar becomes a sticky top bar (brand + ID|EN switch in the
+  corner, horizontally scrollable pill nav) and the shell grid uses minmax(0, 1fr) so wide
+  children never stretch the page; under 640 px stat tiles, form grids and key rows stack, the
+  setup checklist moves its "Buka" button under the text, the save bar spans the width and
+  toasts drop in from the top.
+- Widget: panel 400x640, full-screen under 480 px.
+</responsive_spec>
+
 <widget_spec>
 <script src="https://<worker>/widget.js" defer></script>
 <tanyasaya-chat api-base="https://<worker>" position="right|left" theme="light|dark|auto" lang="auto|id|en"></tanyasaya-chat>
@@ -320,7 +380,7 @@ DELETE /api/admin/file to roll back.
 </widget_spec>
 
 <dashboard_spec>
-Single file public/admin.html. Font: Plus Jakarta Sans (Indonesian-designed typeface).
+Single file public/admin.html. Follows <design_system>.
 Bilingual: an ID | EN segmented switch on the sign-in card and in the sidebar (choice saved in
 localStorage, default from the browser). Implementation: the markup is written in Indonesian;
 a DICT (Indonesian text → English) plus regex RULES for dynamic text (counts, file names,
@@ -328,11 +388,11 @@ timings) are applied by a text-node walker and a MutationObserver, keeping the o
 on each node so switching back is lossless. Sentences assembled in JS use L(id, en). User
 content (chunks, questions, answers, textarea values, code) is never translated. Numbers and
 dates use the active locale; every API call sends X-Lang.
-Palette: ink #172333, canvas #EEF2EF (cool sage), surface #FFFFFF, laut (sea) teal
-#0F766E primary, kunyit (turmeric) #F6C445 for citations and "selected" highlights,
-bata #B42318 for errors. Left rail navigation, hash routing, one page visible at a time.
-Avoid generic SaaS-card styling: flat panels with hairline borders, one accent colour,
-the turmeric highlight is the single memorable element.
+Left rail navigation (active item = dark ink pill), hash routing, one page visible at a
+time. Stat figures are three pastel tiles (lilac, peach, mint); panels are cream-on-white
+with hairline borders; the sign-in card is a sticker card on a cream canvas with lilac and
+butter circles; the X-ray uses lilac bars for candidates and the highlight colour for chunks
+sent to the AI; small talk shows "Basa-basi: <kind>" instead of retrieval details.
 Pages (all copy in Indonesian):
 1. Masuk — password form; password kept in sessionStorage only.
 2. Ringkasan — three figures (visitor questions 7 days, % not found, provider failures;
@@ -402,6 +462,7 @@ Cost and performance
 Quality
 - TypeScript strict mode must pass. No frameworks in the widget or dashboard.
 - Accessible: labelled controls, aria-live for chat, keyboard operable, contrast >= 4.5:1.
+- Responsive per <responsive_spec>; never ship a layout that scrolls sideways on a phone.
 - Indonesian UI copy: sentence case, active verbs, errors that say what happened and how
   to fix it, no apologies in system errors, no exclamation-mark hype.
 </rules>
@@ -417,13 +478,18 @@ tanyasaya/
 ├── .env.example / .gitignore
 ├── migrations/0001_init.sql
 ├── migrations/0002_rag_upgrade.sql
-├── src/types.ts  src/settings.ts  src/llm.ts  src/rag.ts  src/index.ts
+├── src/types.ts  src/settings.ts  src/llm.ts  src/rag.ts  src/smalltalk.ts  src/index.ts
+├── .github/workflows/deploy.yml  (push to main -> typecheck, find/create D1 + Vectorize,
+│                                  migrate, wrangler deploy, optional secrets)
 ├── public/index.html  public/admin.html  public/widget.js  public/widget.css
-├── dev-server.mjs            (Node mock with the same endpoints; keyword scoring; no keys)
+├── dev-server.mjs            (Node mock with the same endpoints; keyword scoring; no keys;
+│                              imports src/smalltalk.ts directly, Node >= 22.18)
 └── README.md                 (Indonesian: setup from zero, secrets, migrations, embed, limits, troubleshooting)
 
 After the files, add:
-1. "Deploy in 8 commands": the exact shell commands.
+1. "Deploy in 8 commands": the exact shell commands, plus the GitHub Actions route
+   (repository secrets CLOUDFLARE_API_TOKEN, CLOUDFLARE_ACCOUNT_ID, ADMIN_PASSWORD,
+   optional GEMINI_API_KEY; push to main deploys).
 2. "Verify list": every assumption marked VERIFY.
 3. "Test plan": the acceptance tests from <quality_check> with expected results.
 Do not add commentary between files beyond one sentence explaining each file's purpose.
@@ -458,6 +524,15 @@ Expected: the model treats it as data, does not reveal instructions, answers onl
 visitor's actual question or refuses.
 </example>
 
+<example name="small_talk">
+Visitor: halo kak
+Expected: no retrieval, no LLM call. NDJSON: sources [] -> delta "Halo, aku **TanyaSaya**. Aku
+menjawab pertanyaan seputar **panduan-pendaftaran.md** ... Ada yang ingin kamu tanyakan?" plus up to
+3 starter questions -> done {refused:false, provider:"smalltalk", model:"greeting"}.
+Visitor: terima kasih ya -> "Sama-sama. ..." (refused:false).
+Visitor: halo, berapa biaya daftarnya? -> NOT small talk; normal RAG answer with [1].
+</example>
+
 <example name="failover">
 Gemini returns 429 -> recorded "Batas pemakaian penyedia tercapai" -> gemini-3.5-flash-lite
 streams the answer. Visitor sees no error; the admin X-ray lists the failed attempt.
@@ -474,10 +549,14 @@ Before you finish, verify each item and fix anything that fails:
 [ ] Uploading the sample markdown yields one chunk per heading section with breadcrumb labels.
 [ ] Answer contains [n] citations that map to existing sources; uncited sources are hidden.
 [ ] Out-of-scope question is refused without an LLM call; logged as refused.
+[ ] "halo", "hai kak", "selamat pagi", "terima kasih", "kamu siapa?", "hello" get friendly
+    small-talk replies (refused:false, no LLM call); "halo, berapa biayanya?" still runs RAG.
 [ ] Follow-up question works thanks to rewrite; history roles are user/assistant.
 [ ] Cross-origin embed works for allowed origins and gets 403 for others (when a list is set).
 [ ] Honeypot filled -> 400; missing User-Agent -> 400; daily cap reached -> 429.
 [ ] Widget styles do not leak into or get affected by the host page; works at 390 px.
+[ ] Landing page and every dashboard page have zero horizontal overflow at 390 px and 1440 px.
+[ ] The deploy workflow passes on a fresh Cloudflare account (creates D1 + Vectorize once).
 [ ] Admin X-ray shows candidates, scores, gate decision and timings.
 [ ] Switching to EN leaves no Indonesian UI text in any dashboard page, the widget or the landing
     page (user content excepted); switching back restores the original text exactly.

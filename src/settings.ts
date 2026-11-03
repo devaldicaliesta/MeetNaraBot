@@ -109,7 +109,7 @@ export const DEFAULT_SETTINGS: BotSettings = {
   refusalMessageEn: "Sorry, that information isn't in the document I have.",
   launcherLabel: '',
   launcherLabelEn: '',
-  themeColor: '#0F766E',
+  themeColor: '#5B3FE0',
   prompt: { ...DEFAULT_LAYERS },
   chain: [
     { provider: 'gemini', model: 'gemini-3.8-flash' },

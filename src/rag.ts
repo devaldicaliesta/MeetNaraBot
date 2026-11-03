@@ -1,4 +1,5 @@
 import type { Bindings, ChatEvent, ChatMessage, Source } from './types';
+import { detectSmallTalk, smallTalkReply } from './smalltalk';
 import { RERANK_MODEL, getKeys, refusalFor, type BotSettings, type Embedder, type KeyStore, type Lang, type Suggestions } from './settings';
 import { AllProvidersFailed, completeChat, embed, streamChat } from './llm';
 
@@ -327,10 +328,26 @@ export type AnswerInput = {
   lang: Lang;
   debug: boolean;
   emit: (e: ChatEvent) => Promise<void>;
+  /** Starter questions in the visitor's language, offered in small-talk replies. */
+  examples?: string[];
 };
 
-export async function answer({ env, settings, question, history, file, lang, debug, emit }: AnswerInput) {
+export async function answer({ env, settings, question, history, file, lang, debug, emit, examples = [] }: AnswerInput) {
   const started = Date.now();
+
+  // Greetings, thanks and "who are you?" are answered before retrieval; otherwise the gate
+  // would treat them as out-of-scope questions and reply with the refusal message.
+  const small = detectSmallTalk(question);
+  if (small) {
+    const replyLang = small.lang ?? lang;
+    const text = smallTalkReply(small.kind, replyLang, settings.name, file.name, replyLang === lang ? examples : []);
+    if (debug) await emit({ type: 'debug', data: { query: question, rewritten: null, gate: 'smalltalk', smallTalk: small.kind, candidates: [], timings: { total: Date.now() - started } } });
+    await emit({ type: 'sources', items: [] });
+    await emit({ type: 'delta', text });
+    await emit({ type: 'done', refused: false, provider: 'smalltalk', model: small.kind, ms: Date.now() - started });
+    return { refused: false, text, bestScore: 0, provider: `smalltalk:${small.kind}` as string | null };
+  }
+
   const keys = await getKeys(env);
 
   let rewritten: string | null = null;

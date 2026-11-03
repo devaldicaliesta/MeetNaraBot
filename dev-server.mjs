@@ -6,6 +6,7 @@ import http from 'node:http';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { detectSmallTalk, smallTalkReply } from './src/smalltalk.ts'; // Node >= 22.18 runs TypeScript directly (type stripping).
 
 const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), 'public');
 const PORT = Number(process.env.PORT || 8787);
@@ -22,7 +23,7 @@ const LAYERS = {
 const DEFAULTS = {
   name: 'TanyaSaya', language: 'id', greeting: '', greetingEn: '', suggestions: [], suggestionsEn: [],
   refusalMessage: 'Maaf, informasi itu tidak ada di dokumen yang saya miliki.', refusalMessageEn: "Sorry, that information isn't in the document I have.",
-  launcherLabel: '', launcherLabelEn: '', themeColor: '#0F766E', prompt: { ...LAYERS },
+  launcherLabel: '', launcherLabelEn: '', themeColor: '#5B3FE0', prompt: { ...LAYERS },
   chain: [{ provider: 'gemini', model: 'gemini-3.8-flash' }, { provider: 'gemini', model: 'gemini-3.5-flash-lite' }],
   workersAiFallback: true, embeddingProvider: 'auto', temperature: 0.2, maxTokens: 900, reasoningEffort: 'low',
   rag: { chunkSize: 1000, chunkOverlap: 150, candidateK: 20, topK: 5, minScore: 0.4, hybrid: true, rerank: false, neighborWindow: 1, maxContextChars: 9000, queryRewrite: true },
@@ -73,6 +74,18 @@ async function streamAnswer(res, question, s, debug, source, lang = 'id') {
   const emit = (e) => res.write(JSON.stringify(e) + '\n');
   const t0 = Date.now();
   if (!file || file.status !== 'selesai') { emit({ type: 'error', message: lang === 'en' ? `${s.name} doesn't have a reference document yet.` : `${s.name} belum punya dokumen referensi.` }); return res.end(); }
+  const small = detectSmallTalk(question);
+  if (small) {
+    const l = small.lang ?? lang;
+    const ex = (l === 'en' ? s.suggestionsEn : s.suggestions).length ? (l === 'en' ? s.suggestionsEn : s.suggestions) : suggestions[l] || [];
+    const reply = smallTalkReply(small.kind, l, s.name, file.name, l === lang ? ex : []);
+    if (debug) emit({ type: 'debug', data: { query: question, rewritten: null, gate: 'smalltalk', smallTalk: small.kind, candidates: [], timings: { total: 1 } } });
+    emit({ type: 'sources', items: [] });
+    emit({ type: 'delta', text: reply });
+    emit({ type: 'done', refused: false, provider: 'smalltalk', model: small.kind, ms: Date.now() - t0 });
+    if (s.logQuestions) logs.unshift({ id: logs.length + 1, created_at: new Date().toISOString().slice(0, 19).replace('T', ' '), source, question, answer: reply, refused: 0, failed: 0, provider: 'smalltalk:' + small.kind, best_score: 0 });
+    return res.end();
+  }
   const { sel, best, scored } = retrieve(question, s);
   if (debug) emit({ type: 'debug', data: { query: question, rewritten: null, embedder: 'workers-ai', keywordQuery: words(question).join(' OR '), bestVectorScore: best, keywordHits: scored.filter((c) => c.kw).length, gate: sel.length ? 'pass' : 'refuse', candidates: scored.slice(0, 10).map((c) => ({ label: c.label, idx: c.idx, vScore: c.score, kRank: c.kw ? 1 : undefined, rrf: 0, selected: sel.includes(c) })), timings: { vector: 3, keyword: 2, total: 6 } } });
   const sources = sel.map((c, i) => ({ number: i + 1, label: c.label, document: file.name, snippet: c.text.slice(0, 280), score: c.score }));

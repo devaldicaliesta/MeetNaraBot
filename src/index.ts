@@ -16,6 +16,7 @@ import {
   getSuggestions,
   asLang,
   type Lang,
+  type BotSettings,
   type Embedder,
   type KeyStore,
   type ProviderId,
@@ -177,10 +178,7 @@ app.get('/api/public/info', async (c) => {
   const ready = file?.status === 'selesai';
   const lang = asLang(c.req.query('lang'), settings.language);
   const en = lang === 'en';
-  const auto = ready ? await getSuggestions(c.env) : { id: [], en: [] };
-  const manual = en ? settings.suggestionsEn : settings.suggestions;
-  // Manual list in the requested language → auto list in that language → the other language as a last resort.
-  const suggestions = manual.length ? manual : (en ? auto.en : auto.id).length ? (en ? auto.en : auto.id) : en ? settings.suggestions : settings.suggestionsEn;
+  const suggestions = ready ? await visitorSuggestions(c.env, settings, lang) : [];
   const name = settings.name;
   const greeting =
     (en ? settings.greetingEn : settings.greeting).trim() ||
@@ -210,6 +208,16 @@ app.get('/api/public/info', async (c) => {
   });
 });
 
+/** Manual list in the requested language → auto list in that language → the other language as a last resort. */
+async function visitorSuggestions(env: Bindings, settings: BotSettings, lang: Lang): Promise<string[]> {
+  const en = lang === 'en';
+  const manual = en ? settings.suggestionsEn : settings.suggestions;
+  if (manual.length) return manual;
+  const auto = await getSuggestions(env);
+  const own = en ? auto.en : auto.id;
+  return own.length ? own : en ? settings.suggestions : settings.suggestionsEn;
+}
+
 app.post('/api/public/chat', async (c) => {
   const settings = await getSettings(c.env);
   const wantsStream = (c.req.header('Accept') || '').includes('ndjson');
@@ -233,7 +241,8 @@ app.post('/api/public/chat', async (c) => {
 
   const history = normalizeHistory(body.history, settings.limits.maxHistory);
   const run = async (emit: (e: ChatEvent) => Promise<void>) => {
-    const res = await answer({ env: c.env, settings, question, history, file: { name: file.name, embedder: file.embedder || 'workers-ai' }, lang, debug: false, emit });
+    const examples = await visitorSuggestions(c.env, settings, lang).catch(() => []);
+    const res = await answer({ env: c.env, settings, question, history, file: { name: file.name, embedder: file.embedder || 'workers-ai' }, lang, debug: false, emit, examples });
     if (settings.logQuestions) await logChat(c.env.DB, 'widget', question, res);
   };
 
@@ -477,7 +486,9 @@ app.post('/api/admin/test-chat', async (c) => {
     if (!question) return emit({ type: 'error', message: tr(c, "Tulis pertanyaan dulu.", "Type a question first.") });
     if (!file || file.status !== 'selesai') return emit({ type: 'error', message: tr(c, "Belum ada dokumen aktif. Unggah dokumen di menu Dokumen.", "No active document yet. Upload one in the Document menu.") });
     const history = normalizeHistory(body.history, settings.limits.maxHistory);
-    const res = await answer({ env: c.env, settings, question, history, file: { name: file.name, embedder: file.embedder || 'workers-ai' }, lang: asLang(body.lang, settings.language), debug: true, emit });
+    const lang = asLang(body.lang, settings.language);
+    const examples = await visitorSuggestions(c.env, settings, lang).catch(() => []);
+    const res = await answer({ env: c.env, settings, question, history, file: { name: file.name, embedder: file.embedder || 'workers-ai' }, lang, debug: true, emit, examples });
     if (settings.logQuestions) await logChat(c.env.DB, 'admin', question, res);
   });
 });

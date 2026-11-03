@@ -251,7 +251,7 @@
         .then(function (r) { return r.ok ? r.json() : Promise.reject(r.status); })
         .then(function (info) {
           self.info = info;
-          var accent = info.themeColor || "#0f766e";
+          var accent = info.themeColor || "#5b3fe0";
           self.style.setProperty("--ts-accent", accent);
           self.style.setProperty("--ts-accent-ink", inkFor(accent));
           self.el.title.textContent = info.name;

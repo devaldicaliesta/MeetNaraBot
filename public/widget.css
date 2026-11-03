@@ -1,19 +1,19 @@
 /* TanyaSaya widget — rendered inside a shadow root, so nothing leaks into the host page. */
 :host {
-  --ts-accent: #0f766e;
+  --ts-accent: #5b3fe0;
   --ts-accent-ink: #ffffff;
-  --ts-mark: #f6c445;
-  --ts-mark-soft: rgba(246, 196, 69, 0.28);
-  --ts-ink: #172333;
-  --ts-ink-2: #4a5a6b;
-  --ts-ink-3: #7b8896;
-  --ts-surface: #ffffff;
-  --ts-canvas: #f3f6f4;
-  --ts-line: #dfe5e2;
+  --ts-mark: #ffd25e;
+  --ts-mark-soft: rgba(255, 210, 94, 0.42);
+  --ts-ink: #1f1b2d;
+  --ts-ink-2: #575269;
+  --ts-ink-3: #7f7a8c;
+  --ts-surface: #fffdf9;
+  --ts-canvas: #f7f4ee;
+  --ts-line: #e7e0d4;
   --ts-error: #b42318;
   --ts-error-bg: #fdecea;
-  --ts-radius: 18px;
-  --ts-shadow: 0 24px 60px -18px rgba(23, 35, 51, 0.38), 0 2px 8px rgba(23, 35, 51, 0.08);
+  --ts-radius: 28px;
+  --ts-shadow: 0 28px 70px -20px rgba(31, 27, 45, 0.42), 0 2px 8px rgba(31, 27, 45, 0.08);
   --ts-ease: cubic-bezier(0.2, 0.9, 0.25, 1);
   all: initial;
   position: fixed;
@@ -28,12 +28,12 @@
 }
 :host([position="left"]) { right: auto; left: 20px; }
 :host([data-theme="dark"]) {
-  --ts-ink: #e8eef0;
-  --ts-ink-2: #b4c0c6;
-  --ts-ink-3: #8696a0;
-  --ts-surface: #18222b;
-  --ts-canvas: #111a21;
-  --ts-line: #2a3742;
+  --ts-ink: #efecf6;
+  --ts-ink-2: #c3bed1;
+  --ts-ink-3: #948ea6;
+  --ts-surface: #221e30;
+  --ts-canvas: #18151f;
+  --ts-line: #353047;
   --ts-mark-soft: rgba(246, 196, 69, 0.2);
   --ts-error: #ffb4ab;
   --ts-error-bg: #3b1d1a;
@@ -51,13 +51,13 @@ svg { display: block; }
   display: inline-flex;
   align-items: center;
   gap: 10px;
-  height: 52px;
-  padding: 0 20px 0 6px;
+  height: 54px;
+  padding: 0 22px 0 7px;
   border: 0;
   border-radius: 999px;
   background: var(--ts-accent);
   color: var(--ts-accent-ink);
-  font-weight: 600;
+  font-weight: 700;
   font-size: 15px;
   box-shadow: 0 10px 28px -8px color-mix(in srgb, var(--ts-accent) 70%, transparent);
   transition: transform 260ms var(--ts-ease), opacity 200ms ease;
@@ -107,7 +107,7 @@ svg { display: block; }
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 14px 12px 14px 16px;
+  padding: 16px 12px 16px 18px;
   background: var(--ts-accent);
   color: var(--ts-accent-ink);
 }
@@ -117,13 +117,13 @@ svg { display: block; }
   place-items: center;
   width: 38px;
   height: 38px;
-  border-radius: 12px;
-  background: rgba(255, 255, 255, 0.16);
-  font-weight: 700;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.18);
+  font-weight: 800;
   font-size: 17px;
 }
 .title { flex: 1; min-width: 0; }
-.title strong { display: block; font-size: 16px; font-weight: 700; letter-spacing: -0.01em; }
+.title strong { display: block; font-size: 16.5px; font-weight: 800; letter-spacing: -0.02em; }
 .title span {
   display: block;
   font-size: 12.5px;
@@ -139,7 +139,7 @@ svg { display: block; }
   width: 36px;
   height: 36px;
   border: 0;
-  border-radius: 10px;
+  border-radius: 999px;
   background: transparent;
   color: inherit;
   opacity: 0.85;
@@ -159,8 +159,8 @@ svg { display: block; }
 .msg.user { justify-content: flex-end; }
 .bubble {
   max-width: 88%;
-  padding: 10px 14px;
-  border-radius: 16px;
+  padding: 11px 15px;
+  border-radius: 20px;
   background: var(--ts-surface);
   border: 1px solid var(--ts-line);
   overflow-wrap: anywhere;
@@ -209,7 +209,7 @@ svg { display: block; }
   margin: 0 0 6px;
   padding: 8px 10px;
   border: 1px solid var(--ts-line);
-  border-radius: 10px;
+  border-radius: 16px;
   background: transparent;
   text-align: left;
   font-size: 13px;
@@ -229,9 +229,9 @@ svg { display: block; }
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  padding: 3px 8px;
+  padding: 3px 10px;
   border: 0;
-  border-radius: 8px;
+  border-radius: 999px;
   background: transparent;
   color: var(--ts-ink-3);
   font-size: 12.5px;
@@ -250,10 +250,10 @@ svg { display: block; }
 .chip {
   display: block;
   width: 100%;
-  margin: 0 0 6px;
-  padding: 9px 12px;
-  border: 1px solid var(--ts-line);
-  border-radius: 12px;
+  margin: 0 0 8px;
+  padding: 10px 16px;
+  border: 1.5px solid var(--ts-line);
+  border-radius: 999px;
   background: var(--ts-surface);
   text-align: left;
   font-size: 14px;
@@ -268,9 +268,9 @@ svg { display: block; }
   display: flex;
   align-items: flex-end;
   gap: 8px;
-  padding: 6px 6px 6px 14px;
-  border: 1px solid var(--ts-line);
-  border-radius: 14px;
+  padding: 6px 6px 6px 18px;
+  border: 1.5px solid var(--ts-line);
+  border-radius: 999px;
   background: var(--ts-surface);
   transition: border-color 160ms ease, box-shadow 160ms ease;
 }
@@ -293,10 +293,10 @@ textarea:focus-visible { outline: none; }
   flex: none;
   display: grid;
   place-items: center;
-  width: 38px;
-  height: 38px;
+  width: 40px;
+  height: 40px;
   border: 0;
-  border-radius: 10px;
+  border-radius: 999px;
   background: var(--ts-accent);
   color: var(--ts-accent-ink);
   transition: opacity 160ms ease, transform 160ms ease;
@@ -323,4 +323,4 @@ textarea:focus-visible { outline: none; }
 }
 
 /* Language toggle (ID/EN) in the header */
-.icon-btn.lang { width: auto; min-width: 36px; padding: 0 8px; font-size: 12.5px; font-weight: 700; letter-spacing: 0.02em; border: 1px solid rgba(255, 255, 255, 0.35); height: 28px; border-radius: 8px; }
+.icon-btn.lang { width: auto; min-width: 36px; padding: 0 8px; font-size: 12.5px; font-weight: 700; letter-spacing: 0.02em; border: 1px solid rgba(255, 255, 255, 0.4); height: 28px; border-radius: 999px; padding: 0 10px; }

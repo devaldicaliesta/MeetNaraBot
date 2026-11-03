@@ -6,63 +6,213 @@
 <title>TanyaSaya · Chatbot yang menjawab dari dokumen Anda</title>
 <meta name="description" content="Chatbot RAG yang menjawab pertanyaan pengunjung hanya dari dokumen Anda, lengkap dengan sumbernya. Ditenagai Gemini dan berjalan di Cloudflare.">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
-:root{--ink:#172333;--ink-2:#4a5a6b;--canvas:#eef2ef;--laut:#0f766e;--kunyit:#f6c445;font-family:"Plus Jakarta Sans",system-ui,sans-serif;color:var(--ink);background:var(--canvas);line-height:1.6}
-body{margin:0}
-main{max-width:1040px;margin:0 auto;padding:56px 24px 120px}
-.top{display:flex;justify-content:space-between;align-items:center;margin-bottom:72px}
-.brand{display:flex;gap:10px;align-items:center;font-weight:800;font-size:18px}
-.brand i{display:grid;place-items:center;width:34px;height:34px;border-radius:10px;background:var(--laut);color:#fff;font-style:normal}
-.top a{color:var(--ink-2);font-weight:600;font-size:14px}
-.hero{display:grid;grid-template-columns:1.1fr .9fr;gap:56px;align-items:center}
-h1{font-size:clamp(34px,5vw,54px);line-height:1.08;letter-spacing:-.035em;margin:0 0 20px;font-weight:800}
-.lede{font-size:18px;color:var(--ink-2);max-width:52ch;margin:0 0 28px}
-.cta{display:inline-flex;height:48px;align-items:center;padding:0 22px;border-radius:10px;background:var(--laut);color:#fff;font-weight:700;text-decoration:none;border:0;font:inherit;font-weight:700;cursor:pointer}
-.doc{background:#fff;border:1px solid #dbe2de;border-radius:14px;padding:26px 26px 22px;box-shadow:0 30px 60px -30px rgba(23,35,51,.35);font-size:14.5px}
-.doc h2{font-size:15px;margin:0 0 12px;color:var(--ink-2);font-weight:600}
+:root{
+  --ink:#1f1b2d;--ink-2:#575269;--ink-3:#8a8597;
+  --cream:#f7f4ee;--paper:#fffdf9;--line:#e7e0d4;
+  --violet:#5b3fe0;--lilac:#e4dcff;--lilac-2:#cbbcff;
+  --mint:#cdeedb;--peach:#ffd9c4;--butter:#ffe48f;--sky:#d4e7ff;
+  --mark:#ffd25e;
+  font-family:"Plus Jakarta Sans",system-ui,sans-serif;color:var(--ink);background:var(--cream);line-height:1.6;
+  -webkit-font-smoothing:antialiased;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth;scroll-padding-top:96px}
+body{margin:0;background:var(--cream)}
+a{color:inherit}
+:focus-visible{outline:3px solid var(--violet);outline-offset:3px;border-radius:8px}
+.wrap{max-width:1180px;margin:0 auto;padding:0 24px}
+
+/* Nav: a floating rounded bar */
+.top{position:sticky;top:12px;z-index:5;margin:12px auto 0;max-width:1180px;padding:0 16px}
+.bar{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:10px 10px 10px 18px;border-radius:999px;background:rgba(255,253,249,.88);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);border:1px solid var(--line)}
+.brand{display:flex;gap:10px;align-items:center;font-weight:800;font-size:18px;letter-spacing:-.02em;text-decoration:none}
+.brand i{display:grid;place-items:center;width:34px;height:34px;border-radius:12px;background:var(--violet);color:#fff;font-style:normal;font-size:17px}
+.links{display:flex;gap:4px}
+.links a{padding:8px 14px;border-radius:999px;text-decoration:none;font-weight:600;font-size:14.5px;color:var(--ink-2)}
+.links a:hover{background:var(--cream);color:var(--ink)}
+.nav{display:flex;gap:10px;align-items:center}
+
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;height:50px;padding:0 26px;border-radius:999px;border:1.5px solid var(--ink);background:var(--ink);color:#fff;font:inherit;font-weight:700;font-size:15.5px;text-decoration:none;cursor:pointer;transition:transform .18s cubic-bezier(.2,.9,.25,1),background .18s}
+.btn:hover{transform:translateY(-2px)}
+.btn.line{background:transparent;color:var(--ink)}
+.btn.line:hover{background:var(--paper)}
+.btn.sm{height:40px;padding:0 18px;font-size:14px}
+.btn svg{width:18px;height:18px}
+
+.lang-switch{display:inline-flex;padding:3px;border:1px solid var(--line);border-radius:999px;background:var(--paper)}
+.lang-switch button{border:0;background:transparent;padding:5px 11px;border-radius:999px;font:inherit;font-size:12.5px;font-weight:700;color:var(--ink-2);cursor:pointer}
+.lang-switch button[aria-pressed=true]{background:var(--ink);color:#fff}
+
+/* Hero */
+.hero{text-align:center;padding:88px 0 48px}
+.eyebrow{display:inline-flex;align-items:center;gap:8px;padding:6px 14px 6px 6px;border-radius:999px;background:var(--paper);border:1px solid var(--line);font-size:13.5px;font-weight:600;color:var(--ink-2)}
+.eyebrow b{padding:2px 10px;border-radius:999px;background:var(--lilac);color:var(--violet);font-size:12px}
+h1{font-size:clamp(42px,7.2vw,84px);line-height:1.02;letter-spacing:-.045em;margin:26px auto 22px;font-weight:800;max-width:14ch}
+h1 em{font-style:normal;background:linear-gradient(transparent 60%,var(--mark) 60%,var(--mark) 92%,transparent 92%);padding:0 .06em;-webkit-box-decoration-break:clone;box-decoration-break:clone}
+.lede{font-size:clamp(17px,1.6vw,20px);color:var(--ink-2);max-width:58ch;margin:0 auto 34px}
+.ctas{display:flex;gap:12px;justify-content:center;flex-wrap:wrap}
+
+/* Stage: big pastel block holding the product mock */
+.stage{position:relative;margin:24px 0 0;padding:clamp(24px,5vw,64px);border-radius:40px;background:var(--lilac);overflow:hidden;display:grid;grid-template-columns:1.05fr .95fr;gap:28px;align-items:center}
+.stage .blob{position:absolute;border-radius:50%;pointer-events:none}
+.stage .b1{width:280px;height:280px;background:var(--lilac-2);right:-80px;top:-90px}
+.stage .b2{width:160px;height:160px;background:var(--butter);left:-50px;bottom:-60px}
+.card{position:relative;background:var(--paper);border:1.5px solid var(--ink);border-radius:24px;padding:24px;font-size:14.5px;box-shadow:6px 6px 0 var(--ink)}
+.doc h2{display:flex;align-items:center;gap:8px;font-size:14px;margin:0 0 14px;color:var(--ink-2);font-weight:700}
+.doc h2 span{width:10px;height:10px;border-radius:50%;background:var(--mint);border:1.5px solid var(--ink)}
 .doc p{margin:0 0 12px}
-.doc mark{background:linear-gradient(transparent 55%,rgba(246,196,69,.55) 55%);color:inherit;padding:0 1px}
-.doc .ask{margin-top:18px;padding:12px 14px;border-radius:12px;background:var(--canvas);font-size:14px}
-.doc .ask b{display:block;margin-bottom:4px}
-.doc sup{display:inline-block;padding:0 5px;border-radius:4px;background:rgba(246,196,69,.45);font-weight:700;font-size:11px;vertical-align:2px}
-.how{margin-top:96px;display:grid;grid-template-columns:repeat(3,1fr);gap:28px}
-.how h3{margin:0 0 6px;font-size:16px}
-.how p{margin:0;color:var(--ink-2);font-size:14.5px}
-.nav{display:flex;gap:16px;align-items:center}
-.lang-switch{display:inline-flex;padding:3px;border:1px solid #c9d3ce;border-radius:9px;background:#fff}
-.lang-switch button{border:0;background:transparent;padding:4px 10px;border-radius:6px;font:inherit;font-size:12.5px;font-weight:700;color:var(--ink-2);cursor:pointer}
-.lang-switch button[aria-pressed=true]{background:var(--laut);color:#fff}
-@media (max-width:820px){.hero,.how{grid-template-columns:1fr}.top{margin-bottom:40px}}
+.doc mark{background:linear-gradient(transparent 55%,var(--mark) 55%);color:inherit;padding:0 1px}
+.chat{display:grid;gap:12px}
+.chat .q{justify-self:end;max-width:85%;padding:10px 16px;border-radius:20px 20px 6px 20px;background:var(--violet);color:#fff;font-weight:600}
+.chat .a{max-width:95%;padding:12px 16px;border-radius:20px 20px 20px 6px;background:var(--cream);border:1px solid var(--line)}
+.chat sup{display:inline-block;padding:0 6px;border-radius:6px;background:var(--mark);font-weight:800;font-size:11px;vertical-align:2px}
+.chat .src{display:flex;gap:8px;align-items:center;font-size:12.5px;color:var(--ink-2);padding:8px 12px;border-radius:14px;border:1px dashed var(--ink-3)}
+.chat .src b{color:var(--ink)}
+.chat-head{display:flex;align-items:center;gap:10px;margin-bottom:4px}
+.chat-head i{display:grid;place-items:center;width:32px;height:32px;border-radius:11px;background:var(--violet);color:#fff;font-style:normal;font-weight:800}
+.chat-head b{display:block;font-size:14.5px}
+.chat-head small{color:var(--ink-3);font-size:12px}
+
+/* Feature blocks */
+.sec{padding:104px 0 0}
+.kicker{font-size:13px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--violet);margin:0 0 12px}
+h2.title{font-size:clamp(30px,4.4vw,52px);line-height:1.05;letter-spacing:-.04em;margin:0 0 16px;font-weight:800;max-width:18ch}
+.sub{color:var(--ink-2);font-size:17px;max-width:60ch;margin:0}
+.features{display:grid;grid-template-columns:repeat(3,1fr);gap:20px;margin-top:40px}
+.feat{border-radius:32px;padding:32px 28px 30px;min-height:290px;display:flex;flex-direction:column}
+.feat:nth-child(1){background:var(--mint)}
+.feat:nth-child(2){background:var(--peach)}
+.feat:nth-child(3){background:var(--sky)}
+.icon{display:grid;place-items:center;width:56px;height:56px;border-radius:18px;background:var(--paper);border:1.5px solid var(--ink);margin-bottom:auto}
+.icon svg{width:26px;height:26px}
+.feat h3{margin:40px 0 8px;font-size:22px;letter-spacing:-.02em;line-height:1.2}
+.feat p{margin:0;color:#3b3748;font-size:15.5px}
+
+/* Steps */
+.steps{display:grid;grid-template-columns:repeat(3,1fr);gap:20px;margin-top:40px;counter-reset:s}
+.step{background:var(--paper);border:1px solid var(--line);border-radius:28px;padding:28px}
+.step::before{counter-increment:s;content:counter(s);display:grid;place-items:center;width:40px;height:40px;border-radius:50%;background:var(--butter);border:1.5px solid var(--ink);font-weight:800;margin-bottom:22px}
+.step h3{margin:0 0 6px;font-size:19px;letter-spacing:-.015em}
+.step p{margin:0;color:var(--ink-2);font-size:15px}
+
+/* Closing band */
+.band{margin:104px 0 0;padding:clamp(32px,6vw,72px);border-radius:40px;background:var(--ink);color:#fff;display:flex;justify-content:space-between;align-items:center;gap:28px;flex-wrap:wrap}
+.band h2{font-size:clamp(28px,4vw,46px);line-height:1.05;letter-spacing:-.04em;margin:0;max-width:16ch}
+.band p{color:#cfcadb;margin:12px 0 0;max-width:46ch}
+.band .ctas{justify-content:flex-start}
+.band .btn{background:var(--mark);color:var(--ink);border-color:var(--mark)}
+.band .btn.line{background:transparent;color:#fff;border-color:rgba(255,255,255,.5)}
+footer{padding:36px 0 120px;color:var(--ink-3);font-size:13.5px;display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap}
+
+@media (max-width:900px){
+  .links{display:none}
+  .stage,.features,.steps{grid-template-columns:1fr}
+  .hero{padding-top:56px}
+  .feat{min-height:0}
+}
+@media (max-width:560px){
+  .wrap{padding:0 16px}
+  .top{padding:0 10px}
+  .nav .btn.sm.line{display:none}
+  .bar{padding-left:14px}
+  .card{box-shadow:4px 4px 0 var(--ink);padding:20px}
+  .stage,.band{border-radius:28px}
+}
+@media (prefers-reduced-motion:reduce){*{transition-duration:1ms!important}html{scroll-behavior:auto}}
 </style>
 </head>
 <body>
-<main>
-  <div class="top"><div class="brand"><i>T</i><span id="bn">TanyaSaya</span></div><div class="nav"><div class="lang-switch" role="group" aria-label="Bahasa / Language"><button type="button" data-lang="id">ID</button><button type="button" data-lang="en">EN</button></div><a href="/admin.html" data-en="Owner dashboard">Dashboard pemilik</a></div></div>
-  <section class="hero">
-    <div>
-      <h1 data-en="Visitors ask, your document answers.">Pengunjung bertanya, dokumen Anda yang menjawab.</h1>
-      <p class="lede" data-en="TanyaSaya reads one document you own (a guide, FAQ, catalogue or set of rules), then answers visitor questions only from its content, with source numbers anyone can check.">TanyaSaya membaca satu dokumen milik Anda (panduan, FAQ, katalog, atau peraturan), lalu menjawab pertanyaan pengunjung hanya dari isinya, lengkap dengan nomor sumber yang bisa dicek.</p>
-      <button class="cta" id="try" type="button" data-en="Try asking now">Coba tanya sekarang</button>
+<header class="top">
+  <div class="bar">
+    <a class="brand" href="/"><i>T</i><span id="bn">TanyaSaya</span></a>
+    <nav class="links" aria-label="Halaman"><a href="#fitur" data-en="Features">Fitur</a><a href="#cara" data-en="How it works">Cara kerja</a></nav>
+    <div class="nav">
+      <div class="lang-switch" role="group" aria-label="Bahasa / Language"><button type="button" data-lang="id">ID</button><button type="button" data-lang="en">EN</button></div>
+      <a class="btn sm line" href="/admin.html" data-en="Owner dashboard">Dashboard pemilik</a>
     </div>
-    <div class="doc" aria-hidden="true">
-      <h2>panduan-pendaftaran.md</h2>
+  </div>
+</header>
+
+<main class="wrap">
+  <div class="hero">
+    <span class="eyebrow"><b>RAG</b><span data-en="Powered by Gemini, runs on Cloudflare">Ditenagai Gemini, berjalan di Cloudflare</span></span>
+    <h1><span data-en="Visitors ask,">Pengunjung bertanya,</span> <em data-en="your document answers.">dokumen Anda menjawab.</em></h1>
+    <p class="lede" data-en="TanyaSaya reads one document you own (a guide, FAQ, catalogue or set of rules), then answers visitor questions only from its content, with source numbers anyone can check.">TanyaSaya membaca satu dokumen milik Anda (panduan, FAQ, katalog, atau peraturan), lalu menjawab pertanyaan pengunjung hanya dari isinya, lengkap dengan nomor sumber yang bisa dicek.</p>
+    <div class="ctas">
+      <button class="btn" id="try" type="button"><span data-en="Try asking now">Coba tanya sekarang</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></button>
+      <a class="btn line" href="#cara" data-en="See how it works">Lihat cara kerjanya</a>
+    </div>
+  </div>
+
+  <div class="stage" aria-hidden="true">
+    <span class="blob b1"></span><span class="blob b2"></span>
+    <div class="card doc">
+      <h2><span></span>panduan-pendaftaran.md</h2>
       <p>Pendaftaran dibuka setiap hari kerja. <mark>Biaya pendaftaran Rp150.000</mark> dibayar melalui transfer bank setelah formulir disetujui.</p>
       <p>Berkas yang belum lengkap akan dikembalikan dalam 2 hari kerja.</p>
-      <div class="ask"><b>Berapa biaya daftarnya?</b>Biaya pendaftaran sebesar <strong>Rp150.000</strong>, dibayar lewat transfer setelah formulir disetujui <sup>1</sup></div>
+      <p style="margin:0">Kelas akhir pekan berlangsung setiap Sabtu pukul 09.00–12.00.</p>
+    </div>
+    <div class="card chat">
+      <div class="chat-head"><i>T</i><div><b>TanyaSaya</b><small data-en="Answers from panduan-pendaftaran.md">Menjawab dari panduan-pendaftaran.md</small></div></div>
+      <div class="q">Berapa biaya daftarnya?</div>
+      <div class="a">Biaya pendaftaran sebesar <strong>Rp150.000</strong>, dibayar lewat transfer setelah formulir disetujui <sup>1</sup></div>
+      <div class="src"><b>1</b> Panduan Pendaftaran › Biaya</div>
+    </div>
+  </div>
+
+  <section class="sec" id="fitur">
+    <p class="kicker" data-en="Why TanyaSaya">Kenapa TanyaSaya</p>
+    <h2 class="title" data-en="Honest answers, with receipts.">Jawaban jujur, lengkap dengan buktinya.</h2>
+    <p class="sub" data-en="Every answer points back to the part of your document it came from, so visitors can check it themselves.">Setiap jawaban menunjuk ke bagian dokumen asalnya, jadi pengunjung bisa mengeceknya sendiri.</p>
+    <div class="features">
+      <div class="feat">
+        <span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5M9 14l2 2 4-4"/></svg></span>
+        <h3 data-en="Only from the document">Hanya dari dokumen</h3>
+        <p data-en="If the answer isn't in the document, the bot says so plainly instead of making something up.">Jika jawabannya tidak ada di dokumen, bot mengatakannya terus terang alih-alih mengarang.</p>
+      </div>
+      <div class="feat">
+        <span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5M8 11h6M11 8v6"/></svg></span>
+        <h3 data-en="Hybrid search">Pencarian hibrida</h3>
+        <p data-en="Meaning-based and keyword search are combined, so exact terms, codes and numbers are still found.">Pencarian makna dan kata kunci digabung, jadi pertanyaan berupa istilah persis, kode, atau angka tetap ketemu.</p>
+      </div>
+      <div class="feat">
+        <span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M13 2 4 14h7l-1 8 9-12h-7z"/></svg></span>
+        <h3 data-en="Powered by Gemini">Ditenagai Gemini</h3>
+        <p data-en="Gemini 3.8 Flash writes the answers, with automatic fallback to other models when a quota runs out.">Gemini 3.8 Flash menyusun jawaban, dengan cadangan otomatis ke model lain jika kuota habis.</p>
+      </div>
     </div>
   </section>
-  <section class="how">
-    <div><h3 data-en="Only from the document">Hanya dari dokumen</h3><p data-en="If the answer isn't in the document, the bot says so plainly instead of making something up.">Jika jawabannya tidak ada di dokumen, bot mengatakannya terus terang alih-alih mengarang.</p></div>
-    <div><h3 data-en="Hybrid search">Pencarian hibrida</h3><p data-en="Meaning-based and keyword search are combined, so exact terms, codes and numbers are still found.">Pencarian makna dan kata kunci digabung, jadi pertanyaan berupa istilah persis, kode, atau angka tetap ketemu.</p></div>
-    <div><h3 data-en="Powered by Gemini">Ditenagai Gemini</h3><p data-en="Gemini 3.8 Flash writes the answers, with automatic fallback to other models when a quota runs out.">Gemini 3.8 Flash menyusun jawaban, dengan cadangan otomatis ke model lain jika kuota habis.</p></div>
+
+  <section class="sec" id="cara">
+    <p class="kicker" data-en="How it works">Cara kerja</p>
+    <h2 class="title" data-en="Live on your website in three steps.">Tayang di website Anda dalam tiga langkah.</h2>
+    <div class="steps">
+      <div class="step"><h3 data-en="Upload one document">Unggah satu dokumen</h3><p data-en="Markdown, PDF, Word, HTML, CSV or JSON. It is split into sections right in your browser.">Markdown, PDF, Word, HTML, CSV, atau JSON. Dokumen dipecah per bagian langsung di browser Anda.</p></div>
+      <div class="step"><h3 data-en="Set up the bot">Atur botnya</h3><p data-en="Give it a name, colour and greeting, then test questions in the playground.">Beri nama, warna, dan sapaan, lalu uji pertanyaan di halaman uji coba.</p></div>
+      <div class="step"><h3 data-en="Paste the widget">Pasang widgetnya</h3><p data-en="Copy two lines of code into your website. Visitors can start asking right away.">Salin dua baris kode ke website Anda. Pengunjung bisa langsung bertanya.</p></div>
+    </div>
   </section>
+
+  <div class="band">
+    <div>
+      <h2 data-en="Let your document do the answering.">Biarkan dokumen Anda yang menjawab.</h2>
+      <p data-en="Ask the demo bot, or open the dashboard to upload your own document.">Tanyakan ke bot demo, atau buka dashboard untuk mengunggah dokumen Anda sendiri.</p>
+    </div>
+    <div class="ctas">
+      <button class="btn" id="try2" type="button" data-en="Try asking now">Coba tanya sekarang</button>
+      <a class="btn line" href="/admin.html" data-en="Open dashboard">Buka dashboard</a>
+    </div>
+  </div>
+
+  <footer><span>TanyaSaya</span><span data-en="Answers come from the document and can be wrong. Check the sources.">Jawaban berasal dari dokumen dan bisa keliru. Cek sumbernya.</span></footer>
 </main>
 <script src="/widget.js" defer></script>
 <tanyasaya-chat id="chat"></tanyasaya-chat>
 <script>
 const chat = document.getElementById('chat');
-document.getElementById('try').addEventListener('click', () => chat.setOpen && chat.setOpen(true));
+['try', 'try2'].forEach((id) => document.getElementById(id).addEventListener('click', () => chat.setOpen && chat.setOpen(true)));
 fetch('/api/public/info').then(r => r.json()).then(i => { if (i.name) document.getElementById('bn').textContent = i.name; }).catch(() => {});
 
 // Page language follows the widget's saved choice (or the browser), and the switch keeps both in sync.
@@ -73,6 +223,7 @@ function pageLang(lang) {
     if (el.dataset.id === undefined) el.dataset.id = el.textContent;
     el.textContent = lang === 'en' ? el.dataset.en : el.dataset.id;
   });
+  document.querySelector('.links').setAttribute('aria-label', lang === 'en' ? 'Page' : 'Halaman');
   document.querySelectorAll('.lang-switch button').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.lang === lang)));
 }
 let start = 'id';
