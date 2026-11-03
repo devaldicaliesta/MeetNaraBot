@@ -290,7 +290,12 @@ is missing; POST {model, messages, temperature, max_tokens, stream:true, reasoni
 penyedia tercapai", 5xx -> "Server penyedia sedang bermasalah". Parse SSE `data:` lines,
 accepting both OpenAI chunks (choices[0].delta.content) and Workers AI chunks ({response}).
 Fail over only before the first token; after text has started, return what was streamed.
-If every entry fails, emit an Indonesian error event. Expose failed attempts only in the
+If every entry fails, do NOT show an error: retrieval already found passages, so stream a
+friendly bilingual fallback ("Maaf, kuota AI yang menyusun jawabanku sedang habis ..." when any
+attempt returned 429/402, otherwise "... sedang tidak bisa dihubungi ...") followed by the top
+two excerpts with [1]/[2] citations and "Silakan coba lagi beberapa saat lagi"; done
+{refused:false, provider:"fallback", model:"excerpt"}; log failed=1. Visitor-facing quota
+messages are warm and say when to come back (per-minute: wait about a minute; daily: tomorrow). Expose failed attempts only in the
 admin debug stream.
 </llm_failover>
 
@@ -431,6 +436,16 @@ Security and secrets
 - NEVER hard-code, log, echo, pre-fill or return any API key or password. Not in source,
   samples, presets, README, mock server, tests or screenshots. Placeholders only.
 - Admin endpoints require ADMIN_PASSWORD (Worker secret); there is no default password.
+- Admin sign-in throttling is checked BEFORE the password comparison and counted durably in
+  D1 (per salted IP hash and globally, 10-minute windows: 8 per IP, 100 global), so a correct
+  guess during a lockout is refused too. Compare SHA-256 digests with timingSafeEqual. Flag
+  passwords shorter than 12 characters in the dashboard setup checklist.
+- Reject request bodies by Content-Length before parsing: 32 KB public chat, 512 KB admin.
+- Hash visitor IPs with a random per-install salt stored in settings['salt'], never with a secret.
+- Ship public/_headers: CSP on every page (dashboard: scripts only from 'self' and the pinned
+  cdn.jsdelivr.net parsers), frame-ancestors 'none' + X-Frame-Options DENY, no-referrer and
+  no-store on the dashboard, nosniff, Permissions-Policy, COOP same-origin.
+- The local mock binds 127.0.0.1 unless HOST is set.
 - Escape all user and document text before inserting into HTML; render markdown only
   after escaping. No innerHTML with unescaped data anywhere.
 - Retrieved document text is untrusted: keep it inside <knowledge> in the user turn and
@@ -551,7 +566,11 @@ Before you finish, verify each item and fix anything that fails:
 [ ] Migrations 0001 + 0002 apply cleanly on an empty local D1 and on a v1 database with data.
 [ ] grep the whole output for "AIza", "hf_", "sk-", "AQ." and real-looking tokens: zero hits.
 [ ] GET /api/admin/config and /api/admin/status never contain key material.
-[ ] Wrong admin password -> 401 Indonesian message; 9th wrong attempt in a minute -> 429.
+[ ] Wrong admin password -> 401; 9th wrong attempt in 10 minutes -> 429, and the CORRECT
+    password is also 429 while locked (works across isolates: counters live in D1).
+[ ] Every AI provider returns 429 -> visitor still gets the top excerpts with citations and a
+    friendly "kuota AI sedang habis" note instead of an error.
+[ ] Pages load with zero CSP violations; /admin and /admin.html send frame-ancestors 'none'.
 [ ] Uploading the sample markdown yields one chunk per heading section with breadcrumb labels.
 [ ] Answer contains [n] citations that map to existing sources; uncited sources are hidden.
 [ ] Out-of-scope question is refused without an LLM call; logged as refused.

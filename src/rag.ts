@@ -395,16 +395,37 @@ export async function answer({ env, settings, question, history, file, lang, deb
     await emit({ type: 'done', refused, provider: out.provider, model: out.model, ms: Date.now() - started });
     return { refused, text: out.text, bestScore: dbg.bestVectorScore, provider: `${out.provider}:${out.model}` };
   } catch (err) {
-    if (debug && err instanceof AllProvidersFailed) await emit({ type: 'debug', data: { failedAttempts: err.failed } });
-    await emit({
-      type: 'error',
-      message:
-        lang === 'en'
-          ? "The assistant can't answer right now because every AI provider failed to respond. Try again in a moment."
-          : 'Bot sedang tidak bisa menjawab karena semua penyedia AI gagal dihubungi. Coba lagi sebentar lagi.',
-    });
-    return { refused: false, text: '', bestScore: dbg.bestVectorScore, provider: null, error: true };
+    const failed = err instanceof AllProvidersFailed ? err.failed : [];
+    if (debug && failed.length) await emit({ type: 'debug', data: { failedAttempts: failed } });
+    // Every model is out of quota or unreachable. Retrieval already worked, so instead of an
+    // error the visitor gets the most relevant excerpts with their sources and a polite note.
+    const text = excerptFallback(passages, lang, failed.some((f) => f.status === 429 || f.status === 402));
+    await emit({ type: 'delta', text });
+    await emit({ type: 'done', refused: false, provider: 'fallback', model: 'excerpt', ms: Date.now() - started });
+    return { refused: false, text, bestScore: dbg.bestVectorScore, provider: 'fallback:excerpt', error: true };
   }
+}
+
+/** Friendly answer built from the top excerpts when no AI model can respond. */
+export function excerptFallback(passages: Passage[], lang: Lang, quota: boolean): string {
+  const en = lang === 'en';
+  const cut = (t: string) => {
+    const clean = t.replace(/\s+/g, ' ').trim();
+    if (clean.length <= 420) return clean;
+    const end = clean.lastIndexOf('. ', 420);
+    return (end > 200 ? clean.slice(0, end + 1) : clean.slice(0, 420)) + ' …';
+  };
+  const parts = passages.slice(0, 2).map((p, i) => `**${p.label.split(' › ').slice(-2).join(' › ')}** [${i + 1}]\n${cut(p.text)}`);
+  const why = en
+    ? quota
+      ? "Sorry, the AI that writes my answers has used up today's quota"
+      : "Sorry, the AI that writes my answers can't be reached right now"
+    : quota
+      ? 'Maaf, kuota AI yang menyusun jawabanku sedang habis'
+      : 'Maaf, AI yang menyusun jawabanku sedang tidak bisa dihubungi';
+  return en
+    ? `${why}, so I can't summarise an answer for you yet. In the meantime, here are the parts of the document that best match your question:\n\n${parts.join('\n\n')}\n\nPlease try again in a little while for a full answer.`
+    : `${why}, jadi aku belum bisa merangkum jawabannya untukmu. Sementara itu, ini bagian dokumen yang paling sesuai dengan pertanyaanmu:\n\n${parts.join('\n\n')}\n\nSilakan coba lagi beberapa saat lagi untuk jawaban lengkap.`;
 }
 
 /** Generates starter questions right after a document is indexed. */

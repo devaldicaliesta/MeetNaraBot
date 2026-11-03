@@ -524,7 +524,7 @@ const DICT = {
   'Kunci Gemini tersimpan': 'Gemini key saved', 'Gemini menjadi model utama.': 'Gemini is the primary model.', 'Penyedia lain sudah ada, tetapi Gemini belum.': 'Other providers are set, but Gemini is not.',
   'Tanpa kunci, chatbot memakai cadangan Workers AI.': 'Without a key, the chatbot uses the Workers AI fallback.', 'Dokumen terindeks': 'Document indexed',
   'Unggahan belum selesai. Hapus lalu unggah ulang.': 'The upload did not finish. Delete it and upload again.', 'Unggah satu dokumen sebagai sumber jawaban.': 'Upload one document as the source of answers.',
-  'Domain website dibatasi': 'Website domain restricted', 'Disarankan agar widget hanya bisa dipakai di website Anda.': 'Recommended so the widget only works on your website.',
+  'Kata sandi admin kuat': 'Strong admin password', 'Kata sandi kurang dari 12 karakter. Ganti secret ADMIN_PASSWORD dengan kalimat sandi yang lebih panjang.': 'The password is shorter than 12 characters. Replace the ADMIN_PASSWORD secret with a longer passphrase.', 'Kata sandi admin minimal 12 karakter.': 'The admin password is at least 12 characters long.', 'Domain website dibatasi': 'Website domain restricted', 'Disarankan agar widget hanya bisa dipakai di website Anda.': 'Recommended so the widget only works on your website.',
   'Kunci belum diatur, akan dilewati': 'Key not set, will be skipped', 'Perlu tindakan': 'Needs attention',
   'Chatbot hanya menjawab dari satu dokumen ini. Dokumen dipotong di browser, lalu tiap potongan diubah menjadi vektor dan diindeks untuk pencarian kata kunci.': 'The chatbot answers only from this one document. It is split into chunks in your browser, then each chunk is turned into a vector and indexed for keyword search.',
   'Unggah dokumen': 'Upload a document', 'Paling akurat:': 'Most accurate:',
@@ -869,6 +869,7 @@ function renderOverview() {
     { done: geminiKey, title: 'Kunci Gemini tersimpan', text: geminiKey ? 'Gemini menjadi model utama.' : hasKey ? 'Penyedia lain sudah ada, tetapi Gemini belum.' : 'Tanpa kunci, chatbot memakai cadangan Workers AI.', link: '#model' },
     { done: doc, title: 'Dokumen terindeks', text: doc ? `${st.file.name} · ${fmt(st.file.chunk_count)} potongan` : st.file ? 'Unggahan belum selesai. Hapus lalu unggah ulang.' : 'Unggah satu dokumen sebagai sumber jawaban.', link: '#dokumen' },
     { done: (S.cfg.settings.allowedOrigins || []).length > 0, title: 'Domain website dibatasi', text: 'Disarankan agar widget hanya bisa dipakai di website Anda.', link: '#pasang' },
+    { done: !st.weakPassword, title: 'Kata sandi admin kuat', text: st.weakPassword ? 'Kata sandi kurang dari 12 karakter. Ganti secret ADMIN_PASSWORD dengan kalimat sandi yang lebih panjang.' : 'Kata sandi admin minimal 12 karakter.', link: null },
   ];
   $('#setup').innerHTML = steps.map((s) => `<li class="${s.done ? 'done' : ''}"><span class="tick">✓</span><div><b>${esc(s.title)}</b><span>${esc(s.text)}</span></div>${s.link && !s.done ? `<a class="btn ghost sm" href="${s.link}">Buka</a>` : '<span></span>'}</li>`).join('');
 

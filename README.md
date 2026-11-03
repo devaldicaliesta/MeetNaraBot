@@ -99,6 +99,11 @@ pertanyaan ─► tulis ulang (jika ada riwayat) ─┬─► vektor (Gemini / b
 - **Sitasi**: AI wajib menulis `[n]` setelah tiap fakta; widget mengubahnya menjadi tombol yang membuka potongan sumber.
 - **Basa-basi**: pesan pendek yang isinya hanya sapaan ("halo", "selamat pagi kak", "mau tanya dong"), terima kasih, salam penutup, "kamu siapa?", atau "oke" dijawab dengan balasan tetap yang ramah sebelum masuk pencarian, lengkap dengan contoh pertanyaan. Tidak ada panggilan AI dan kuota tidak terpakai. Pesan yang berisi pertanyaan sungguhan ("halo, berapa biayanya?") tetap diproses RAG seperti biasa. Polanya ada di `src/smalltalk.ts`.
 
+## Keamanan
+Ringkasan audit dan penguatan ada di [`SECURITY.md`](SECURITY.md): throttle login yang tahan isolate, batas ukuran request, header CSP/anti-framing di `public/_headers`, dan salt acak untuk hash IP.
+
+Kalau semua penyedia AI kehabisan kuota, pengunjung tidak melihat galat. Bot menampilkan bagian dokumen yang paling relevan beserta sumbernya, ditambah pesan yang ramah.
+
 ## Anti-bot & interaksi organik
 Tidak ada kode yang membuat interaksi buatan. Endpoint chat publik dilindungi:
 - Field honeypot tersembunyi di widget (bot pengisi form otomatis ditolak).

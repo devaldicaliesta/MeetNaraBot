@@ -14,6 +14,7 @@ import {
   writeSetting,
   deleteSetting,
   getSuggestions,
+  getSalt,
   asLang,
   type Lang,
   type BotSettings,
@@ -48,15 +49,52 @@ function allow(key: string, max: number, windowMs = 60_000): boolean {
   return true;
 }
 
-function timingSafeEqual(a: string, b: string): boolean {
+/** Constant-time comparison of SHA-256 digests, so neither content nor length leaks through timing. */
+async function secretEquals(a: string, b: string): Promise<boolean> {
   const enc = new TextEncoder();
-  const ha = enc.encode(a);
-  const hb = enc.encode(b);
-  if (ha.byteLength !== hb.byteLength) {
-    crypto.subtle.timingSafeEqual(ha, ha);
+  const [ha, hb] = await Promise.all([crypto.subtle.digest('SHA-256', enc.encode(a)), crypto.subtle.digest('SHA-256', enc.encode(b))]);
+  return crypto.subtle.timingSafeEqual(ha, hb);
+}
+
+/** Request bodies larger than this are rejected before parsing (public chat, admin API). */
+const MAX_PUBLIC_BODY = 32 * 1024;
+const MAX_ADMIN_BODY = 512 * 1024;
+const tooLarge = (c: Context<Env>, max: number) => Number(c.req.header('Content-Length') || 0) > max;
+
+// Admin sign-in throttling. Failures are counted durably in D1 (shared by every isolate and
+// data centre) per hashed IP and globally, in 10-minute windows, and the lock is checked
+// BEFORE the password is compared so a correct guess during a lockout is still refused.
+const LOGIN_WINDOW_MIN = 10;
+const LOGIN_MAX_PER_IP = 8;
+const LOGIN_MAX_GLOBAL = 100;
+const loginWindow = () => {
+  const now = new Date();
+  const slot = Math.floor(now.getUTCMinutes() / LOGIN_WINDOW_MIN);
+  return { day: now.toISOString().slice(0, 10), slot: `${now.toISOString().slice(11, 13)}${slot}` };
+};
+async function loginKeys(c: Context<Env>) {
+  const { day, slot } = loginWindow();
+  const salt = await getSalt(c.env.DB);
+  return { day, ipKey: `lf:${slot}:${await sha(`${salt}|${ip(c)}`)}`, globalKey: `lf:${slot}:all` };
+}
+async function loginLocked(c: Context<Env>): Promise<boolean> {
+  try {
+    const { day, ipKey, globalKey } = await loginKeys(c);
+    const rows = await c.env.DB.prepare('SELECT key, n FROM usage WHERE day = ? AND key IN (?, ?)').bind(day, ipKey, globalKey).all<{ key: string; n: number }>();
+    const n = (k: string) => rows.results?.find((r) => r.key === k)?.n ?? 0;
+    return n(ipKey) >= LOGIN_MAX_PER_IP || n(globalKey) >= LOGIN_MAX_GLOBAL;
+  } catch {
     return false;
   }
-  return crypto.subtle.timingSafeEqual(ha, hb);
+}
+async function recordLoginFailure(c: Context<Env>) {
+  try {
+    const { day, ipKey, globalKey } = await loginKeys(c);
+    const bump = (key: string) => c.env.DB.prepare('INSERT INTO usage (day, key, n) VALUES (?, ?, 1) ON CONFLICT(day, key) DO UPDATE SET n = n + 1').bind(day, key);
+    await c.env.DB.batch([bump(ipKey), bump(globalKey)]);
+  } catch (e) {
+    console.error('login failure not recorded', e);
+  }
 }
 
 const ip = (c: Context<Env>) => c.req.header('cf-connecting-ip') || 'local';
@@ -68,11 +106,11 @@ const tr = (c: Context<Env>, id: string, en: string) => ((c.req.header('X-Lang')
 const MSG = {
   origin: { id: 'Domain ini belum diizinkan memakai chatbot. Tambahkan di dashboard → Pasang widget.', en: 'This domain is not allowed to use the chatbot yet. Add it in the dashboard → Embed widget.' },
   rejected: { id: 'Permintaan ditolak.', en: 'Request rejected.' },
-  perMinute: { id: 'Terlalu banyak pertanyaan dalam semenit. Tunggu sebentar, lalu coba lagi.', en: 'Too many questions in one minute. Wait a moment, then try again.' },
+  perMinute: { id: 'Wah, pertanyaannya cepat sekali. Tunggu sekitar satu menit, lalu tanyakan lagi, ya.', en: "You're asking faster than I can keep up. Wait about a minute, then ask again." },
   empty: { id: 'Pertanyaannya masih kosong. Ketik dulu pertanyaanmu.', en: 'The question is empty. Type your question first.' },
   tooLong: { id: 'Pertanyaan terlalu panjang. Maksimal {n} karakter.', en: 'The question is too long. Maximum {n} characters.' },
   noDoc: { id: '{name} belum punya dokumen referensi. Pemilik situs perlu mengunggahnya dulu.', en: "{name} doesn't have a reference document yet. The site owner needs to upload one first." },
-  daily: { id: 'Batas pertanyaan harian sudah tercapai. Coba lagi besok.', en: 'The daily question limit has been reached. Try again tomorrow.' },
+  daily: { id: 'Maaf, kuota pertanyaan untuk hari ini sudah habis. Silakan kembali besok, aku siap membantu lagi.', en: "Sorry, today's question quota has run out. Please come back tomorrow and I'll be happy to help again." },
 } as const;
 const msg = (key: keyof typeof MSG, lang: Lang, vars: Record<string, string | number> = {}) =>
   MSG[key][lang].replace(/\{(\w+)\}/g, (_, k) => String(vars[k] ?? ''));
@@ -88,7 +126,7 @@ async function sha(text: string): Promise<string> {
  */
 async function dailyQuota(env: Bindings, rawIp: string, perIp: number, total: number): Promise<boolean> {
   const day = new Date().toISOString().slice(0, 10);
-  const ipKey = 'ip:' + (await sha(`${day}|${rawIp}|${env.ADMIN_PASSWORD || ''}`));
+  const ipKey = 'ip:' + (await sha(`${day}|${rawIp}|${await getSalt(env.DB)}`));
   try {
     const bump = (key: string) =>
       env.DB.prepare('INSERT INTO usage (day, key, n) VALUES (?, ?, 1) ON CONFLICT(day, key) DO UPDATE SET n = n + 1 RETURNING n').bind(day, key);
@@ -221,6 +259,7 @@ async function visitorSuggestions(env: Bindings, settings: BotSettings, lang: La
 app.post('/api/public/chat', async (c) => {
   const settings = await getSettings(c.env);
   const wantsStream = (c.req.header('Accept') || '').includes('ndjson');
+  if (tooLarge(c, MAX_PUBLIC_BODY)) return c.json({ error: msg('rejected', asLang(c.req.query('lang'), settings.language)) }, 413);
   const body = await c.req.json<{ question?: string; history?: unknown; website?: string; lang?: string }>().catch(() => ({} as any));
   const question = String(body.question || '').trim();
   const lang = asLang(body.lang, settings.language);
@@ -292,12 +331,17 @@ app.use('/api/admin/*', async (c, next) => {
   if (!c.env.ADMIN_PASSWORD) {
     return c.json({ error: tr(c, "ADMIN_PASSWORD belum diset. Tambahkan repository secret ADMIN_PASSWORD di GitHub lalu jalankan ulang workflow deploy, atau jalankan: npx wrangler secret put ADMIN_PASSWORD", "ADMIN_PASSWORD is not set. Add the ADMIN_PASSWORD repository secret on GitHub and re-run the deploy workflow, or run: npx wrangler secret put ADMIN_PASSWORD") }, 503);
   }
+  if (await loginLocked(c)) {
+    return c.json({ error: tr(c, `Terlalu banyak percobaan masuk yang salah. Tunggu ${LOGIN_WINDOW_MIN} menit, lalu coba lagi.`, `Too many failed sign-in attempts. Wait ${LOGIN_WINDOW_MIN} minutes, then try again.`) }, 429);
+  }
   const auth = c.req.header('Authorization') || '';
   const token = auth.startsWith('Bearer ') ? auth.slice(7) : '';
-  if (!token || !timingSafeEqual(token, c.env.ADMIN_PASSWORD)) {
-    if (!allow(`login-fail:${ip(c)}`, 8)) return c.json({ error: tr(c, "Terlalu banyak percobaan masuk. Tunggu 1 menit.", "Too many sign-in attempts. Wait 1 minute.") }, 429);
+  if (!token || token.length > 512 || !(await secretEquals(token, c.env.ADMIN_PASSWORD))) {
+    await recordLoginFailure(c);
     return c.json({ error: tr(c, "Kata sandi admin salah.", "Wrong admin password.") }, 401);
   }
+  if (tooLarge(c, MAX_ADMIN_BODY)) return c.json({ error: tr(c, "Data yang dikirim terlalu besar.", "The request is too large.") }, 413);
+  c.header('Cache-Control', 'no-store');
   await next();
 });
 
@@ -315,6 +359,7 @@ app.get('/api/admin/status', async (c) => {
     bindings: { db: !!c.env.DB, vectorize: !!c.env.VECTORIZE, ai: !!c.env.AI },
     file,
     botName: settings.name,
+    weakPassword: (c.env.ADMIN_PASSWORD || '').length < 12,
     keys: keyStatus(c.env, keys),
     chain: buildChain(settings),
     embedderForNextUpload: (() => {

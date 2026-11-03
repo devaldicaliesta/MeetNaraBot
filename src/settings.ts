@@ -236,6 +236,16 @@ async function readSetting<T>(db: D1Database, key: string): Promise<T | null> {
   }
 }
 
+/** Random per-install salt for hashing visitor IPs; created once, never derived from a secret. */
+export async function getSalt(db: D1Database): Promise<string> {
+  const saved = await readSetting<string>(db, 'salt');
+  if (typeof saved === 'string' && saved.length >= 32) return saved;
+  const bytes = crypto.getRandomValues(new Uint8Array(32));
+  const salt = [...bytes].map((b) => b.toString(16).padStart(2, '0')).join('');
+  await db.prepare('INSERT OR IGNORE INTO settings (key, value) VALUES (?, ?)').bind('salt', JSON.stringify(salt)).run();
+  return (await readSetting<string>(db, 'salt')) || salt;
+}
+
 export async function writeSetting(db: D1Database, key: string, value: unknown) {
   await db
     .prepare(

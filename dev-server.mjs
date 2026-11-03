@@ -135,7 +135,7 @@ http.createServer(async (req, res) => {
     const b = req.method === 'POST' ? await body(req) : {};
     if (p === '/api/admin/status') {
       const w = logs.filter((l) => l.source === 'widget');
-      return send(res, { bindings: { db: true, vectorize: true, ai: true }, file, botName: settings.name, keys: keyStatus(), chain: chain(), embedderForNextUpload: keys.gemini ? 'gemini' : 'workers-ai', stats: { total: w.length, refused: w.filter((l) => l.refused).length, failed: 0 } });
+      return send(res, { bindings: { db: true, vectorize: true, ai: true }, file, botName: settings.name, weakPassword: PASSWORD.length < 12, keys: keyStatus(), chain: chain(), embedderForNextUpload: keys.gemini ? 'gemini' : 'workers-ai', stats: { total: w.length, refused: w.filter((l) => l.refused).length, failed: 0 } });
     }
     if (p === '/api/admin/config' && req.method === 'GET') return send(res, { settings, defaults: { settings: DEFAULTS, layers: LAYERS }, keys: keyStatus(), providers: PROVIDERS.map(([id, name]) => ({ id, name })), workersAiModels: ['@cf/zai-org/glm-4.7-flash', '@cf/meta/llama-3.1-8b-instruct-fast'] });
     if (p === '/api/admin/config') {
@@ -180,4 +180,4 @@ http.createServer(async (req, res) => {
     return fs.createReadStream(fp).pipe(res);
   }
   res.writeHead(404); res.end('Not found');
-}).listen(PORT, () => console.log(`Mock MeetNaraBot: http://localhost:${PORT}  ·  dashboard /admin.html  ·  kata sandi: ${PASSWORD === 'dev' ? 'dev (ubah dengan ADMIN_PASSWORD=...)' : '(dari ADMIN_PASSWORD)'}`));
+}).listen(PORT, process.env.HOST || '127.0.0.1', () => console.log(`Mock MeetNaraBot: http://localhost:${PORT}  ·  dashboard /admin.html  ·  kata sandi: ${PASSWORD === 'dev' ? 'dev (ubah dengan ADMIN_PASSWORD=...)' : '(dari ADMIN_PASSWORD)'}`));
