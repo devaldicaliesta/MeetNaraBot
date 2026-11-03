@@ -1,0 +1,1383 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Dashboard · TanyaSaya</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root{
+  --ink:#172333;--ink-2:#4a5a6b;--ink-3:#7b8896;
+  --canvas:#eef2ef;--surface:#fff;--line:#dbe2de;--line-2:#c9d3ce;
+  --laut:#0f766e;--laut-dark:#0b5c56;--laut-soft:#e2f1ee;
+  --kunyit:#f6c445;--kunyit-soft:#fdf1cc;
+  --bata:#b42318;--bata-soft:#fdecea;--ok:#15803d;--ok-soft:#e6f4ea;
+  --r:12px;--r-sm:8px;
+  font-family:"Plus Jakarta Sans",ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;
+  font-size:15px;line-height:1.55;color:var(--ink);background:var(--canvas);
+  -webkit-font-smoothing:antialiased;
+}
+*{box-sizing:border-box}
+body{margin:0}
+a{color:var(--laut)}
+h1,h2,h3{margin:0;letter-spacing:-.015em;line-height:1.25}
+h1{font-size:26px;font-weight:800}
+h2{font-size:18px;font-weight:700}
+h3{font-size:15px;font-weight:700}
+p{margin:0}
+code,pre{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:13px}
+:focus-visible{outline:2px solid var(--laut);outline-offset:2px}
+.muted{color:var(--ink-2)}
+.small{font-size:13px}
+.hidden{display:none!important}
+
+/* ---------- Buttons & inputs ---------- */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;height:40px;padding:0 16px;border:1px solid transparent;border-radius:var(--r-sm);background:var(--laut);color:#fff;font:inherit;font-weight:600;font-size:14px;cursor:pointer;transition:background .15s,border-color .15s,transform .1s;white-space:nowrap}
+.btn:hover{background:var(--laut-dark)}
+.btn:active{transform:translateY(1px)}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+.btn.ghost{background:transparent;color:var(--ink);border-color:var(--line-2)}
+.btn.ghost:hover{background:var(--surface);border-color:var(--ink-3)}
+.btn.danger{background:transparent;color:var(--bata);border-color:#efc2bd}
+.btn.danger:hover{background:var(--bata-soft)}
+.btn.sm{height:32px;padding:0 10px;font-size:13px}
+.btn.icon{width:32px;padding:0}
+label.field{display:block}
+.field>span{display:block;font-size:13px;font-weight:600;margin-bottom:6px}
+.field>small{display:block;font-size:12.5px;color:var(--ink-3);margin-top:5px;line-height:1.45}
+input[type=text],input[type=password],input[type=number],input[type=url],select,textarea{width:100%;padding:9px 12px;border:1px solid var(--line-2);border-radius:var(--r-sm);background:var(--surface);font:inherit;font-size:14px;color:var(--ink);transition:border-color .15s,box-shadow .15s}
+textarea{resize:vertical;min-height:72px;line-height:1.5}
+input:focus,select:focus,textarea:focus{outline:0;border-color:var(--laut);box-shadow:0 0 0 3px rgba(15,118,110,.14)}
+input[type=color]{width:44px;height:40px;padding:3px;border:1px solid var(--line-2);border-radius:var(--r-sm);background:var(--surface)}
+input[type=range]{width:100%;accent-color:var(--laut)}
+.switch{display:flex;align-items:flex-start;gap:12px;cursor:pointer}
+.switch input{appearance:none;flex:none;width:38px;height:22px;margin:1px 0 0;border-radius:99px;background:var(--line-2);position:relative;cursor:pointer;transition:background .15s}
+.switch input::after{content:"";position:absolute;top:3px;left:3px;width:16px;height:16px;border-radius:50%;background:#fff;transition:transform .2s}
+.switch input:checked{background:var(--laut)}
+.switch input:checked::after{transform:translateX(16px)}
+.switch b{display:block;font-size:14px;font-weight:600}
+.switch em{display:block;font-style:normal;font-size:12.5px;color:var(--ink-3)}
+
+.pill{display:inline-flex;align-items:center;gap:6px;padding:2px 10px;border-radius:99px;font-size:12.5px;font-weight:600;background:var(--canvas);color:var(--ink-2);white-space:nowrap}
+.pill::before{content:"";width:7px;height:7px;border-radius:50%;background:currentColor}
+.pill.ok{background:var(--ok-soft);color:var(--ok)}
+.pill.no{background:var(--bata-soft);color:var(--bata)}
+.pill.wait{background:var(--kunyit-soft);color:#8a5a00}
+.pill.plain::before{display:none}
+
+/* ---------- Language switch ---------- */
+.lang-switch{display:inline-flex;padding:3px;border:1px solid var(--line-2);border-radius:9px;background:var(--surface)}
+.lang-switch button{border:0;background:transparent;padding:4px 10px;border-radius:6px;font:inherit;font-size:12.5px;font-weight:700;color:var(--ink-2);cursor:pointer}
+.lang-switch button[aria-pressed=true]{background:var(--laut);color:#fff}
+
+/* ---------- Login ---------- */
+.login{min-height:100vh;display:grid;place-items:center;padding:24px}
+.login-box{width:min(380px,100%)}
+.brand{display:flex;align-items:center;gap:12px;margin-bottom:28px}
+.brand-mark{display:grid;place-items:center;width:42px;height:42px;border-radius:12px;background:var(--laut);color:#fff;font-weight:800;font-size:20px}
+.brand-name{font-size:20px;font-weight:800;letter-spacing:-.02em}
+.brand-sub{font-size:13px;color:var(--ink-3)}
+.login form{display:grid;gap:14px;padding:24px;background:var(--surface);border:1px solid var(--line);border-radius:var(--r)}
+.err{padding:10px 12px;border-radius:var(--r-sm);background:var(--bata-soft);color:var(--bata);font-size:13.5px}
+
+/* ---------- Shell ---------- */
+.shell{display:grid;grid-template-columns:248px 1fr;min-height:100vh}
+.side{position:sticky;top:0;height:100vh;display:flex;flex-direction:column;padding:22px 14px;border-right:1px solid var(--line)}
+.side .brand{margin:0 8px 26px}
+.nav{display:grid;gap:2px}
+.nav a{display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:var(--r-sm);color:var(--ink-2);text-decoration:none;font-weight:600;font-size:14px;position:relative}
+.nav a:hover{background:rgba(23,35,51,.05);color:var(--ink)}
+.nav a[aria-current=page]{background:var(--surface);color:var(--ink);box-shadow:0 1px 0 var(--line)}
+.nav a[aria-current=page]::before{content:"";position:absolute;left:0;top:9px;bottom:9px;width:3px;border-radius:3px;background:var(--laut)}
+.nav svg{flex:none;width:18px;height:18px}
+.nav .dot{margin-left:auto;width:8px;height:8px;border-radius:50%;background:var(--kunyit)}
+.side-foot{margin-top:auto;display:grid;gap:8px;padding:0 8px}
+.side-foot .lang-switch{justify-self:start}
+.main{min-width:0;padding:32px clamp(18px,4vw,48px) 120px}
+.page{max-width:920px}
+.page-head{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;margin-bottom:22px;flex-wrap:wrap}
+.page-head p{margin-top:6px;color:var(--ink-2);max-width:62ch}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:22px;margin-bottom:18px}
+.panel-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:16px}
+.panel-head p{margin-top:4px;color:var(--ink-2);font-size:13.5px;max-width:64ch}
+.grid2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
+.grid3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px}
+.stack{display:grid;gap:16px}
+.row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.divider{height:1px;background:var(--line);margin:18px 0}
+
+/* ---------- Overview ---------- */
+.setup{list-style:none;margin:0;padding:0;display:grid;gap:0}
+.setup li{display:grid;grid-template-columns:28px 1fr auto;gap:12px;align-items:center;padding:12px 0;border-top:1px solid var(--line)}
+.setup li:first-child{border-top:0;padding-top:0}
+.setup .tick{display:grid;place-items:center;width:24px;height:24px;border-radius:50%;border:2px solid var(--line-2);color:transparent;font-size:13px;font-weight:800}
+.setup li.done .tick{background:var(--laut);border-color:var(--laut);color:#fff}
+.setup b{display:block;font-size:14px}
+.setup span{font-size:13px;color:var(--ink-2)}
+.figures{display:grid;grid-template-columns:repeat(3,1fr);border:1px solid var(--line);border-radius:var(--r);overflow:hidden;background:var(--surface);margin-bottom:18px}
+.figure{padding:18px 20px;border-left:1px solid var(--line)}
+.figure:first-child{border-left:0}
+.figure b{display:block;font-size:30px;font-weight:800;letter-spacing:-.03em;line-height:1.1}
+.figure span{font-size:13px;color:var(--ink-2)}
+.chain-view{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.chain-step{padding:4px 10px;border:1px solid var(--line);border-radius:var(--r-sm);font-size:13px;background:var(--canvas)}
+.chain-step small{color:var(--ink-3)}
+.chain-arrow{color:var(--ink-3);font-size:13px}
+
+/* ---------- Document ---------- */
+.drop{display:grid;place-items:center;text-align:center;gap:8px;padding:40px 20px;border:2px dashed var(--line-2);border-radius:var(--r);background:var(--canvas);cursor:pointer;transition:border-color .15s,background .15s}
+.drop:hover,.drop.over{border-color:var(--laut);background:var(--laut-soft)}
+.drop b{font-size:16px}
+.doc-card{display:grid;grid-template-columns:auto 1fr auto;gap:16px;align-items:center}
+.doc-icon{display:grid;place-items:center;width:52px;height:60px;border-radius:8px;background:var(--laut-soft);color:var(--laut);font-weight:800;font-size:12px;letter-spacing:.02em}
+.doc-meta{display:flex;flex-wrap:wrap;gap:6px 16px;font-size:13px;color:var(--ink-2);margin-top:4px}
+.progress{height:8px;border-radius:99px;background:var(--canvas);overflow:hidden;margin:14px 0 8px}
+.progress i{display:block;height:100%;width:0;background:var(--laut);transition:width .25s}
+.chunks{display:grid;gap:8px;max-height:460px;overflow:auto;padding-right:4px}
+.chunk{padding:10px 12px;border:1px solid var(--line);border-radius:var(--r-sm);font-size:13px}
+.chunk-head{display:flex;justify-content:space-between;gap:10px;font-weight:600;margin-bottom:4px}
+.chunk-head small{color:var(--ink-3);font-weight:500;white-space:nowrap}
+.chunk p{color:var(--ink-2);white-space:pre-wrap;display:-webkit-box;-webkit-line-clamp:4;-webkit-box-orient:vertical;overflow:hidden}
+.chunk.open p{-webkit-line-clamp:unset}
+.sug-list{display:flex;flex-wrap:wrap;gap:8px}
+.sug-list span{padding:6px 12px;border:1px solid var(--line);border-radius:99px;font-size:13px;background:var(--surface)}
+
+/* ---------- Model chain ---------- */
+.chain{display:grid;gap:8px;counter-reset:step}
+.chain-row{display:grid;grid-template-columns:28px 190px 1fr auto;gap:8px;align-items:center}
+.chain-row::before{counter-increment:step;content:counter(step);display:grid;place-items:center;width:26px;height:26px;border-radius:50%;background:var(--canvas);font-size:12.5px;font-weight:700;color:var(--ink-2)}
+.chain-row .tools{display:flex;gap:4px}
+.chain-row .test-out{grid-column:2/-1;font-size:12.5px}
+.chain-tail{display:grid;grid-template-columns:28px 1fr;gap:8px;align-items:center;font-size:13px;color:var(--ink-3)}
+.chain-tail::before{content:"↳";text-align:center}
+.keys{display:grid;gap:0}
+.key-row{display:grid;grid-template-columns:170px 1fr auto;gap:12px;align-items:center;padding:12px 0;border-top:1px solid var(--line)}
+.key-row:first-child{border-top:0}
+.key-row b{font-size:14px}
+.key-row small{display:block;font-size:12px;color:var(--ink-3)}
+
+/* ---------- RAG ---------- */
+.knob{display:grid;grid-template-columns:1fr 92px;gap:6px 14px;align-items:center}
+.knob .field{grid-column:1/-1}
+.knob output{justify-self:end;font-weight:700;font-variant-numeric:tabular-nums}
+.pipeline{display:flex;flex-wrap:wrap;gap:6px;align-items:center;font-size:13px;margin-bottom:6px}
+.pipeline span{padding:4px 10px;border-radius:99px;background:var(--canvas);border:1px solid var(--line)}
+.pipeline span.off{opacity:.45;text-decoration:line-through}
+.pipeline i{color:var(--ink-3);font-style:normal}
+
+/* ---------- Playground ---------- */
+.play{display:grid;grid-template-columns:minmax(0,1.05fr) minmax(0,1fr);gap:18px;align-items:start}
+.thread{display:grid;gap:12px;min-height:220px;max-height:560px;overflow:auto;padding:4px 2px 4px}
+.q{justify-self:end;max-width:85%;padding:9px 13px;border-radius:14px 14px 4px 14px;background:var(--laut);color:#fff;white-space:pre-wrap}
+.a{max-width:95%;padding:11px 14px;border-radius:14px 14px 14px 4px;border:1px solid var(--line);background:var(--surface)}
+.a p{margin:0 0 8px}.a p:last-child{margin:0}
+.a ul,.a ol{margin:4px 0 8px;padding-left:20px}
+.a .cite{display:inline-block;padding:0 5px;margin:0 1px;border-radius:4px;background:var(--kunyit-soft);font-size:.78em;font-weight:700;vertical-align:.12em}
+.a-meta{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.composer{display:flex;gap:8px;margin-top:14px}
+.composer input{flex:1}
+.xray{position:sticky;top:20px}
+.xray dl{display:grid;grid-template-columns:auto 1fr;gap:6px 14px;margin:0 0 14px;font-size:13px}
+.xray dt{color:var(--ink-3)}
+.xray dd{margin:0;font-weight:600;overflow-wrap:anywhere}
+.cand{display:grid;gap:6px}
+.cand-row{display:grid;grid-template-columns:22px 1fr 60px;gap:8px;align-items:center;font-size:12.5px}
+.cand-row .n{color:var(--ink-3);text-align:right}
+.cand-row .bar{position:relative;height:22px;border-radius:5px;background:var(--canvas);overflow:hidden}
+.cand-row .bar i{position:absolute;inset:0 auto 0 0;background:#cfe3df}
+.cand-row.sel .bar i{background:var(--kunyit)}
+.cand-row .bar span{position:relative;display:block;padding:2px 8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cand-row .s{text-align:right;font-variant-numeric:tabular-nums;color:var(--ink-2)}
+.legend{display:flex;gap:14px;font-size:12px;color:var(--ink-3);margin:10px 0 0}
+.legend i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:5px;vertical-align:-1px}
+.fails{margin-top:12px;font-size:12.5px;color:var(--bata)}
+
+/* ---------- Log ---------- */
+.tabs{display:flex;gap:4px;padding:4px;border-radius:10px;background:var(--canvas);border:1px solid var(--line);width:max-content;max-width:100%;overflow:auto}
+.tabs button{border:0;background:transparent;padding:6px 12px;border-radius:7px;font:inherit;font-size:13px;font-weight:600;color:var(--ink-2);cursor:pointer;white-space:nowrap}
+.tabs button[aria-selected=true]{background:var(--surface);color:var(--ink);box-shadow:0 1px 2px rgba(23,35,51,.08)}
+.log-list{display:grid;gap:0;margin-top:14px}
+.log-item{padding:12px 0;border-top:1px solid var(--line)}
+.log-item:first-child{border-top:0}
+.log-item .row{justify-content:space-between}
+.log-q{font-weight:600}
+.log-a{font-size:13px;color:var(--ink-2);margin-top:4px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.empty{padding:28px;text-align:center;color:var(--ink-3);font-size:14px}
+
+/* ---------- Embed ---------- */
+.snippet{position:relative}
+.snippet pre{margin:0;padding:16px;border-radius:var(--r-sm);background:#13202b;color:#d7e3e0;overflow:auto;white-space:pre}
+.snippet .btn{position:absolute;top:8px;right:8px}
+
+/* ---------- Save bar & toast ---------- */
+.savebar{position:fixed;left:50%;bottom:20px;transform:translate(-50%,140%);visibility:hidden;display:flex;align-items:center;gap:14px;padding:10px 10px 10px 18px;border-radius:14px;background:var(--ink);color:#fff;box-shadow:0 18px 40px -12px rgba(23,35,51,.5);transition:transform .3s cubic-bezier(.2,.9,.25,1),visibility 0s linear .3s;z-index:20}
+.savebar.show{transition:transform .3s cubic-bezier(.2,.9,.25,1),visibility 0s}
+.savebar.show{transform:translate(-50%,0);visibility:visible}
+.savebar .btn.ghost{color:#fff;border-color:rgba(255,255,255,.3)}
+.savebar .btn.ghost:hover{background:rgba(255,255,255,.08)}
+.toast{position:fixed;top:18px;right:18px;max-width:380px;padding:12px 16px;border-radius:10px;background:var(--surface);border:1px solid var(--line);border-left:4px solid var(--laut);box-shadow:0 10px 30px -10px rgba(23,35,51,.35);font-size:14px;z-index:30;transform:translateX(120%);transition:transform .3s cubic-bezier(.2,.9,.25,1)}
+.toast.show{transform:none}
+.toast.err{border-left-color:var(--bata)}
+
+@media (max-width:900px){
+  .shell{grid-template-columns:1fr}
+  .side{position:static;height:auto;border-right:0;border-bottom:1px solid var(--line);padding:14px}
+  .side .brand{margin:0 4px 10px}
+  .nav{grid-auto-flow:column;overflow:auto;grid-auto-columns:max-content}
+  .nav a[aria-current=page]::before{display:none}
+  .side-foot{display:flex;flex-wrap:wrap;margin-top:10px;padding:0 4px}
+  .side-foot .btn{display:none}
+  .play{grid-template-columns:1fr}
+  .xray{position:static}
+}
+@media (max-width:640px){
+  .grid2,.grid3{grid-template-columns:1fr}
+  .figures{grid-template-columns:1fr}
+  .figure{border-left:0;border-top:1px solid var(--line)}
+  .figure:first-child{border-top:0}
+  .chain-row{grid-template-columns:28px 1fr}
+  .chain-row>*:nth-child(n+2){grid-column:2}
+  .key-row{grid-template-columns:1fr}
+  .doc-card{grid-template-columns:auto 1fr}
+  .doc-card>.row{grid-column:1/-1}
+}
+@media (prefers-reduced-motion:reduce){*{transition-duration:1ms!important;animation-duration:1ms!important}}
+</style>
+</head>
+<body>
+
+<!-- ============ Login ============ -->
+<div class="login" id="login">
+  <div class="login-box">
+    <div class="row" style="justify-content:space-between;margin-bottom:28px"><div class="brand" style="margin:0"><div class="brand-mark">T</div><div><div class="brand-name">TanyaSaya</div><div class="brand-sub">Dashboard pemilik chatbot</div></div></div><div class="lang-switch" role="group" aria-label="Bahasa / Language"><button type="button" data-lang="id" aria-pressed="true">ID</button><button type="button" data-lang="en" aria-pressed="false">EN</button></div></div>
+    <form id="loginForm">
+      <h2>Masuk</h2>
+      <label class="field"><span>Kata sandi admin</span>
+        <input type="password" id="pass" autocomplete="current-password" required>
+        <small>Kata sandi yang diset dengan <code>wrangler secret put ADMIN_PASSWORD</code>.</small>
+      </label>
+      <div class="err hidden" id="loginErr"></div>
+      <button class="btn" type="submit">Masuk ke dashboard</button>
+    </form>
+  </div>
+</div>
+
+<!-- ============ App ============ -->
+<div class="shell hidden" id="app">
+  <aside class="side">
+    <div class="brand"><div class="brand-mark" id="sideMark">T</div><div><div class="brand-name" id="sideName">TanyaSaya</div><div class="brand-sub">Dashboard</div></div></div>
+    <nav class="nav" aria-label="Menu">
+      <a href="#ringkasan"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 13h6V4H4zM14 20h6v-9h-6zM4 20h6v-3H4zM14 4v3h6V4z"/></svg>Ringkasan</a>
+      <a href="#dokumen"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5M9 13h6M9 17h4"/></svg>Dokumen</a>
+      <a href="#model"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1 7 17M17 7l2.1-2.1"/></svg>Bot &amp; model</a>
+      <a href="#pencarian"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>Pencarian (RAG)</a>
+      <a href="#uji"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12Z"/></svg>Uji coba</a>
+      <a href="#riwayat"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5M12 7v5l3 2"/></svg>Riwayat</a>
+      <a href="#pasang"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m8 8-5 4 5 4M16 8l5 4-5 4M14 4l-4 16"/></svg>Pasang widget</a>
+    </nav>
+    <div class="side-foot">
+      <div class="lang-switch" role="group" aria-label="Bahasa / Language"><button type="button" data-lang="id" aria-pressed="true">ID</button><button type="button" data-lang="en" aria-pressed="false">EN</button></div>
+      <a class="btn ghost sm" href="/" target="_blank" rel="noopener">Lihat halaman demo</a>
+      <button class="btn ghost sm" id="logout" type="button">Keluar</button>
+    </div>
+  </aside>
+
+  <main class="main">
+    <!-- ===== Ringkasan ===== -->
+    <section class="page" data-page="ringkasan">
+      <div class="page-head"><div><h1 id="hello">Ringkasan</h1><p>Status chatbot dan apa yang perlu disiapkan sebelum dipasang di website.</p></div></div>
+      <div class="figures">
+        <div class="figure"><b id="stTotal">–</b><span>pertanyaan pengunjung, 7 hari</span></div>
+        <div class="figure"><b id="stRefused">–</b><span>tidak ditemukan di dokumen</span></div>
+        <div class="figure"><b id="stFailed">–</b><span>gagal karena penyedia AI</span></div>
+      </div>
+      <div class="panel">
+        <div class="panel-head"><div><h2>Persiapan</h2><p>Selesaikan semua langkah agar chatbot siap menjawab pengunjung.</p></div></div>
+        <ul class="setup" id="setup"></ul>
+      </div>
+      <div class="panel">
+        <div class="panel-head"><div><h2>Urutan penyedia AI</h2><p>Jika penyedia pertama gagal, kuotanya habis, atau terlalu lambat, chatbot otomatis pindah ke penyedia berikutnya.</p></div><a class="btn ghost sm" href="#model">Atur</a></div>
+        <div class="chain-view" id="chainView"></div>
+        <p class="small muted" style="margin-top:12px">Embedding untuk unggahan berikutnya: <b id="embNext">–</b></p>
+      </div>
+    </section>
+
+    <!-- ===== Dokumen ===== -->
+    <section class="page hidden" data-page="dokumen">
+      <div class="page-head"><div><h1>Dokumen</h1><p>Chatbot hanya menjawab dari satu dokumen ini. Dokumen dipotong di browser, lalu tiap potongan diubah menjadi vektor dan diindeks untuk pencarian kata kunci.</p></div></div>
+
+      <div class="panel" id="docEmpty">
+        <div class="panel-head"><div><h2>Unggah dokumen</h2><p>Paling akurat: <b>.md</b> dengan judul bagian (#, ##). Juga didukung .txt, .csv, .json, .html, .pdf (berbasis teks), dan .docx. Maksimal 10 MB.</p></div></div>
+        <label class="drop" id="drop">
+          <input type="file" id="fileInput" accept=".md,.markdown,.txt,.csv,.json,.html,.htm,.pdf,.docx" hidden>
+          <b>Pilih file atau seret ke sini</b>
+          <span class="small muted">Dokumen dibaca di browser Anda; yang dikirim ke server hanya potongan teksnya.</span>
+        </label>
+        <div id="prep" class="hidden" style="margin-top:18px">
+          <div class="row" style="justify-content:space-between">
+            <div><h3 id="prepName">–</h3><p class="small muted" id="prepStats">–</p></div>
+            <div class="row"><button class="btn ghost" type="button" id="prepCancel">Batal</button><button class="btn" type="button" id="prepGo">Proses &amp; simpan</button></div>
+          </div>
+          <div class="grid2" style="margin:16px 0">
+            <label class="field"><span>Ukuran potongan (karakter)</span><input type="number" id="cSize" min="300" max="3000" step="50"><small>Lebih kecil = lebih presisi; lebih besar = konteks lebih utuh. 800–1.200 cocok untuk kebanyakan dokumen.</small></label>
+            <label class="field"><span>Tumpang tindih (karakter)</span><input type="number" id="cOverlap" min="0" max="500" step="25"><small>Kalimat akhir potongan sebelumnya ikut di-embed agar makna tidak terputus.</small></label>
+          </div>
+          <div class="progress hidden" id="prog"><i></i></div>
+          <p class="small muted hidden" id="progText"></p>
+          <h3 style="margin:14px 0 8px">Pratinjau potongan</h3>
+          <div class="chunks" id="prepChunks"></div>
+        </div>
+      </div>
+
+      <div class="panel hidden" id="docActive">
+        <div class="doc-card">
+          <div class="doc-icon" id="docExt">MD</div>
+          <div><h2 id="docName">–</h2><div class="doc-meta" id="docMeta"></div></div>
+          <div class="row"><button class="btn danger" type="button" id="docDelete">Hapus dokumen</button></div>
+        </div>
+        <div class="err hidden" id="docErr" style="margin-top:14px"></div>
+        <div class="divider"></div>
+        <div class="panel-head" style="margin-bottom:10px"><div><h3>Saran pertanyaan otomatis</h3><p>Dibuat AI dari isi dokumen. Tampil di widget jika Anda belum mengisi saran manual di menu Bot &amp; model.</p></div><button class="btn ghost sm" id="regenSug" type="button">Buat ulang</button></div>
+        <div class="sug-list" id="sugList"></div>
+        <div class="divider"></div>
+        <div class="panel-head" style="margin-bottom:10px"><div><h3>Isi potongan tersimpan</h3><p>Periksa apakah potongan dan label bagiannya masuk akal. Klik potongan untuk membuka teks lengkap.</p></div></div>
+        <div class="row" style="margin-bottom:10px"><input type="text" id="chunkQ" placeholder="Cari teks di potongan…" style="max-width:320px"><button class="btn ghost sm" id="chunkMore" type="button">Muat 30 berikutnya</button></div>
+        <div class="chunks" id="chunkList"></div>
+      </div>
+    </section>
+
+    <!-- ===== Model ===== -->
+    <section class="page hidden" data-page="model">
+      <div class="page-head"><div><h1>Bot &amp; model</h1><p>Identitas chatbot di widget, urutan model AI, dan kunci API.</p></div></div>
+      <div class="panel">
+        <div class="panel-head"><div><h2>Identitas</h2></div></div>
+        <div class="grid2">
+          <label class="field"><span>Nama chatbot</span><input type="text" data-k="name" maxlength="60"></label>
+          <label class="field"><span>Label tombol widget</span><input type="text" data-k="launcherLabel" maxlength="40" placeholder="Tanya [nama]"></label>
+          <label class="field"><span>Warna utama</span><div class="row"><input type="color" data-k="themeColor"><input type="text" data-k="themeColor" maxlength="7" style="max-width:120px"></div><small>Warna teks tombol menyesuaikan otomatis agar tetap terbaca.</small></label>
+          <label class="field"><span>Pesan saat jawaban tidak ada di dokumen</span><input type="text" data-k="refusalMessage" maxlength="300"></label>
+        </div>
+        <div class="grid2" style="margin-top:16px">
+          <label class="field"><span>Sapaan pembuka (opsional)</span><textarea data-k="greeting" rows="3" placeholder="Kosongkan untuk sapaan otomatis yang menyebut nama dokumen."></textarea></label>
+          <label class="field"><span>Saran pertanyaan manual (opsional)</span><textarea data-k="suggestions" rows="3" placeholder="Satu pertanyaan per baris, maksimal 6."></textarea><small>Kosongkan untuk memakai saran otomatis dari dokumen.</small></label>
+        </div>
+        <label class="field" style="margin-top:16px;max-width:420px"><span>Bahasa default pengunjung</span><select data-k="language"><option value="id">Bahasa Indonesia</option><option value="en">English</option></select><small>Dipakai jika bahasa browser pengunjung tidak terdeteksi. Pengunjung bisa mengganti bahasa lewat tombol ID/EN di widget.</small></label>
+        <div class="divider"></div>
+        <div class="panel-head" style="margin-bottom:12px"><div><h3>Teks versi English</h3><p>Ditampilkan saat pengunjung memilih EN. Kosongkan untuk memakai teks otomatis berbahasa Inggris.</p></div></div>
+        <div class="grid2">
+          <label class="field"><span>Label tombol (English)</span><input type="text" data-k="launcherLabelEn" maxlength="40" placeholder="Ask [name]"></label>
+          <label class="field"><span>Pesan penolakan (English)</span><input type="text" data-k="refusalMessageEn" maxlength="300"></label>
+          <label class="field"><span>Sapaan pembuka (English)</span><textarea data-k="greetingEn" rows="3"></textarea></label>
+          <label class="field"><span>Saran pertanyaan (English)</span><textarea data-k="suggestionsEn" rows="3"></textarea></label>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-head"><div><h2>Urutan model</h2><p>Dicoba dari atas ke bawah. Gunakan tombol Tes untuk memastikan kunci dan nama model benar.</p></div><button class="btn ghost sm" type="button" id="addChain">Tambah model</button></div>
+        <div class="chain" id="chainEdit"></div>
+        <div class="chain-tail" id="chainTail" style="margin-top:8px"></div>
+        <div class="divider"></div>
+        <div class="stack">
+          <label class="switch"><input type="checkbox" data-k="workersAiFallback"><div><b>Cadangan Workers AI</b><em>Tambahkan model Workers AI (gratis, tanpa kunci) di ujung rantai sebagai jaring pengaman.</em></div></label>
+          <div class="grid3">
+            <label class="field"><span>Temperature</span><input type="number" data-k="temperature" min="0" max="1.5" step="0.05"><small>0–0,3 = konsisten dan faktual.</small></label>
+            <label class="field"><span>Maks. token jawaban</span><input type="number" data-k="maxTokens" min="128" max="4096" step="32"></label>
+            <label class="field"><span>Tingkat berpikir Gemini</span><select data-k="reasoningEffort"><option value="">Bawaan model</option><option value="none">none (tercepat)</option><option value="low">low (disarankan)</option><option value="medium">medium</option><option value="high">high (terlambat)</option></select></label>
+          </div>
+          <label class="field" style="max-width:420px"><span>Model embedding untuk unggahan berikutnya</span>
+            <select data-k="embeddingProvider"><option value="auto">Otomatis: Gemini jika ada kunci, selain itu Workers AI</option><option value="gemini">Gemini · gemini-embedding-001 (1024 dim)</option><option value="workers-ai">Workers AI · bge-m3 (1024 dim)</option></select>
+            <small>Dokumen yang sudah diunggah tetap memakai model saat unggah. Ganti model = unggah ulang dokumen.</small></label>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-head"><div><h2>Kunci API</h2><p>Kunci disimpan di server dan <b>tidak pernah ditampilkan lagi</b>. Untuk keamanan maksimal, simpan sebagai secret Cloudflare (<code>wrangler secret put</code>); kunci yang ditempel di sini mengalahkan secret.</p></div></div>
+        <div class="keys" id="keys"></div>
+      </div>
+    </section>
+
+    <!-- ===== RAG ===== -->
+    <section class="page hidden" data-page="pencarian">
+      <div class="page-head"><div><h1>Pencarian (RAG)</h1><p>Cara chatbot menemukan potongan dokumen yang relevan sebelum menjawab. Coba perubahan di menu Uji coba sebelum disimpan.</p></div></div>
+      <div class="panel">
+        <div class="panel-head"><div><h2>Alur pencarian</h2></div></div>
+        <div class="pipeline" id="pipeline"></div>
+      </div>
+      <div class="panel">
+        <div class="stack">
+          <label class="switch"><input type="checkbox" data-k="rag.queryRewrite"><div><b>Tulis ulang pertanyaan lanjutan</b><em>"Kalau yang kedua berapa?" diubah AI menjadi pertanyaan lengkap sebelum dicari. Menambah satu panggilan AI singkat.</em></div></label>
+          <label class="switch"><input type="checkbox" data-k="rag.hybrid"><div><b>Pencarian hibrida (vektor + kata kunci)</b><em>Menangkap istilah persis seperti kode, nama, atau angka yang sering lolos dari pencarian makna.</em></div></label>
+          <label class="switch"><input type="checkbox" data-k="rag.rerank"><div><b>Urutkan ulang dengan reranker</b><em>Model bge-reranker menilai ulang 20 kandidat teratas. Paling efektif untuk dokumen berbahasa Inggris.</em></div></label>
+        </div>
+        <div class="divider"></div>
+        <div class="grid2">
+          <div class="knob"><label class="field" for="kTopK"><span>Potongan dikirim ke AI</span></label><input type="range" id="kTopK" data-k="rag.topK" min="1" max="12" step="1"><output></output></div>
+          <div class="knob"><label class="field" for="kMin"><span>Ambang kemiripan minimum</span></label><input type="range" id="kMin" data-k="rag.minScore" min="0" max="0.9" step="0.01"><output></output></div>
+          <div class="knob"><label class="field" for="kCand"><span>Kandidat per pencarian</span></label><input type="range" id="kCand" data-k="rag.candidateK" min="5" max="50" step="1"><output></output></div>
+          <div class="knob"><label class="field" for="kNb"><span>Potongan tetangga (±)</span></label><input type="range" id="kNb" data-k="rag.neighborWindow" min="0" max="2" step="1"><output></output></div>
+          <div class="knob"><label class="field" for="kCtx"><span>Batas total konteks (karakter)</span></label><input type="range" id="kCtx" data-k="rag.maxContextChars" min="2000" max="24000" step="500"><output></output></div>
+        </div>
+        <p class="small muted" style="margin-top:14px">Ambang terlalu tinggi membuat bot sering bilang "tidak ada di dokumen"; terlalu rendah membuat AI menerima potongan yang tidak relevan. Lihat skor nyata di Uji coba untuk menentukan angka yang pas.</p>
+      </div>
+      <div class="panel">
+        <div class="panel-head"><div><h2>Batas pemakaian &amp; anti-bot</h2><p>Melindungi kuota gratis dan menjaga semua interaksi tetap organik: widget punya honeypot, permintaan tanpa User-Agent ditolak, dan setiap pengunjung dibatasi per menit dan per hari.</p></div></div>
+        <div class="grid3">
+          <label class="field"><span>Maks. panjang pertanyaan</span><input type="number" data-k="limits.maxQuestionLength" min="50" max="2000"></label>
+          <label class="field"><span>Riwayat percakapan diingat</span><input type="number" data-k="limits.maxHistory" min="0" max="20"><small>Jumlah pesan terakhir.</small></label>
+          <label class="field"><span>Pertanyaan per menit / pengunjung</span><input type="number" data-k="limits.requestsPerMinute" min="1" max="120"></label>
+          <label class="field"><span>Pertanyaan per hari / pengunjung</span><input type="number" data-k="limits.dailyPerIp" min="5" max="5000"></label>
+          <label class="field"><span>Total pertanyaan per hari</span><input type="number" data-k="limits.dailyTotal" min="50" max="100000"></label>
+        </div>
+        <div class="divider"></div>
+        <label class="switch"><input type="checkbox" data-k="logQuestions"><div><b>Simpan riwayat pertanyaan</b><em>Untuk melihat pertanyaan yang belum terjawab dokumen. Alamat IP tidak disimpan.</em></div></label>
+      </div>
+    </section>
+
+    <!-- ===== Uji coba ===== -->
+    <section class="page hidden" data-page="uji">
+      <div class="page-head"><div><h1>Uji coba</h1><p>Tanya seperti pengunjung, lalu lihat potongan mana yang ditemukan dan kenapa. Uji coba dicatat terpisah dan tidak dihitung sebagai pertanyaan pengunjung.</p></div>
+        <label class="switch" style="max-width:300px"><input type="checkbox" id="useDraft" checked><div><b>Pakai pengaturan belum disimpan</b><em>Uji perubahan RAG/prompt sebelum menyimpan.</em></div></label></div>
+      <div class="play">
+        <div class="panel" style="margin:0">
+          <div class="thread" id="thread"><div class="empty" id="threadEmpty">Belum ada percakapan. Coba salah satu saran pertanyaan di menu Dokumen.</div></div>
+          <form class="composer" id="playForm"><input type="text" id="playQ" placeholder="Tulis pertanyaan…" autocomplete="off"><button class="btn" type="submit" id="playSend">Kirim</button><button class="btn ghost" type="button" id="playReset" title="Mulai percakapan baru">Baru</button></form>
+        </div>
+        <div class="panel xray" style="margin:0">
+          <div class="panel-head" style="margin-bottom:12px"><div><h2>Hasil pencarian</h2><p>Potongan berwarna kunyit dikirim ke AI.</p></div></div>
+          <div id="xray"><div class="empty">Kirim pertanyaan untuk melihat hasil pencarian.</div></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== Riwayat ===== -->
+    <section class="page hidden" data-page="riwayat">
+      <div class="page-head"><div><h1>Riwayat pertanyaan</h1><p>Pertanyaan yang tidak terjawab menunjukkan informasi yang perlu ditambahkan ke dokumen.</p></div><button class="btn danger" type="button" id="logClear">Hapus semua riwayat</button></div>
+      <div class="panel">
+        <div class="tabs" role="tablist" id="logTabs">
+          <button role="tab" data-f="widget" aria-selected="true">Pengunjung</button>
+          <button role="tab" data-f="refused" aria-selected="false">Tidak terjawab</button>
+          <button role="tab" data-f="failed" aria-selected="false">Gagal</button>
+          <button role="tab" data-f="admin" aria-selected="false">Uji admin</button>
+        </div>
+        <div class="log-list" id="logList"></div>
+      </div>
+    </section>
+
+    <!-- ===== Pasang ===== -->
+    <section class="page hidden" data-page="pasang">
+      <div class="page-head"><div><h1>Pasang widget</h1><p>Tempel kode ini sebelum tag <code>&lt;/body&gt;</code> di website Anda. Widget memakai Shadow DOM, jadi tampilannya tidak bentrok dengan CSS website.</p></div></div>
+      <div class="panel">
+        <div class="snippet"><pre id="snippet"></pre><button class="btn sm" type="button" id="copySnippet">Salin kode</button></div>
+        <div class="grid3" style="margin-top:16px">
+          <label class="field"><span>Posisi</span><select id="optPos"><option value="right">Kanan bawah</option><option value="left">Kiri bawah</option></select></label>
+          <label class="field"><span>Bahasa widget</span><select id="optLang"><option value="auto">Otomatis (bahasa browser pengunjung)</option><option value="id">Bahasa Indonesia</option><option value="en">English</option></select></label>
+          <label class="field"><span>Tema</span><select id="optTheme"><option value="light">Terang</option><option value="dark">Gelap</option><option value="auto">Ikuti perangkat pengunjung</option></select></label>
+        </div>
+      </div>
+      <div class="panel">
+        <div class="panel-head"><div><h2>Domain yang diizinkan</h2><p>Satu domain per baris, contoh <code>https://tokosaya.com</code>. Kosongkan untuk mengizinkan semua domain. Domain dashboard ini selalu diizinkan.</p></div></div>
+        <textarea data-k="allowedOrigins" rows="4" placeholder="https://tokosaya.com&#10;https://www.tokosaya.com"></textarea>
+      </div>
+    </section>
+  </main>
+</div>
+
+<div class="savebar" id="savebar" role="status"><span>Ada perubahan yang belum disimpan</span><button class="btn ghost sm" type="button" id="discard">Batalkan</button><button class="btn sm" type="button" id="save">Simpan perubahan</button></div>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script>
+/* ===================================================================
+   i18n (ID/EN). Static and server-rendered Indonesian text is translated
+   in place by walking text nodes; JS-built sentences use L(id, en).
+   =================================================================== */
+const LANG = { cur: (() => { try { const v = localStorage.getItem('ts.adminLang'); if (v === 'id' || v === 'en') return v; } catch {} return /^en/i.test(navigator.language || '') ? 'en' : 'id'; })() };
+const L = (id, en) => (LANG.cur === 'en' ? en : id);
+const LOCALE = () => (LANG.cur === 'en' ? 'en-GB' : 'id-ID');
+const DICT = {
+  'TanyaSaya': 'TanyaSaya', 'Dashboard pemilik chatbot': 'Chatbot owner dashboard', 'Masuk': 'Sign in', 'Kata sandi admin': 'Admin password',
+  'Kata sandi yang diset dengan': 'The password set with', 'Masuk ke dashboard': 'Sign in to the dashboard', 'Dashboard': 'Dashboard', 'Menu': 'Menu',
+  'Ringkasan': 'Overview', 'Dokumen': 'Document', 'Bot & model': 'Bot & model', 'Pencarian (RAG)': 'Retrieval (RAG)', 'Uji coba': 'Playground',
+  'Riwayat': 'History', 'Pasang widget': 'Embed widget', 'Lihat halaman demo': 'View demo page', 'Keluar': 'Sign out',
+  'Status chatbot dan apa yang perlu disiapkan sebelum dipasang di website.': 'Chatbot status and what to set up before embedding it on your website.',
+  'pertanyaan pengunjung, 7 hari': 'visitor questions, 7 days', 'tidak ditemukan di dokumen': 'not found in the document', 'gagal karena penyedia AI': 'failed because of AI providers',
+  'Persiapan': 'Setup', 'Selesaikan semua langkah agar chatbot siap menjawab pengunjung.': 'Complete every step so the chatbot is ready to answer visitors.',
+  'Urutan penyedia AI': 'AI provider order', 'Atur': 'Configure', 'Buka': 'Open',
+  'Jika penyedia pertama gagal, kuotanya habis, atau terlalu lambat, chatbot otomatis pindah ke penyedia berikutnya.': 'If the first provider fails, runs out of quota, or is too slow, the chatbot automatically moves to the next one.',
+  'Embedding untuk unggahan berikutnya:': 'Embedding for the next upload:',
+  'Binding Cloudflare aktif': 'Cloudflare bindings active', 'D1, Vectorize, dan Workers AI terhubung.': 'D1, Vectorize and Workers AI are connected.',
+  'Kunci Gemini tersimpan': 'Gemini key saved', 'Gemini menjadi model utama.': 'Gemini is the primary model.', 'Penyedia lain sudah ada, tetapi Gemini belum.': 'Other providers are set, but Gemini is not.',
+  'Tanpa kunci, chatbot memakai cadangan Workers AI.': 'Without a key, the chatbot uses the Workers AI fallback.', 'Dokumen terindeks': 'Document indexed',
+  'Unggahan belum selesai. Hapus lalu unggah ulang.': 'The upload did not finish. Delete it and upload again.', 'Unggah satu dokumen sebagai sumber jawaban.': 'Upload one document as the source of answers.',
+  'Domain website dibatasi': 'Website domain restricted', 'Disarankan agar widget hanya bisa dipakai di website Anda.': 'Recommended so the widget only works on your website.',
+  'Kunci belum diatur, akan dilewati': 'Key not set, will be skipped', 'Perlu tindakan': 'Needs attention',
+  'Chatbot hanya menjawab dari satu dokumen ini. Dokumen dipotong di browser, lalu tiap potongan diubah menjadi vektor dan diindeks untuk pencarian kata kunci.': 'The chatbot answers only from this one document. It is split into chunks in your browser, then each chunk is turned into a vector and indexed for keyword search.',
+  'Unggah dokumen': 'Upload a document', 'Paling akurat:': 'Most accurate:',
+  'dengan judul bagian (#, ##). Juga didukung .txt, .csv, .json, .html, .pdf (berbasis teks), dan .docx. Maksimal 10 MB.': 'with section headings (#, ##). Also supported: .txt, .csv, .json, .html, .pdf (text-based) and .docx. Maximum 10 MB.',
+  'Pilih file atau seret ke sini': 'Choose a file or drop it here', 'Dokumen dibaca di browser Anda; yang dikirim ke server hanya potongan teksnya.': 'The document is read in your browser; only its text chunks are sent to the server.',
+  'Batal': 'Cancel', 'Proses & simpan': 'Process & save', 'Ukuran potongan (karakter)': 'Chunk size (characters)',
+  'Lebih kecil = lebih presisi; lebih besar = konteks lebih utuh. 800–1.200 cocok untuk kebanyakan dokumen.': 'Smaller = more precise; larger = more complete context. 800–1,200 suits most documents.',
+  'Tumpang tindih (karakter)': 'Overlap (characters)', 'Kalimat akhir potongan sebelumnya ikut di-embed agar makna tidak terputus.': "The previous chunk's last sentences are embedded too, so meaning isn't cut off.",
+  'Pratinjau potongan': 'Chunk preview', 'Hapus dokumen': 'Delete document', 'Saran pertanyaan otomatis': 'Automatic suggested questions',
+  'Dibuat AI dari isi dokumen. Tampil di widget jika Anda belum mengisi saran manual di menu Bot & model.': "Generated by AI from the document. Shown in the widget when you haven't set manual suggestions in Bot & model.",
+  'Buat ulang': 'Regenerate', 'Isi potongan tersimpan': 'Stored chunks', 'Periksa apakah potongan dan label bagiannya masuk akal. Klik potongan untuk membuka teks lengkap.': 'Check that the chunks and their section labels make sense. Click a chunk to see the full text.',
+  'Cari teks di potongan…': 'Search chunk text…', 'Muat 30 berikutnya': 'Load next 30', 'Aktif': 'Active', 'Belum selesai': 'Unfinished', 'Gagal': 'Failed', 'Belum ada saran.': 'No suggestions yet.',
+  'Identitas chatbot di widget, urutan model AI, dan kunci API.': "The chatbot's identity in the widget, the AI model order, and API keys.", 'Identitas': 'Identity',
+  'Nama chatbot': 'Chatbot name', 'Label tombol widget': 'Widget button label', 'Tanya [nama]': 'Tanya [name]', 'Warna utama': 'Main colour',
+  'Warna teks tombol menyesuaikan otomatis agar tetap terbaca.': 'The button text colour adjusts automatically to stay readable.', 'Pesan saat jawaban tidak ada di dokumen': "Message when the answer isn't in the document",
+  'Sapaan pembuka (opsional)': 'Opening greeting (optional)', 'Kosongkan untuk sapaan otomatis yang menyebut nama dokumen.': 'Leave empty for an automatic greeting that names the document.',
+  'Saran pertanyaan manual (opsional)': 'Manual suggested questions (optional)', 'Satu pertanyaan per baris, maksimal 6.': 'One question per line, up to 6.', 'Kosongkan untuk memakai saran otomatis dari dokumen.': 'Leave empty to use the automatic suggestions from the document.',
+  'Bahasa default pengunjung': 'Default visitor language', 'Bahasa Indonesia': 'Indonesian', 'English': 'English',
+  'Dipakai jika bahasa browser pengunjung tidak terdeteksi. Pengunjung bisa mengganti bahasa lewat tombol ID/EN di widget.': "Used when the visitor's browser language can't be detected. Visitors can switch with the ID/EN button in the widget.",
+  'Teks versi English': 'English version texts', 'Ditampilkan saat pengunjung memilih EN. Kosongkan untuk memakai teks otomatis berbahasa Inggris.': 'Shown when a visitor picks EN. Leave empty to use automatic English text.',
+  'Label tombol (English)': 'Button label (English)', 'Pesan penolakan (English)': 'Refusal message (English)', 'Sapaan pembuka (English)': 'Opening greeting (English)', 'Saran pertanyaan (English)': 'Suggested questions (English)',
+  'Urutan model': 'Model order', 'Dicoba dari atas ke bawah. Gunakan tombol Tes untuk memastikan kunci dan nama model benar.': 'Tried from top to bottom. Use Test to make sure the key and model name are correct.',
+  'Tambah model': 'Add model', 'Tes': 'Test', 'Naikkan': 'Move up', 'Turunkan': 'Move down', 'Hapus': 'Delete', 'Cadangan Workers AI': 'Workers AI fallback',
+  'Tambahkan model Workers AI (gratis, tanpa kunci) di ujung rantai sebagai jaring pengaman.': 'Add Workers AI models (free, no key) at the end of the chain as a safety net.',
+  '0–0,3 = konsisten dan faktual.': '0–0.3 = consistent and factual.', 'Maks. token jawaban': 'Max answer tokens', 'Tingkat berpikir Gemini': 'Gemini thinking level',
+  'Bawaan model': 'Model default', 'none (tercepat)': 'none (fastest)', 'low (disarankan)': 'low (recommended)', 'high (terlambat)': 'high (slowest)',
+  'Model embedding untuk unggahan berikutnya': 'Embedding model for the next upload', 'Otomatis: Gemini jika ada kunci, selain itu Workers AI': 'Automatic: Gemini if a key is set, otherwise Workers AI',
+  'Dokumen yang sudah diunggah tetap memakai model saat unggah. Ganti model = unggah ulang dokumen.': 'An uploaded document keeps the model it was uploaded with. Changing models means re-uploading the document.',
+  'Kunci API': 'API keys', 'Kunci disimpan di server dan': 'Keys are stored on the server and', 'tidak pernah ditampilkan lagi': 'are never shown again',
+  '. Untuk keamanan maksimal, simpan sebagai secret Cloudflare (': '. For maximum security, store them as Cloudflare secrets (', '); kunci yang ditempel di sini mengalahkan secret.': '); a key pasted here overrides the secret.',
+  'Tempel kunci baru untuk mengganti': 'Paste a new key to replace it', 'Tempel kunci API': 'Paste an API key', 'Tersimpan': 'Saved', 'Dari secret': 'From secret', 'Belum ada': 'Not set', 'Akan disimpan': 'Will be saved', 'Akan dihapus': 'Will be removed',
+  'Cara chatbot menemukan potongan dokumen yang relevan sebelum menjawab. Coba perubahan di menu Uji coba sebelum disimpan.': 'How the chatbot finds relevant document chunks before answering. Try changes in the Playground before saving.',
+  'Alur pencarian': 'Retrieval pipeline', 'Tulis ulang pertanyaan lanjutan': 'Rewrite follow-up questions',
+  '"Kalau yang kedua berapa?" diubah AI menjadi pertanyaan lengkap sebelum dicari. Menambah satu panggilan AI singkat.': '"And how much is the second one?" is rewritten by AI into a complete question before searching. Adds one short AI call.',
+  'Pencarian hibrida (vektor + kata kunci)': 'Hybrid search (vector + keyword)', 'Menangkap istilah persis seperti kode, nama, atau angka yang sering lolos dari pencarian makna.': 'Catches exact terms such as codes, names or numbers that meaning-based search often misses.',
+  'Urutkan ulang dengan reranker': 'Rerank with a reranker', 'Model bge-reranker menilai ulang 20 kandidat teratas. Paling efektif untuk dokumen berbahasa Inggris.': 'The bge-reranker model re-scores the top 20 candidates. Most effective for English documents.',
+  'Potongan dikirim ke AI': 'Chunks sent to the AI', 'Ambang kemiripan minimum': 'Minimum similarity threshold', 'Kandidat per pencarian': 'Candidates per search', 'Potongan tetangga (±)': 'Neighbour chunks (±)', 'Batas total konteks (karakter)': 'Total context limit (characters)',
+  'Ambang terlalu tinggi membuat bot sering bilang "tidak ada di dokumen"; terlalu rendah membuat AI menerima potongan yang tidak relevan. Lihat skor nyata di Uji coba untuk menentukan angka yang pas.': 'A threshold that is too high makes the bot often say "not in the document"; too low lets irrelevant chunks reach the AI. Check real scores in the Playground to pick the right value.',
+  'Batas pemakaian & anti-bot': 'Usage limits & anti-bot',
+  'Melindungi kuota gratis dan menjaga semua interaksi tetap organik: widget punya honeypot, permintaan tanpa User-Agent ditolak, dan setiap pengunjung dibatasi per menit dan per hari.': 'Protects the free quota and keeps every interaction organic: the widget has a honeypot, requests without a User-Agent are rejected, and each visitor is limited per minute and per day.',
+  'Maks. panjang pertanyaan': 'Max question length', 'Riwayat percakapan diingat': 'Conversation turns remembered', 'Jumlah pesan terakhir.': 'Number of latest messages.',
+  'Pertanyaan per menit / pengunjung': 'Questions per minute / visitor', 'Pertanyaan per hari / pengunjung': 'Questions per day / visitor', 'Total pertanyaan per hari': 'Total questions per day',
+  'Simpan riwayat pertanyaan': 'Keep question history', 'Untuk melihat pertanyaan yang belum terjawab dokumen. Alamat IP tidak disimpan.': "To see which questions the document doesn't answer yet. IP addresses are not stored.",
+  'mati': 'off', 'Tulis ulang pertanyaan': 'Rewrite question', 'Gabung RRF': 'Fuse with RRF', 'Rerank': 'Rerank', 'Jawab + sitasi': 'Answer + citations',
+  'Tanya seperti pengunjung, lalu lihat potongan mana yang ditemukan dan kenapa. Uji coba dicatat terpisah dan tidak dihitung sebagai pertanyaan pengunjung.': 'Ask like a visitor, then see which chunks were found and why. Playground questions are logged separately and never counted as visitor questions.',
+  'Pakai pengaturan belum disimpan': 'Use unsaved settings', 'Uji perubahan RAG/prompt sebelum menyimpan.': 'Test retrieval changes before saving.',
+  'Belum ada percakapan. Coba salah satu saran pertanyaan di menu Dokumen.': 'No conversation yet. Try one of the suggested questions from the Document menu.', 'Tulis pertanyaan…': 'Type a question…', 'Kirim': 'Send', 'Baru': 'New', 'Mulai percakapan baru': 'Start a new conversation',
+  'Hasil pencarian': 'Retrieval results', 'Potongan berwarna kunyit dikirim ke AI.': 'Turmeric-coloured chunks are sent to the AI.', 'Kirim pertanyaan untuk melihat hasil pencarian.': 'Send a question to see the retrieval results.',
+  'Percakapan baru dimulai.': 'New conversation started.', 'Ditolak: tidak ada di dokumen': 'Refused: not in the document', 'Terjawab': 'Answered', 'Percobaan penyedia yang gagal:': 'Failed provider attempts:',
+  'Dicari sebagai': 'Searched as', 'ditulis ulang': 'rewritten', 'Keputusan': 'Decision', 'Lanjut ke AI': 'Sent to AI', 'Ditolak sebelum AI': 'Refused before AI', 'Skor vektor terbaik': 'Best vector score',
+  'Cocok kata kunci': 'Keyword matches', 'Embedding': 'Embedding', 'gagal, pakai kata kunci saja': 'failed, keyword-only', 'Waktu': 'Timing', 'Tidak ada kandidat.': 'No candidates.',
+  'dikirim ke AI': 'sent to AI', 'kandidat': 'candidate', 'angka = skor vektor': 'number = vector score', 'angka = skor rerank / skor vektor': 'number = rerank score / vector score',
+  'Riwayat pertanyaan': 'Question history', 'Pertanyaan yang tidak terjawab menunjukkan informasi yang perlu ditambahkan ke dokumen.': 'Unanswered questions show which information should be added to the document.',
+  'Hapus semua riwayat': 'Delete all history', 'Pengunjung': 'Visitors', 'Tidak terjawab': 'Unanswered', 'Uji admin': 'Admin tests', 'Belum ada riwayat di kategori ini.': 'No history in this category yet.',
+  'Tempel kode ini sebelum tag': 'Paste this code before the', 'di website Anda. Widget memakai Shadow DOM, jadi tampilannya tidak bentrok dengan CSS website.': "tag on your website. The widget uses Shadow DOM, so it won't clash with your site's CSS.",
+  'Salin kode': 'Copy code', 'Posisi': 'Position', 'Kanan bawah': 'Bottom right', 'Kiri bawah': 'Bottom left', 'Tema': 'Theme', 'Terang': 'Light', 'Gelap': 'Dark', 'Ikuti perangkat pengunjung': "Follow the visitor's device",
+  'Bahasa widget': 'Widget language', 'Otomatis (bahasa browser pengunjung)': "Automatic (visitor's browser language)",
+  'Domain yang diizinkan': 'Allowed domains', 'Satu domain per baris, contoh': 'One domain per line, for example', '. Kosongkan untuk mengizinkan semua domain. Domain dashboard ini selalu diizinkan.': '. Leave empty to allow every domain. This dashboard\'s domain is always allowed.',
+  'Ada perubahan yang belum disimpan': 'You have unsaved changes', 'Batalkan': 'Discard', 'Simpan perubahan': 'Save changes',
+  'Perubahan disimpan dan langsung berlaku di widget.': 'Changes saved and live in the widget.', 'Sesi berakhir atau kata sandi salah.': 'Session expired or wrong password.', 'Sesi berakhir.': 'Session expired.', 'Gagal masuk.': 'Sign-in failed.',
+  'Ukuran file melebihi 10 MB.': 'The file is larger than 10 MB.', 'Format belum didukung. Gunakan .md, .txt, .csv, .json, .html, .pdf, atau .docx.': 'Format not supported yet. Use .md, .txt, .csv, .json, .html, .pdf or .docx.',
+  'PDF ini tidak berisi teks (kemungkinan hasil scan). Gunakan PDF berbasis teks atau salin isinya ke .md.': 'This PDF has no text (probably a scan). Use a text-based PDF or copy its content into a .md file.',
+  'CSV minimal berisi baris judul dan satu baris data.': 'A CSV needs at least a header row and one data row.', 'File JSON tidak valid.': 'Invalid JSON file.', 'Membaca file…': 'Reading the file…',
+  'Lebih dari 2.000 potongan. Perbesar ukuran potongan atau pecah dokumennya.': 'More than 2,000 chunks. Increase the chunk size or split the document.',
+  'Mendaftarkan dokumen…': 'Registering the document…', 'Menyusun saran pertanyaan dari isi dokumen…': 'Writing suggested questions from the document…',
+  'Selesai. Indeks vektor butuh beberapa detik sebelum bisa dicari.': 'Done. The vector index needs a few seconds before it is searchable.', 'Dokumen tersimpan dan siap dipakai chatbot.': 'Document saved and ready for the chatbot.',
+  'Saran pertanyaan diperbarui.': 'Suggested questions updated.', 'Tidak ada potongan yang cocok.': 'No matching chunks.', 'Cadangan Workers AI dimatikan.': 'Workers AI fallback is off.',
+  'Simpan kunci baru dulu sebelum mengetes.': 'Save the new key before testing.', 'Menguji…': 'Testing…', 'Maksimal 8 model.': 'Up to 8 models.', 'Mencari di dokumen…': 'Searching the document…',
+  'Riwayat dihapus.': 'History deleted.', 'Kode widget disalin.': 'Widget code copied.',
+  'Unggahan sebelumnya terhenti sebelum selesai, jadi chatbot belum bisa menjawab. Hapus dokumen ini lalu unggah ulang.': "The previous upload stopped before finishing, so the chatbot can't answer yet. Delete this document and upload it again.",
+};
+const RULES = [
+  [/^([\d.,]+) potongan$/, '$1 chunks'],
+  [/^(.*) · ([\d.,]+) potongan$/, '$1 · $2 chunks'],
+  [/^Diunggah (.*)$/, 'Uploaded $1'],
+  [/^Embedding: (.*)$/, 'Embedding: $1'],
+  [/^Gagal memuat (.*)$/, 'Failed to load $1'],
+  [/^…dan ([\d.,]+) potongan lainnya\.$/, '…and $1 more chunks.'],
+  [/^Dokumen dihapus \(([\d.,]+) potongan\)\.$/, 'Document deleted ($1 chunks).'],
+  [/^Lalu cadangan Workers AI: (.*)$/, 'Then the Workers AI fallback: $1'],
+  [/^Berhasil · (.*)$/, 'Success · $1'],
+  [/^balasan: (.*)$/, 'reply: $1'],
+  [/^Cari vektor \((\d+)\)$/, 'Vector search ($1)'],
+  [/^Cari kata kunci \((\d+)\)$/, 'Keyword search ($1)'],
+  [/^Ambil (\d+) teratas$/, 'Take top $1'],
+  [/^Tetangga (.*)$/, 'Neighbours $1'],
+  [/^\(ambang (.*)\)$/, '(threshold $1)'],
+  [/^vektor (.*)$/, (m, rest) => 'vector ' + rest.replace('kata kunci', 'keyword')],
+  [/^(.*) · kata kunci #(\d+)$/, '$1 · keyword #$2'],
+  [/^(.*)skor ([\d.]+)$/, '$1score $2'],
+  [/^Penyedia (\d+)$/, 'Provider $1'],
+  [/^Kunci (.+)$/, 'Key $1'],
+];
+function trText(id) {
+  if (Object.prototype.hasOwnProperty.call(DICT, id)) return DICT[id];
+  for (const [re, rep] of RULES) if (re.test(id)) return id.replace(re, rep);
+  return null;
+}
+const SKIP = 'script,style,textarea,pre,code,[data-noi18n],.chunk p,.chunk-head span,.log-q,.log-a,.q,.a p,.a li,#docName,#sugList,#xray dd:first-of-type,.chain-step small,.test-out';
+function i18nNode(root) {
+  const el = root.nodeType === 1 ? root : root.parentElement;
+  if (!el) return;
+  if (el.closest(SKIP) && !(root.nodeType === 1 && /^(TEXTAREA|INPUT)$/.test(root.tagName))) return;
+  const walk = (node) => {
+    if (node.nodeType === 3) {
+      if (node.__id === undefined) { if (!node.nodeValue.trim()) return; node.__id = node.nodeValue; }
+      const raw = node.__id, trimmed = raw.trim();
+      let next = raw;
+      if (LANG.cur === 'en') { const t = trText(trimmed); if (t !== null) next = raw.replace(trimmed, t); }
+      if (node.nodeValue !== next) node.nodeValue = next;
+      return;
+    }
+    if (node.nodeType !== 1) return;
+    const skipped = node.matches(SKIP);
+    // Form fields keep their typed content, but their placeholder/labels are still translated.
+    if (skipped && !/^(TEXTAREA|INPUT)$/.test(node.tagName)) return;
+    for (const a of ['placeholder', 'title', 'aria-label']) {
+      if (!node.hasAttribute(a)) continue;
+      const key = '__' + a;
+      if (node[key] === undefined) node[key] = node.getAttribute(a);
+      const t = LANG.cur === 'en' ? trText(node[key].trim()) : null;
+      const v = t !== null ? t : node[key];
+      if (node.getAttribute(a) !== v) node.setAttribute(a, v);
+    }
+    if (!skipped) node.childNodes.forEach(walk);
+  };
+  walk(root);
+}
+let i18nBusy = false;
+const i18nObserver = new MutationObserver((muts) => {
+  if (i18nBusy) return;
+  i18nBusy = true;
+  for (const m of muts) m.addedNodes.forEach((n) => i18nNode(n));
+  i18nBusy = false;
+});
+function setLang(lang) {
+  LANG.cur = lang;
+  try { localStorage.setItem('ts.adminLang', lang); } catch {}
+  document.documentElement.lang = lang;
+  document.title = L('Dashboard · TanyaSaya', 'Dashboard · TanyaSaya');
+  document.querySelectorAll('.lang-switch button').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.lang === lang)));
+  i18nNode(document.body);
+  window.dispatchEvent(new Event('ts:lang'));
+}
+document.addEventListener('DOMContentLoaded', () => {
+  i18nObserver.observe(document.body, { childList: true, subtree: true });
+  document.addEventListener('click', (e) => { const b = e.target.closest('.lang-switch button'); if (b) setLang(b.dataset.lang); });
+  setLang(LANG.cur);
+});
+</script>
+
+<script>
+"use strict";
+/* =================================================================== */
+/*  State & API                                                         */
+/* =================================================================== */
+const S = { pass: sessionStorage.getItem('ts.pass') || '', cfg: null, draft: null, status: null, providers: [], wai: [], keyEdits: {}, history: [], chunkOffset: 0, prepared: null, logFilter: 'widget' };
+const $ = (s, r = document) => r.querySelector(s);
+const $$ = (s, r = document) => [...r.querySelectorAll(s)];
+const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const fmt = (n) => new Intl.NumberFormat(LOCALE()).format(n);
+
+async function api(path, opts = {}) {
+  const res = await fetch(path, { ...opts, headers: { Authorization: 'Bearer ' + S.pass, 'X-Lang': LANG.cur, ...(opts.body && !(opts.body instanceof FormData) ? { 'Content-Type': 'application/json' } : {}), ...(opts.headers || {}) } });
+  if (res.status === 401) { logout('Sesi berakhir atau kata sandi salah.'); throw new Error('401'); }
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.error || 'Permintaan gagal (' + res.status + ')');
+  return data;
+}
+
+let toastTimer;
+function toast(msg, err) {
+  const t = $('#toast');
+  t.textContent = msg;
+  t.classList.toggle('err', !!err);
+  t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove('show'), err ? 6000 : 3200);
+}
+
+/* =================================================================== */
+/*  Auth                                                                */
+/* =================================================================== */
+$('#loginForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  S.pass = $('#pass').value;
+  const err = $('#loginErr');
+  err.classList.add('hidden');
+  try {
+    const res = await fetch('/api/admin/status', { headers: { Authorization: 'Bearer ' + S.pass, 'X-Lang': LANG.cur } });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.error || 'Gagal masuk.');
+    sessionStorage.setItem('ts.pass', S.pass);
+    await boot();
+  } catch (ex) {
+    err.textContent = ex.message;
+    err.classList.remove('hidden');
+  }
+});
+function logout(msg) {
+  sessionStorage.removeItem('ts.pass');
+  S.pass = '';
+  $('#app').classList.add('hidden');
+  $('#login').classList.remove('hidden');
+  if (msg) { $('#loginErr').textContent = msg; $('#loginErr').classList.remove('hidden'); }
+}
+$('#logout').addEventListener('click', () => logout());
+
+/* =================================================================== */
+/*  Routing                                                             */
+/* =================================================================== */
+function route() {
+  const page = (location.hash || '#ringkasan').slice(1);
+  const known = $$('[data-page]').map((p) => p.dataset.page);
+  const cur = known.includes(page) ? page : 'ringkasan';
+  $$('[data-page]').forEach((p) => p.classList.toggle('hidden', p.dataset.page !== cur));
+  $$('.nav a').forEach((a) => { if (a.getAttribute('href') === '#' + cur) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current'); });
+  if (cur === 'riwayat') loadLogs();
+  if (cur === 'dokumen' && S.status?.file?.status === 'selesai') loadChunks(true);
+  window.scrollTo(0, 0);
+}
+window.addEventListener('hashchange', route);
+
+/* =================================================================== */
+/*  Boot                                                                */
+/* =================================================================== */
+async function boot() {
+  const [status, cfg] = await Promise.all([api('/api/admin/status'), api('/api/admin/config')]);
+  S.status = status;
+  S.cfg = cfg;
+  S.providers = cfg.providers;
+  S.wai = cfg.workersAiModels;
+  S.draft = structuredClone(cfg.settings);
+  $('#login').classList.add('hidden');
+  $('#app').classList.remove('hidden');
+  renderAll();
+  route();
+}
+function renderAll() {
+  bindForm();
+  renderOverview();
+  renderDoc();
+  renderChain();
+  renderKeys();
+  renderPipeline();
+  renderSnippet();
+  dirtyCheck();
+}
+async function refreshStatus() {
+  S.status = await api('/api/admin/status');
+  renderOverview();
+  renderDoc();
+  window.dispatchEvent(new Event('tanyasaya:refresh'));
+}
+
+/* =================================================================== */
+/*  Generic form binding (data-k="path.to.key")                         */
+/* =================================================================== */
+const LIST_KEYS = ['suggestions', 'suggestionsEn', 'allowedOrigins'];
+const getPath = (o, p) => p.split('.').reduce((a, k) => a?.[k], o);
+const setPath = (o, p, v) => { const ks = p.split('.'); const last = ks.pop(); ks.reduce((a, k) => a[k], o)[last] = v; };
+
+function bindForm() {
+  $$('[data-k]').forEach((el) => {
+    const key = el.dataset.k;
+    let v = getPath(S.draft, key);
+    if (LIST_KEYS.includes(key)) v = (v || []).join('\n');
+    if (el.type === 'checkbox') el.checked = !!v;
+    else el.value = v ?? '';
+    if (el.type === 'range') el.nextElementSibling.textContent = fmtKnob(key, el.value);
+    if (el._bound) return;
+    el._bound = true;
+    el.addEventListener('input', () => {
+      let val;
+      if (el.type === 'checkbox') val = el.checked;
+      else if (el.type === 'number' || el.type === 'range') val = el.value === '' ? '' : Number(el.value);
+      else if (LIST_KEYS.includes(key)) val = el.value.split('\n').map((s) => s.trim()).filter(Boolean);
+      else val = el.value;
+      setPath(S.draft, key, val);
+      if (key === 'themeColor') $$('[data-k=themeColor]').forEach((o) => { if (o !== el && /^#[0-9a-f]{6}$/i.test(el.value)) o.value = el.value; });
+      if (el.type === 'range') el.nextElementSibling.textContent = fmtKnob(key, el.value);
+      if (key.startsWith('rag.')) renderPipeline();
+      dirtyCheck();
+    });
+  });
+}
+function fmtKnob(key, v) {
+  v = Number(v);
+  if (key === 'rag.minScore') return v.toFixed(2);
+  if (key === 'rag.neighborWindow') return v ? '±' + v : 'mati';
+  if (key === 'rag.maxContextChars') return fmt(v);
+  return String(v);
+}
+
+function dirtyCheck() {
+  const dirty = JSON.stringify(S.draft) !== JSON.stringify(S.cfg.settings) || Object.keys(S.keyEdits).length > 0;
+  $('#savebar').classList.toggle('show', dirty);
+  return dirty;
+}
+$('#discard').addEventListener('click', () => {
+  S.draft = structuredClone(S.cfg.settings);
+  S.keyEdits = {};
+  renderAll();
+});
+$('#save').addEventListener('click', async () => {
+  const btn = $('#save');
+  btn.disabled = true;
+  try {
+    const res = await api('/api/admin/config', { method: 'POST', body: JSON.stringify({ settings: S.draft, keys: S.keyEdits }) });
+    S.cfg.settings = res.settings;
+    S.cfg.keys = res.keys;
+    S.draft = structuredClone(res.settings);
+    S.keyEdits = {};
+    renderAll();
+    await refreshStatus();
+    toast('Perubahan disimpan dan langsung berlaku di widget.');
+  } catch (e) {
+    toast(e.message, true);
+  } finally {
+    btn.disabled = false;
+  }
+});
+window.addEventListener('beforeunload', (e) => { if (S.draft && dirtyCheck()) { e.preventDefault(); e.returnValue = ''; } });
+
+/* =================================================================== */
+/*  Overview                                                            */
+/* =================================================================== */
+function renderOverview() {
+  const st = S.status;
+  $('#sideName').textContent = st.botName;
+  $('#sideMark').textContent = st.botName.charAt(0).toUpperCase();
+  $('#stTotal').textContent = fmt(st.stats?.total || 0);
+  const pct = st.stats?.total ? Math.round((st.stats.refused / st.stats.total) * 100) + '%' : '–';
+  $('#stRefused').textContent = pct;
+  $('#stFailed').textContent = fmt(st.stats?.failed || 0);
+
+  const hasKey = st.keys.some((k) => k.configured);
+  const geminiKey = st.keys.find((k) => k.id === 'gemini')?.configured;
+  const doc = st.file?.status === 'selesai';
+  const steps = [
+    { done: st.bindings.db && st.bindings.vectorize && st.bindings.ai, title: 'Binding Cloudflare aktif', text: 'D1, Vectorize, dan Workers AI terhubung.', link: null },
+    { done: geminiKey, title: 'Kunci Gemini tersimpan', text: geminiKey ? 'Gemini menjadi model utama.' : hasKey ? 'Penyedia lain sudah ada, tetapi Gemini belum.' : 'Tanpa kunci, chatbot memakai cadangan Workers AI.', link: '#model' },
+    { done: doc, title: 'Dokumen terindeks', text: doc ? `${st.file.name} · ${fmt(st.file.chunk_count)} potongan` : st.file ? 'Unggahan belum selesai. Hapus lalu unggah ulang.' : 'Unggah satu dokumen sebagai sumber jawaban.', link: '#dokumen' },
+    { done: (S.cfg.settings.allowedOrigins || []).length > 0, title: 'Domain website dibatasi', text: 'Disarankan agar widget hanya bisa dipakai di website Anda.', link: '#pasang' },
+  ];
+  $('#setup').innerHTML = steps.map((s) => `<li class="${s.done ? 'done' : ''}"><span class="tick">✓</span><div><b>${esc(s.title)}</b><span>${esc(s.text)}</span></div>${s.link && !s.done ? `<a class="btn ghost sm" href="${s.link}">Buka</a>` : '<span></span>'}</li>`).join('');
+
+  const pname = (id) => S.providers.find((p) => p.id === id)?.name || id;
+  $('#chainView').innerHTML = st.chain.map((c, i) => {
+    const k = st.keys.find((x) => x.id === c.provider);
+    const missing = c.provider !== 'workers-ai' && !k?.configured;
+    return (i ? '<span class="chain-arrow">→</span>' : '') + `<span class="chain-step" ${missing ? 'style="opacity:.5" title="Kunci belum diatur, akan dilewati"' : ''}>${esc(pname(c.provider))} <small>${esc(c.model)}</small></span>`;
+  }).join('');
+  $('#embNext').textContent = String(st.embedderForNextUpload).startsWith('error') ? st.embedderForNextUpload : st.embedderForNextUpload === 'gemini' ? 'Gemini · gemini-embedding-001' : 'Workers AI · bge-m3';
+  const navDoc = $('.nav a[href="#dokumen"]');
+  navDoc.querySelector('.dot')?.remove();
+  if (!doc) navDoc.insertAdjacentHTML('beforeend', '<span class="dot" title="Perlu tindakan"></span>');
+}
+
+/* =================================================================== */
+/*  Document: parsing & chunking (runs in the browser)                  */
+/* =================================================================== */
+const PDFJS = 'https://cdn.jsdelivr.net/npm/pdfjs-dist@4.10.38/build/';
+const MAMMOTH = 'https://cdn.jsdelivr.net/npm/mammoth@1.13.0/mammoth.browser.min.js';
+function loadScript(src) {
+  return new Promise((ok, bad) => { const s = document.createElement('script'); s.src = src; s.onload = ok; s.onerror = () => bad(new Error('Gagal memuat ' + src)); document.head.appendChild(s); });
+}
+
+/** Turns HTML (from .html or .docx) into markdown-ish text that keeps headings, lists and tables. */
+function htmlToMd(html) {
+  const doc = new DOMParser().parseFromString(html, 'text/html');
+  doc.querySelectorAll('script,style,nav,footer,noscript').forEach((n) => n.remove());
+  const out = [];
+  const walk = (node) => {
+    for (const el of node.children) {
+      const tag = el.tagName.toLowerCase();
+      const txt = () => el.textContent.replace(/\s+/g, ' ').trim();
+      if (/^h[1-6]$/.test(tag)) out.push('#'.repeat(Number(tag[1])) + ' ' + txt());
+      else if (tag === 'p' || tag === 'blockquote' || tag === 'pre') { const t = txt(); if (t) out.push(t); }
+      else if (tag === 'ul' || tag === 'ol') { out.push([...el.children].map((li, i) => (tag === 'ol' ? i + 1 + '. ' : '- ') + li.textContent.replace(/\s+/g, ' ').trim()).join('\n')); }
+      else if (tag === 'table') {
+        const rows = [...el.querySelectorAll('tr')].map((tr) => [...tr.children].map((td) => td.textContent.replace(/\s+/g, ' ').trim()));
+        if (rows.length) { const head = rows[0]; out.push(rows.slice(1).map((r) => r.map((c, i) => (head[i] ? head[i] + ': ' : '') + c).join('; ')).join('\n') || head.join(' | ')); }
+      } else if (el.children.length) walk(el);
+      else { const t = txt(); if (t) out.push(t); }
+    }
+  };
+  walk(doc.body);
+  return out.join('\n\n');
+}
+
+function parseCsv(text) {
+  const first = text.slice(0, 2000).split('\n')[0];
+  const delim = (first.match(/;/g) || []).length > (first.match(/,/g) || []).length ? ';' : first.includes('\t') && !first.includes(',') ? '\t' : ',';
+  const rows = []; let row = [], cur = '', q = false;
+  for (let i = 0; i < text.length; i++) {
+    const c = text[i];
+    if (q) { if (c === '"' && text[i + 1] === '"') { cur += '"'; i++; } else if (c === '"') q = false; else cur += c; }
+    else if (c === '"') q = true;
+    else if (c === delim) { row.push(cur); cur = ''; }
+    else if (c === '\n' || c === '\r') { if (c === '\r' && text[i + 1] === '\n') i++; row.push(cur); if (row.some((x) => x.trim())) rows.push(row); row = []; cur = ''; }
+    else cur += c;
+  }
+  row.push(cur); if (row.some((x) => x.trim())) rows.push(row);
+  return rows;
+}
+
+function flattenJson(v, path = '', out = []) {
+  if (Array.isArray(v)) v.forEach((x, i) => flattenJson(x, path + '[' + i + ']', out));
+  else if (v && typeof v === 'object') Object.entries(v).forEach(([k, x]) => flattenJson(x, path ? path + '.' + k : k, out));
+  else out.push((path || 'nilai') + ': ' + v);
+  return out;
+}
+
+/** Returns sections: [{ path: string[], blocks: string[] }] */
+async function readFileToSections(file) {
+  const ext = file.name.split('.').pop().toLowerCase();
+  if (ext === 'pdf') {
+    const pdfjs = await import(PDFJS + 'pdf.min.mjs');
+    pdfjs.GlobalWorkerOptions.workerSrc = PDFJS + 'pdf.worker.min.mjs';
+    const pdf = await pdfjs.getDocument({ data: await file.arrayBuffer() }).promise;
+    const sections = [];
+    for (let p = 1; p <= pdf.numPages; p++) {
+      const page = await pdf.getPage(p);
+      const tc = await page.getTextContent();
+      let text = '', lastY = null;
+      for (const it of tc.items) {
+        const y = it.transform?.[5];
+        if (lastY !== null && Math.abs(y - lastY) > 2) text += it.hasEOL ? '\n' : '\n';
+        text += it.str;
+        if (it.hasEOL) text += '\n';
+        lastY = y;
+      }
+      const paras = text.replace(/-\n(?=\p{Ll})/gu, '').split(/\n\s*\n|\n(?=[A-Z0-9•\-–][^\n]{0,80}\n)/).map((s) => s.replace(/\s*\n\s*/g, ' ').trim()).filter(Boolean);
+      if (paras.length) sections.push({ path: ['Hal. ' + p], blocks: paras });
+    }
+    if (!sections.length) throw new Error('PDF ini tidak berisi teks (kemungkinan hasil scan). Gunakan PDF berbasis teks atau salin isinya ke .md.');
+    return { sections, kind: 'pdf', pages: pdf.numPages };
+  }
+  if (ext === 'docx') {
+    if (!window.mammoth) await loadScript(MAMMOTH);
+    const res = await window.mammoth.convertToHtml({ arrayBuffer: await file.arrayBuffer() });
+    return { sections: mdToSections(htmlToMd(res.value)), kind: 'docx' };
+  }
+  const text = await file.text();
+  if (ext === 'csv') {
+    const rows = parseCsv(text);
+    if (rows.length < 2) throw new Error('CSV minimal berisi baris judul dan satu baris data.');
+    const head = rows[0].map((h, i) => h.trim() || 'Kolom ' + (i + 1));
+    const blocks = rows.slice(1).map((r, i) => ({ text: head.map((h, j) => h + ': ' + (r[j] ?? '').trim()).filter((s) => !/:\s*$/.test(s)).join('; '), row: i + 2 }));
+    return { csv: blocks, kind: 'csv' };
+  }
+  if (ext === 'json') {
+    let data; try { data = JSON.parse(text); } catch { throw new Error('File JSON tidak valid.'); }
+    return { sections: [{ path: [], blocks: flattenJson(data) }], kind: 'json' };
+  }
+  if (ext === 'html' || ext === 'htm') return { sections: mdToSections(htmlToMd(text)), kind: 'html' };
+  return { sections: mdToSections(text), kind: ext };
+}
+
+function mdToSections(text) {
+  const lines = text.replace(/\r\n?/g, '\n').replace(/ /g, ' ').split('\n');
+  const sections = []; const stack = [];
+  let cur = { path: [], blocks: [] }, buf = [], inCode = false;
+  const flushBlock = () => { const t = buf.join('\n').trim(); if (t) cur.blocks.push(t); buf = []; };
+  const startSection = () => { flushBlock(); if (cur.blocks.length) sections.push(cur); cur = { path: stack.map((s) => s.t), blocks: [] }; };
+  for (const line of lines) {
+    if (/^\s*```/.test(line)) { inCode = !inCode; buf.push(line); continue; }
+    const h = !inCode && /^(#{1,6})\s+(.+?)\s*#*\s*$/.exec(line);
+    if (h) {
+      const lvl = h[1].length;
+      while (stack.length && stack[stack.length - 1].l >= lvl) stack.pop();
+      stack.push({ l: lvl, t: h[2].replace(/[*_`]/g, '').trim() });
+      startSection();
+      continue;
+    }
+    if (!inCode && !line.trim()) { flushBlock(); continue; }
+    // Keep list items and table rows of one block together.
+    buf.push(line);
+  }
+  flushBlock();
+  if (cur.blocks.length) sections.push(cur);
+  return sections;
+}
+
+const splitSentences = (t) => t.match(/[^.!?。\n]+(?:[.!?。]+["')\]]*\s*|\n|$)/g)?.map((s) => s.trim()).filter(Boolean) || [t];
+function hardSplit(block, max) {
+  if (block.length <= max) return [block];
+  const out = []; let cur = '';
+  for (const s of splitSentences(block)) {
+    if (s.length > max) { if (cur) { out.push(cur); cur = ''; } for (let i = 0; i < s.length; i += max) out.push(s.slice(i, i + max)); continue; }
+    if ((cur + ' ' + s).length > max && cur) { out.push(cur); cur = s; } else cur = cur ? cur + ' ' + s : s;
+  }
+  if (cur) out.push(cur);
+  return out;
+}
+function tail(text, n) {
+  if (!n) return '';
+  const sents = splitSentences(text);
+  let t = '';
+  for (let i = sents.length - 1; i >= 0 && (sents[i] + ' ' + t).length <= n; i--) t = (sents[i] + ' ' + t).trim();
+  return t || text.slice(-n);
+}
+
+function chunkSections(parsed, size, overlap) {
+  const chunks = [];
+  if (parsed.csv) {
+    let cur = [], start = parsed.csv[0].row;
+    for (const r of parsed.csv) {
+      if (cur.length && (cur.join('\n') + '\n' + r.text).length > size) { chunks.push({ label: `Baris ${start}–${start + cur.length - 1}`, text: cur.join('\n') }); cur = []; start = r.row; }
+      cur.push(r.text.slice(0, 3800));
+    }
+    if (cur.length) chunks.push({ label: `Baris ${start}–${start + cur.length - 1}`, text: cur.join('\n') });
+    return chunks;
+  }
+  const max = Math.round(size * 1.4);
+  // Every heading section becomes its own chunk(s) so labels stay precise for citations.
+  // Only a tiny section (e.g. a one-line intro under a title) is folded into the next one,
+  // and its heading is kept inside the text so its words are still embedded and searchable.
+  let part = 0, carry = '';
+  const secs = parsed.sections;
+  secs.forEach((sec, si) => {
+    const label = sec.path.length ? sec.path.slice(-3).join(' › ') : 'Bagian ' + (++part);
+    const pieces = [];
+    let cur = carry;
+    carry = '';
+    for (const block of sec.blocks.flatMap((b) => hardSplit(b, max))) {
+      if (cur && (cur + '\n\n' + block).length > size) { pieces.push(cur); cur = block; } else cur = cur ? cur + '\n\n' + block : block;
+    }
+    if (cur) pieces.push(cur);
+    const body = sec.blocks.join(' ');
+    const next = secs[si + 1];
+    const isParent = next && next.path.length > sec.path.length;
+    if (pieces.length === 1 && body.length < 160 && isParent) { carry = (sec.path.length ? sec.path[sec.path.length - 1] + ': ' : '') + pieces[0]; return; }
+    pieces.forEach((t, i) => chunks.push({ label: pieces.length > 1 ? `${label} (${i + 1})` : label, text: t, overlap: i > 0 ? tail(pieces[i - 1], overlap) : '' }));
+  });
+  if (carry) chunks.push({ label: 'Bagian akhir', text: carry, overlap: '' });
+  const seen = new Set();
+  return chunks.filter((c) => c.text.trim() && !seen.has(c.text) && seen.add(c.text)).map((c) => ({ ...c, text: c.text.slice(0, 3900) }));
+}
+
+/* =================================================================== */
+/*  Document UI                                                         */
+/* =================================================================== */
+function renderDoc() {
+  const f = S.status.file;
+  const active = !!f;
+  $('#docEmpty').classList.toggle('hidden', active);
+  $('#docActive').classList.toggle('hidden', !active);
+  $('#cSize').value = S.draft.rag.chunkSize;
+  $('#cOverlap').value = S.draft.rag.chunkOverlap;
+  if (!active) return;
+  $('#docName').textContent = f.name;
+  $('#docExt').textContent = (f.name.split('.').pop() || 'DOC').slice(0, 4).toUpperCase();
+  const statusPill = f.status === 'selesai' ? '<span class="pill ok">Aktif</span>' : f.status === 'diproses' ? '<span class="pill wait">Belum selesai</span>' : '<span class="pill no">Gagal</span>';
+  $('#docMeta').innerHTML = `${statusPill}<span>${fmt(f.chunk_count)} potongan</span><span>Embedding: ${f.embedder === 'gemini' ? 'Gemini' : 'Workers AI bge-m3'}</span><span>Diunggah ${new Date(f.created_at.replace(' ', 'T') + 'Z').toLocaleString(LOCALE(), { dateStyle: 'medium', timeStyle: 'short' })}</span>`;
+  const err = $('#docErr');
+  err.classList.toggle('hidden', f.status === 'selesai');
+  err.textContent = f.status === 'selesai' ? '' : 'Unggahan sebelumnya terhenti sebelum selesai, jadi chatbot belum bisa menjawab. Hapus dokumen ini lalu unggah ulang.';
+  if (f.status === 'selesai') loadSuggestions();
+}
+
+async function loadSuggestions() {
+  const info = await fetch('/api/public/info?lang=' + LANG.cur).then((r) => r.json()).catch(() => null);
+  const list = info?.suggestions || [];
+  $('#sugList').innerHTML = list.length ? list.map((s) => `<span>${esc(s)}</span>`).join('') : '<span class="muted small">Belum ada saran.</span>';
+}
+
+const drop = $('#drop');
+['dragenter', 'dragover'].forEach((ev) => drop.addEventListener(ev, (e) => { e.preventDefault(); drop.classList.add('over'); }));
+['dragleave', 'drop'].forEach((ev) => drop.addEventListener(ev, (e) => { e.preventDefault(); drop.classList.remove('over'); }));
+drop.addEventListener('drop', (e) => { const f = e.dataTransfer.files[0]; if (f) prepare(f); });
+$('#fileInput').addEventListener('change', (e) => { const f = e.target.files[0]; if (f) prepare(f); e.target.value = ''; });
+['cSize', 'cOverlap'].forEach((id) => $('#' + id).addEventListener('change', () => { if (S.prepared) rechunk(); }));
+$('#prepCancel').addEventListener('click', () => { S.prepared = null; $('#prep').classList.add('hidden'); drop.classList.remove('hidden'); });
+
+async function prepare(file) {
+  if (file.size > 10 * 1024 * 1024) return toast('Ukuran file melebihi 10 MB.', true);
+  const ext = file.name.split('.').pop().toLowerCase();
+  if (!['md', 'markdown', 'txt', 'csv', 'json', 'html', 'htm', 'pdf', 'docx'].includes(ext)) return toast('Format belum didukung. Gunakan .md, .txt, .csv, .json, .html, .pdf, atau .docx.', true);
+  drop.classList.add('hidden');
+  $('#prep').classList.remove('hidden');
+  $('#prepName').textContent = file.name;
+  $('#prepStats').textContent = 'Membaca file…';
+  $('#prepChunks').innerHTML = '';
+  $('#prepGo').disabled = true;
+  try {
+    const parsed = await readFileToSections(file);
+    S.prepared = { file, parsed };
+    rechunk();
+  } catch (e) {
+    $('#prepStats').textContent = e.message;
+    toast(e.message, true);
+  }
+}
+
+function rechunk() {
+  const size = Math.min(3000, Math.max(300, Number($('#cSize').value) || 1000));
+  const overlap = Math.min(500, Math.max(0, Number($('#cOverlap').value) || 0));
+  const { file, parsed } = S.prepared;
+  const chunks = chunkSections(parsed, size, overlap);
+  S.prepared.chunks = chunks;
+  const chars = chunks.reduce((a, c) => a + c.text.length, 0);
+  const headed = parsed.sections ? parsed.sections.filter((s) => s.path.length).length : 0;
+  $('#prepStats').textContent = L(`${fmt(chunks.length)} potongan · ${fmt(chars)} karakter`, `${fmt(chunks.length)} chunks · ${fmt(chars)} characters`)
+    + (parsed.pages ? L(` · ${parsed.pages} halaman`, ` · ${parsed.pages} pages`) : '')
+    + (parsed.sections && parsed.kind !== 'pdf' ? (headed ? L(` · ${headed} judul bagian terdeteksi`, ` · ${headed} section headings detected`) : L(' · tanpa judul bagian (tambahkan # Judul agar lebih akurat)', ' · no section headings (add # Heading for better accuracy)')) : '');
+  $('#prepGo').disabled = !chunks.length || chunks.length > 2000;
+  if (chunks.length > 2000) toast('Lebih dari 2.000 potongan. Perbesar ukuran potongan atau pecah dokumennya.', true);
+  $('#prepChunks').innerHTML = chunks.slice(0, 12).map((c, i) => chunkHtml(i, c.label, c.text)).join('') + (chunks.length > 12 ? `<p class="small muted">…dan ${fmt(chunks.length - 12)} potongan lainnya.</p>` : '');
+}
+const chunkHtml = (i, label, text) => `<div class="chunk" tabindex="0"><div class="chunk-head"><span>${esc(label)}</span><small>#${i + 1} · ${fmt(text.length)} kar.</small></div><p>${esc(text)}</p></div>`;
+document.addEventListener('click', (e) => { const c = e.target.closest('.chunk'); if (c) c.classList.toggle('open'); });
+
+$('#prepGo').addEventListener('click', async () => {
+  const { file, chunks } = S.prepared;
+  const go = $('#prepGo'), bar = $('#prog'), txt = $('#progText');
+  go.disabled = true; $('#prepCancel').disabled = true;
+  bar.classList.remove('hidden'); txt.classList.remove('hidden');
+  const set = (p, t) => { bar.firstElementChild.style.width = p + '%'; txt.textContent = t; };
+  // Remember the chunking choice for next time.
+  S.draft.rag.chunkSize = Number($('#cSize').value); S.draft.rag.chunkOverlap = Number($('#cOverlap').value);
+  try {
+    set(2, 'Mendaftarkan dokumen…');
+    const reg = await api('/api/admin/file', { method: 'POST', body: JSON.stringify({ name: file.name }) });
+    const B = 20;
+    for (let i = 0; i < chunks.length; i += B) {
+      const range = `${fmt(i + 1)}–${fmt(Math.min(i + B, chunks.length))}`, emb = reg.embedder === 'gemini' ? 'Gemini' : 'Workers AI';
+      set(Math.round((i / chunks.length) * 90) + 3, L(`Membuat embedding ${range} dari ${fmt(chunks.length)} potongan (${emb})…`, `Embedding ${range} of ${fmt(chunks.length)} chunks (${emb})…`));
+      const body = JSON.stringify({ startIdx: i, chunks: chunks.slice(i, i + B) });
+      try { await api('/api/admin/file/chunks', { method: 'POST', body }); }
+      catch (e) { await new Promise((r) => setTimeout(r, 1500)); await api('/api/admin/file/chunks', { method: 'POST', body }); }
+    }
+    set(95, 'Menyusun saran pertanyaan dari isi dokumen…');
+    await api('/api/admin/file/done', { method: 'POST' });
+    set(100, 'Selesai. Indeks vektor butuh beberapa detik sebelum bisa dicari.');
+    S.prepared = null;
+    setTimeout(async () => { $('#prep').classList.add('hidden'); drop.classList.remove('hidden'); bar.classList.add('hidden'); txt.classList.add('hidden'); await refreshStatus(); loadChunks(true); }, 900);
+    toast('Dokumen tersimpan dan siap dipakai chatbot.');
+  } catch (e) {
+    toast(L('Unggahan gagal: ' + e.message + ' Data yang setengah jadi sudah dibersihkan.', 'Upload failed: ' + e.message + ' Partial data has been cleaned up.'), true);
+    await api('/api/admin/file', { method: 'DELETE' }).catch(() => {});
+    set(0, L('Gagal: ', 'Failed: ') + e.message);
+    go.disabled = false;
+    await refreshStatus();
+  } finally { $('#prepCancel').disabled = false; }
+});
+
+$('#docDelete').addEventListener('click', async () => {
+  if (!confirm(L('Hapus dokumen beserta semua potongan dan vektornya? Chatbot tidak bisa menjawab sampai dokumen baru diunggah.', "Delete the document with all its chunks and vectors? The chatbot can't answer until a new document is uploaded."))) return;
+  try { const r = await api('/api/admin/file', { method: 'DELETE' }); toast(`Dokumen dihapus (${fmt(r.removed)} potongan).`); await refreshStatus(); }
+  catch (e) { toast(e.message, true); }
+});
+$('#regenSug').addEventListener('click', async (e) => {
+  e.target.disabled = true;
+  try { await api('/api/admin/suggestions/regenerate', { method: 'POST' }); await loadSuggestions(); window.dispatchEvent(new Event('tanyasaya:refresh')); toast('Saran pertanyaan diperbarui.'); }
+  catch (err) { toast(err.message, true); } finally { e.target.disabled = false; }
+});
+
+let chunkTimer;
+$('#chunkQ').addEventListener('input', () => { clearTimeout(chunkTimer); chunkTimer = setTimeout(() => loadChunks(true), 300); });
+$('#chunkMore').addEventListener('click', () => loadChunks(false));
+async function loadChunks(reset) {
+  if (reset) { S.chunkOffset = 0; $('#chunkList').innerHTML = ''; }
+  const q = $('#chunkQ').value.trim();
+  const { items } = await api(`/api/admin/chunks?offset=${S.chunkOffset}&q=${encodeURIComponent(q)}`);
+  S.chunkOffset += items.length;
+  $('#chunkList').insertAdjacentHTML('beforeend', items.map((c) => chunkHtml(c.idx, c.label, c.text)).join('') || (reset ? '<div class="empty">Tidak ada potongan yang cocok.</div>' : ''));
+  $('#chunkMore').classList.toggle('hidden', !!q || items.length < 30);
+}
+
+/* =================================================================== */
+/*  Model chain & keys                                                  */
+/* =================================================================== */
+const MODEL_HINTS = { gemini: 'gemini-3.8-flash', groq: 'llama-3.3-70b-versatile', openrouter: 'google/gemini-3.8-flash', cerebras: 'gpt-oss-120b', sambanova: 'Meta-Llama-3.3-70B-Instruct', huggingface: 'openai/gpt-oss-120b', 'workers-ai': '@cf/zai-org/glm-4.7-flash' };
+function renderChain() {
+  const box = $('#chainEdit');
+  box.innerHTML = S.draft.chain.map((c, i) => `
+    <div class="chain-row" data-i="${i}">
+      <select data-f="provider" aria-label="Penyedia ${i + 1}">${S.providers.map((p) => `<option value="${p.id}" ${p.id === c.provider ? 'selected' : ''}>${esc(p.name)}</option>`).join('')}</select>
+      <input type="text" data-f="model" value="${esc(c.model)}" placeholder="${esc(MODEL_HINTS[c.provider] || 'nama-model')}" aria-label="Model ${i + 1}">
+      <div class="tools">
+        <button class="btn ghost sm" type="button" data-a="test">Tes</button>
+        <button class="btn ghost sm icon" type="button" data-a="up" aria-label="Naikkan" ${i === 0 ? 'disabled' : ''}>↑</button>
+        <button class="btn ghost sm icon" type="button" data-a="down" aria-label="Turunkan" ${i === S.draft.chain.length - 1 ? 'disabled' : ''}>↓</button>
+        <button class="btn ghost sm icon" type="button" data-a="del" aria-label="Hapus" ${S.draft.chain.length === 1 ? 'disabled' : ''}>✕</button>
+      </div>
+      <div class="test-out muted"></div>
+    </div>`).join('');
+  $('#chainTail').textContent = S.draft.workersAiFallback ? `Lalu cadangan Workers AI: ${S.wai.join(' → ')}` : 'Cadangan Workers AI dimatikan.';
+}
+$('#chainEdit').addEventListener('input', (e) => {
+  const row = e.target.closest('.chain-row'); if (!row) return;
+  const i = Number(row.dataset.i), f = e.target.dataset.f;
+  S.draft.chain[i][f] = e.target.value;
+  if (f === 'provider') { S.draft.chain[i].model = MODEL_HINTS[e.target.value] || ''; renderChain(); }
+  dirtyCheck();
+});
+$('#chainEdit').addEventListener('click', async (e) => {
+  const b = e.target.closest('button[data-a]'); if (!b) return;
+  const row = b.closest('.chain-row'), i = Number(row.dataset.i), ch = S.draft.chain;
+  if (b.dataset.a === 'up') [ch[i - 1], ch[i]] = [ch[i], ch[i - 1]];
+  if (b.dataset.a === 'down') [ch[i + 1], ch[i]] = [ch[i], ch[i + 1]];
+  if (b.dataset.a === 'del') ch.splice(i, 1);
+  if (b.dataset.a === 'test') {
+    const out = row.querySelector('.test-out');
+    if (S.keyEdits[ch[i].provider]) { out.textContent = 'Simpan kunci baru dulu sebelum mengetes.'; return; }
+    out.textContent = 'Menguji…'; b.disabled = true;
+    try { const r = await api('/api/admin/test-provider', { method: 'POST', body: JSON.stringify(ch[i]) }); out.innerHTML = r.ok ? `<span class="pill ok">Berhasil · ${fmt(r.ms)} ms</span> balasan: “${esc(r.reply)}”` : `<span class="pill no">Gagal</span> ${esc(r.error)}`; }
+    catch (err) { out.textContent = err.message; } finally { b.disabled = false; }
+    return;
+  }
+  renderChain(); dirtyCheck();
+});
+$('#addChain').addEventListener('click', () => { if (S.draft.chain.length >= 8) return toast('Maksimal 8 model.', true); S.draft.chain.push({ provider: 'gemini', model: 'gemini-3.5-flash-lite' }); renderChain(); dirtyCheck(); });
+$('[data-k=workersAiFallback]').addEventListener('change', renderChain);
+
+function renderKeys() {
+  $('#keys').innerHTML = S.cfg.keys.map((k) => {
+    const pending = k.id in S.keyEdits;
+    const state = pending ? (S.keyEdits[k.id] ? '<span class="pill wait">Akan disimpan</span>' : '<span class="pill wait">Akan dihapus</span>')
+      : k.source === 'dashboard' ? '<span class="pill ok">Tersimpan</span>' : k.source === 'secret' ? '<span class="pill ok">Dari secret</span>' : '<span class="pill">Belum ada</span>';
+    return `<div class="key-row" data-id="${k.id}"><div><b>${esc(k.name)}</b><small>secret: ${esc(k.secret)}</small></div>
+      <input type="password" autocomplete="new-password" spellcheck="false" placeholder="${k.configured ? 'Tempel kunci baru untuk mengganti' : 'Tempel kunci API'}" aria-label="Kunci ${esc(k.name)}">
+      <div class="row">${state}${k.source === 'dashboard' && !pending ? '<button class="btn ghost sm" type="button" data-a="clear">Hapus</button>' : ''}</div></div>`;
+  }).join('');
+}
+$('#keys').addEventListener('input', (e) => {
+  const id = e.target.closest('.key-row').dataset.id, v = e.target.value.trim();
+  if (v) S.keyEdits[id] = v; else delete S.keyEdits[id];
+  const pill = e.target.closest('.key-row').querySelector('.pill');
+  if (pill) { pill.className = 'pill ' + (v ? 'wait' : ''); pill.textContent = v ? 'Akan disimpan' : 'Belum ada'; }
+  dirtyCheck();
+});
+$('#keys').addEventListener('click', (e) => {
+  if (e.target.dataset.a !== 'clear') return;
+  S.keyEdits[e.target.closest('.key-row').dataset.id] = null;
+  renderKeys(); dirtyCheck();
+});
+
+/* =================================================================== */
+/*  RAG pipeline view                                                   */
+/* =================================================================== */
+function renderPipeline() {
+  const r = S.draft.rag;
+  const step = (t, on = true) => `<span class="${on ? '' : 'off'}">${t}</span>`;
+  $('#pipeline').innerHTML = [
+    step('Tulis ulang pertanyaan', r.queryRewrite), step(`Cari vektor (${r.candidateK})`), step(`Cari kata kunci (${r.candidateK})`, r.hybrid),
+    step('Gabung RRF', r.hybrid), step('Rerank', r.rerank), step(`Ambil ${r.topK} teratas`), step(`Tetangga ±${r.neighborWindow}`, r.neighborWindow > 0), step('Jawab + sitasi'),
+  ].join('<i>→</i>');
+}
+
+/* =================================================================== */
+/*  Playground                                                          */
+/* =================================================================== */
+function md(text, n) {
+  const inline = (t) => esc(t).replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>').replace(/\s?\[(\d{1,2})\]/g, (m, x) => (Number(x) <= n ? `<span class="cite">${x}</span>` : ''));
+  let out = '', list = null;
+  for (const line of text.split('\n')) {
+    const ol = /^\s*\d+[.)]\s+(.*)/.exec(line), ul = /^\s*[-*•]\s+(.*)/.exec(line);
+    if (ol || ul) { const t = ol ? 'ol' : 'ul'; if (list !== t) { if (list) out += `</${list}>`; out += `<${t}>`; list = t; } out += `<li>${inline((ol || ul)[1])}</li>`; continue; }
+    if (list) { out += `</${list}>`; list = null; }
+    if (line.trim()) out += `<p>${inline(line)}</p>`;
+  }
+  return out + (list ? `</${list}>` : '');
+}
+
+$('#playReset').addEventListener('click', () => { S.history = []; $('#thread').innerHTML = '<div class="empty">Percakapan baru dimulai.</div>'; });
+$('#playForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const q = $('#playQ').value.trim(); if (!q) return;
+  $('#playQ').value = ''; $('#playSend').disabled = true;
+  const thread = $('#thread');
+  thread.querySelector('.empty')?.remove();
+  thread.insertAdjacentHTML('beforeend', `<div class="q">${esc(q)}</div>`);
+  const a = document.createElement('div'); a.className = 'a'; a.innerHTML = `<p class="muted">${L('Mencari di dokumen…', 'Searching the document…')}</p>`; thread.appendChild(a);
+  thread.scrollTop = thread.scrollHeight;
+  let text = '', sources = [], done = null, debug = {}, fails = [], error = null;
+  try {
+    const res = await fetch('/api/admin/test-chat', { method: 'POST', headers: { Authorization: 'Bearer ' + S.pass, 'Content-Type': 'application/json', 'X-Lang': LANG.cur }, body: JSON.stringify({ question: q, history: S.history, lang: LANG.cur, settings: $('#useDraft').checked ? S.draft : undefined }) });
+    if (res.status === 401) return logout('Sesi berakhir.');
+    const reader = res.body.getReader(), dec = new TextDecoder(); let buf = '';
+    const handle = (line) => {
+      if (!line.trim()) return; const ev = JSON.parse(line);
+      if (ev.type === 'debug') { if (ev.data.failedAttempts) fails = ev.data.failedAttempts; else { debug = ev.data; renderXray(debug); } }
+      else if (ev.type === 'sources') sources = ev.items;
+      else if (ev.type === 'delta') { text += ev.text; a.innerHTML = md(text, sources.length); thread.scrollTop = thread.scrollHeight; }
+      else if (ev.type === 'done') done = ev;
+      else if (ev.type === 'error') error = ev.message;
+    };
+    for (;;) { const { done: d, value } = await reader.read(); if (d) break; buf += dec.decode(value, { stream: true }); const ls = buf.split('\n'); buf = ls.pop(); ls.forEach(handle); }
+    handle(buf);
+  } catch (err) { error = err.message; }
+  if (error) a.innerHTML = `<p style="color:var(--bata)">${esc(error)}</p>`;
+  if (done) {
+    a.insertAdjacentHTML('beforeend', `<div class="a-meta">${done.refused ? '<span class="pill wait">Ditolak: tidak ada di dokumen</span>' : '<span class="pill ok">Terjawab</span>'}${done.provider ? `<span class="pill plain">${esc(done.provider)} · ${esc(done.model)}</span>` : ''}<span class="pill plain">${fmt(done.ms)} ms</span></div>`);
+    S.history.push({ role: 'user', content: q }, { role: 'assistant', content: text });
+    S.history = S.history.slice(-12);
+  }
+  if (fails.length) $('#xray').insertAdjacentHTML('beforeend', `<div class="fails"><b>Percobaan penyedia yang gagal:</b><br>${fails.map((f) => `${esc(f.provider)} · ${esc(f.model)}: ${esc(f.message)}`).join('<br>')}</div>`);
+  $('#playSend').disabled = false; $('#playQ').focus();
+});
+
+function renderXray(d) {
+  const t = d.timings || {};
+  const rows = d.candidates || [];
+  const max = Math.max(0.0001, ...rows.map((c) => c.rerank ?? c.vScore ?? 0));
+  $('#xray').innerHTML = `
+    <dl>
+      <dt>Dicari sebagai</dt><dd>${esc(d.rewritten || d.query)}${d.rewritten ? ' <span class="pill plain">ditulis ulang</span>' : ''}</dd>
+      <dt>Keputusan</dt><dd>${d.gate === 'pass' ? '<span class="pill ok">Lanjut ke AI</span>' : '<span class="pill wait">Ditolak sebelum AI</span>'}</dd>
+      <dt>Skor vektor terbaik</dt><dd>${(d.bestVectorScore || 0).toFixed(3)} <span class="muted">(ambang ${Number(S.draft.rag.minScore).toFixed(2)})</span></dd>
+      <dt>Cocok kata kunci</dt><dd>${fmt(d.keywordHits || 0)} potongan</dd>
+      <dt>Embedding</dt><dd>${d.embedder === 'gemini' ? 'Gemini' : 'Workers AI bge-m3'}${d.vectorError ? ` <span class="pill no" title="${esc(d.vectorError)}">gagal, pakai kata kunci saja</span>` : ''}</dd>
+      <dt>Waktu</dt><dd>vektor ${t.vector ?? '–'} ms · kata kunci ${t.keyword ?? '–'} ms${t.rerank ? ` · rerank ${t.rerank} ms` : ''} · total ${t.total ?? '–'} ms</dd>
+    </dl>
+    <div class="cand">${rows.length ? rows.map((c, i) => {
+      const s = c.rerank ?? c.vScore;
+      return `<div class="cand-row ${c.selected ? 'sel' : ''}"><span class="n">${i + 1}</span><div class="bar"><i style="width:${Math.max(4, ((s ?? 0) / max) * 100)}%"></i><span title="${esc(c.label)}">${esc(c.label.split(' › ').slice(-2).join(' › '))}${c.kRank ? ` · kata kunci #${c.kRank}` : ''}</span></div><span class="s">${s != null ? s.toFixed(3) : 'kk'}</span></div>`;
+    }).join('') : '<div class="empty">Tidak ada kandidat.</div>'}</div>
+    <div class="legend"><span><i style="background:var(--kunyit)"></i>dikirim ke AI</span><span><i style="background:#cfe3df"></i>kandidat</span><span>angka = ${S.draft.rag.rerank ? 'skor rerank / ' : ''}skor vektor</span></div>`;
+}
+
+/* =================================================================== */
+/*  Logs                                                                */
+/* =================================================================== */
+$('#logTabs').addEventListener('click', (e) => {
+  const b = e.target.closest('button'); if (!b) return;
+  S.logFilter = b.dataset.f;
+  $$('#logTabs button').forEach((x) => x.setAttribute('aria-selected', String(x === b)));
+  loadLogs();
+});
+async function loadLogs() {
+  const { items } = await api('/api/admin/logs?filter=' + S.logFilter);
+  $('#logList').innerHTML = items.length ? items.map((l) => `
+    <div class="log-item"><div class="row"><span class="log-q">${esc(l.question)}</span><span class="row">${l.failed ? '<span class="pill no">Gagal</span>' : l.refused ? '<span class="pill wait">Tidak terjawab</span>' : '<span class="pill ok">Terjawab</span>'}<span class="small muted">${new Date(l.created_at.replace(' ', 'T') + 'Z').toLocaleString(LOCALE(), { dateStyle: 'short', timeStyle: 'short' })}</span></span></div>
+    ${l.answer ? `<div class="log-a">${esc(l.answer)}</div>` : ''}<div class="small muted" style="margin-top:4px">${l.provider ? esc(l.provider) + ' · ' : ''}skor ${Number(l.best_score || 0).toFixed(3)}</div></div>`).join('')
+    : '<div class="empty">Belum ada riwayat di kategori ini.</div>';
+}
+$('#logClear').addEventListener('click', async () => {
+  if (!confirm(L('Hapus semua riwayat pertanyaan?', 'Delete all question history?'))) return;
+  await api('/api/admin/logs', { method: 'DELETE' }); loadLogs(); refreshStatus(); toast('Riwayat dihapus.');
+});
+
+/* =================================================================== */
+/*  Embed snippet                                                       */
+/* =================================================================== */
+function renderSnippet() {
+  const host = location.origin, pos = $('#optPos').value, theme = $('#optTheme').value, lang = $('#optLang').value;
+  const attrs = [`api-base="${host}"`, pos !== 'right' ? `position="${pos}"` : '', theme !== 'light' ? `theme="${theme}"` : '', lang !== 'auto' ? `lang="${lang}"` : ''].filter(Boolean).join(' ');
+  $('#snippet').textContent = `<script src="${host}/widget.js" defer><\/script>\n<tanyasaya-chat ${attrs}></tanyasaya-chat>`;
+}
+['optPos', 'optTheme', 'optLang'].forEach((id) => $('#' + id).addEventListener('change', renderSnippet));
+$('#copySnippet').addEventListener('click', async () => { await navigator.clipboard.writeText($('#snippet').textContent); toast('Kode widget disalin.'); });
+
+window.addEventListener('ts:lang', () => {
+  if (!S.status) return;
+  renderOverview(); renderDoc(); renderChain(); renderKeys(); renderPipeline();
+  if (!$('[data-page=riwayat]').classList.contains('hidden')) loadLogs();
+  window.dispatchEvent(new Event('tanyasaya:refresh'));
+});
+
+/* =================================================================== */
+if (S.pass) boot().catch(() => logout());
+</script>
+<script src="/widget.js" defer></script>
+<tanyasaya-chat></tanyasaya-chat>
+</body>
+</html>

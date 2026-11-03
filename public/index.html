@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>TanyaSaya · Chatbot yang menjawab dari dokumen Anda</title>
+<meta name="description" content="Chatbot RAG yang menjawab pertanyaan pengunjung hanya dari dokumen Anda, lengkap dengan sumbernya. Ditenagai Gemini dan berjalan di Cloudflare.">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;800&display=swap" rel="stylesheet">
+<style>
+:root{--ink:#172333;--ink-2:#4a5a6b;--canvas:#eef2ef;--laut:#0f766e;--kunyit:#f6c445;font-family:"Plus Jakarta Sans",system-ui,sans-serif;color:var(--ink);background:var(--canvas);line-height:1.6}
+body{margin:0}
+main{max-width:1040px;margin:0 auto;padding:56px 24px 120px}
+.top{display:flex;justify-content:space-between;align-items:center;margin-bottom:72px}
+.brand{display:flex;gap:10px;align-items:center;font-weight:800;font-size:18px}
+.brand i{display:grid;place-items:center;width:34px;height:34px;border-radius:10px;background:var(--laut);color:#fff;font-style:normal}
+.top a{color:var(--ink-2);font-weight:600;font-size:14px}
+.hero{display:grid;grid-template-columns:1.1fr .9fr;gap:56px;align-items:center}
+h1{font-size:clamp(34px,5vw,54px);line-height:1.08;letter-spacing:-.035em;margin:0 0 20px;font-weight:800}
+.lede{font-size:18px;color:var(--ink-2);max-width:52ch;margin:0 0 28px}
+.cta{display:inline-flex;height:48px;align-items:center;padding:0 22px;border-radius:10px;background:var(--laut);color:#fff;font-weight:700;text-decoration:none;border:0;font:inherit;font-weight:700;cursor:pointer}
+.doc{background:#fff;border:1px solid #dbe2de;border-radius:14px;padding:26px 26px 22px;box-shadow:0 30px 60px -30px rgba(23,35,51,.35);font-size:14.5px}
+.doc h2{font-size:15px;margin:0 0 12px;color:var(--ink-2);font-weight:600}
+.doc p{margin:0 0 12px}
+.doc mark{background:linear-gradient(transparent 55%,rgba(246,196,69,.55) 55%);color:inherit;padding:0 1px}
+.doc .ask{margin-top:18px;padding:12px 14px;border-radius:12px;background:var(--canvas);font-size:14px}
+.doc .ask b{display:block;margin-bottom:4px}
+.doc sup{display:inline-block;padding:0 5px;border-radius:4px;background:rgba(246,196,69,.45);font-weight:700;font-size:11px;vertical-align:2px}
+.how{margin-top:96px;display:grid;grid-template-columns:repeat(3,1fr);gap:28px}
+.how h3{margin:0 0 6px;font-size:16px}
+.how p{margin:0;color:var(--ink-2);font-size:14.5px}
+.nav{display:flex;gap:16px;align-items:center}
+.lang-switch{display:inline-flex;padding:3px;border:1px solid #c9d3ce;border-radius:9px;background:#fff}
+.lang-switch button{border:0;background:transparent;padding:4px 10px;border-radius:6px;font:inherit;font-size:12.5px;font-weight:700;color:var(--ink-2);cursor:pointer}
+.lang-switch button[aria-pressed=true]{background:var(--laut);color:#fff}
+@media (max-width:820px){.hero,.how{grid-template-columns:1fr}.top{margin-bottom:40px}}
+</style>
+</head>
+<body>
+<main>
+  <div class="top"><div class="brand"><i>T</i><span id="bn">TanyaSaya</span></div><div class="nav"><div class="lang-switch" role="group" aria-label="Bahasa / Language"><button type="button" data-lang="id">ID</button><button type="button" data-lang="en">EN</button></div><a href="/admin.html" data-en="Owner dashboard">Dashboard pemilik</a></div></div>
+  <section class="hero">
+    <div>
+      <h1 data-en="Visitors ask, your document answers.">Pengunjung bertanya, dokumen Anda yang menjawab.</h1>
+      <p class="lede" data-en="TanyaSaya reads one document you own (a guide, FAQ, catalogue or set of rules), then answers visitor questions only from its content, with source numbers anyone can check.">TanyaSaya membaca satu dokumen milik Anda (panduan, FAQ, katalog, atau peraturan), lalu menjawab pertanyaan pengunjung hanya dari isinya, lengkap dengan nomor sumber yang bisa dicek.</p>
+      <button class="cta" id="try" type="button" data-en="Try asking now">Coba tanya sekarang</button>
+    </div>
+    <div class="doc" aria-hidden="true">
+      <h2>panduan-pendaftaran.md</h2>
+      <p>Pendaftaran dibuka setiap hari kerja. <mark>Biaya pendaftaran Rp150.000</mark> dibayar melalui transfer bank setelah formulir disetujui.</p>
+      <p>Berkas yang belum lengkap akan dikembalikan dalam 2 hari kerja.</p>
+      <div class="ask"><b>Berapa biaya daftarnya?</b>Biaya pendaftaran sebesar <strong>Rp150.000</strong>, dibayar lewat transfer setelah formulir disetujui <sup>1</sup></div>
+    </div>
+  </section>
+  <section class="how">
+    <div><h3 data-en="Only from the document">Hanya dari dokumen</h3><p data-en="If the answer isn't in the document, the bot says so plainly instead of making something up.">Jika jawabannya tidak ada di dokumen, bot mengatakannya terus terang alih-alih mengarang.</p></div>
+    <div><h3 data-en="Hybrid search">Pencarian hibrida</h3><p data-en="Meaning-based and keyword search are combined, so exact terms, codes and numbers are still found.">Pencarian makna dan kata kunci digabung, jadi pertanyaan berupa istilah persis, kode, atau angka tetap ketemu.</p></div>
+    <div><h3 data-en="Powered by Gemini">Ditenagai Gemini</h3><p data-en="Gemini 3.8 Flash writes the answers, with automatic fallback to other models when a quota runs out.">Gemini 3.8 Flash menyusun jawaban, dengan cadangan otomatis ke model lain jika kuota habis.</p></div>
+  </section>
+</main>
+<script src="/widget.js" defer></script>
+<tanyasaya-chat id="chat"></tanyasaya-chat>
+<script>
+const chat = document.getElementById('chat');
+document.getElementById('try').addEventListener('click', () => chat.setOpen && chat.setOpen(true));
+fetch('/api/public/info').then(r => r.json()).then(i => { if (i.name) document.getElementById('bn').textContent = i.name; }).catch(() => {});
+
+// Page language follows the widget's saved choice (or the browser), and the switch keeps both in sync.
+function pageLang(lang) {
+  document.documentElement.lang = lang;
+  document.title = lang === 'en' ? 'TanyaSaya · A chatbot that answers from your document' : 'TanyaSaya · Chatbot yang menjawab dari dokumen Anda';
+  document.querySelectorAll('[data-en]').forEach((el) => {
+    if (el.dataset.id === undefined) el.dataset.id = el.textContent;
+    el.textContent = lang === 'en' ? el.dataset.en : el.dataset.id;
+  });
+  document.querySelectorAll('.lang-switch button').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.lang === lang)));
+}
+let start = 'id';
+try { start = localStorage.getItem('tanyasaya:lang') || (/^en/i.test(navigator.language) ? 'en' : 'id'); } catch {}
+pageLang(start);
+window.addEventListener('tanyasaya:lang', (e) => pageLang(e.detail));
+document.querySelector('.lang-switch').addEventListener('click', (e) => {
+  const b = e.target.closest('button'); if (!b) return;
+  pageLang(b.dataset.lang);
+  if (chat.setLang) chat.setLang(b.dataset.lang); else try { localStorage.setItem('tanyasaya:lang', b.dataset.lang); } catch {}
+});
+</script>
+</body>
+</html>

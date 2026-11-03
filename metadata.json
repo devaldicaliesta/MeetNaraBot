@@ -1,0 +1,6 @@
+{
+  "name": "TanyaSaya",
+  "description": "Platform chatbot RAG TanyaSaya berbasis dokumen dengan dukungan konfigurasi bot dinamis dan failover LLM.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

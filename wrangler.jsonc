@@ -1,0 +1,32 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "tanyasaya",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-10-01",
+  "compatibility_flags": ["nodejs_compat"],
+  "observability": { "enabled": true },
+  "assets": {
+    "directory": "./public",
+    "binding": "ASSETS",
+    "not_found_handling": "none"
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "tanyasaya-db",
+      "database_id": "REPLACE_WITH_D1_ID",
+      "migrations_dir": "migrations"
+    }
+  ],
+  "vectorize": [{ "binding": "VECTORIZE", "index_name": "tanyasaya-index" }],
+  "ai": { "binding": "AI" },
+  "vars": {
+    // Opsional. Kosong = semua domain boleh memasang widget. Bisa juga diatur di dashboard.
+    // Contoh: ["https://tokosaya.com", "https://www.tokosaya.com"]
+    "ALLOWED_ORIGINS": []
+  }
+  // Secrets (jangan ditulis di file ini):
+  //   npx wrangler secret put ADMIN_PASSWORD
+  //   npx wrangler secret put GEMINI_API_KEY      (disarankan)
+  //   npx wrangler secret put GROQ_API_KEY        (opsional)
+}
