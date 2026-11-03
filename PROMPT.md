@@ -80,9 +80,6 @@ Source files: src/index.ts (routes), src/settings.ts (settings, providers, legac
 migration), src/llm.ts (failover streaming, embeddings), src/rag.ts (retrieval,
 prompt assembly, answer pipeline, suggestion generation), src/smalltalk.ts (greeting /
 thanks / identity detection and fixed bilingual replies), src/types.ts.
-Channels: src/channels.ts (Telegram Bot API webhook + WhatsApp Cloud API webhook feeding the same
-answer() pipeline) and src/channel-format.ts (pure formatters: Telegram HTML, WhatsApp markup,
-commands). Migration 0003_channels.sql adds channel_history and channel_seen.
 Delivery: GitHub repository -> QA workflow (Playwright) -> deploy workflow -> Cloudflare.
 </architecture>
 
@@ -362,34 +359,12 @@ document.documentElement.scrollWidth === innerWidth at 390 px and 1440 px).
 - Widget: panel 400x640, full-screen under 480 px.
 </responsive_spec>
 
-<channels_spec>
-Telegram: POST /api/channels/telegram. Require X-Telegram-Bot-Api-Secret-Token equal (constant
-time) to sha256("meetnarabot-telegram-webhook|" + TELEGRAM_BOT_TOKEN) hex; 404 when the token is
-unset. Respond 200 at once and work in waitUntil: dedupe by chat:message id (channel_seen), send
-"typing", reply with sendMessage parse_mode HTML, reply_parameters, link previews off. Private chats
-only; in groups answer commands with "chat me privately". Admin: GET /api/admin/channels (status,
-@username, webhook connected, last error; never the token), POST /api/admin/channels/telegram/
-connect (setWebhook with secret_token, allowed_updates ["message"], setMyCommands) and /disconnect.
-WhatsApp Cloud API: GET /api/channels/whatsapp answers hub.challenge only when hub.verify_token
-matches WHATSAPP_VERIFY_TOKEN; POST requires X-Hub-Signature-256 = HMAC-SHA256(WHATSAPP_APP_SECRET,
-raw body); ignore other phone_number_ids; mark read; reply with type text, context.message_id,
-preview_url false. Graph API v21.0 (VERIFY).
-Shared: commands /start, /help (bantuan), /reset; language from Telegram language_code, else
-settings.language; per-chat history (salted hash key, 12 messages, pruned after a day idle);
-per-chat per-minute and daily quotas; log source 'telegram' | 'whatsapp' (counted as visitors).
-Formatting (pure, unit-tested): escape HTML first, then **b**/*i*/`code`; drop citation numbers
-that do not exist; append "Sumber"/"Sources" with only cited sources; stay under 4096 chars.
-TELEGRAM_API_BASE / WHATSAPP_API_BASE vars exist only so QA can point at a fake API.
-</channels_spec>
-
 <qa_spec>
 Playwright 1.63 (playwright.config.ts) with two projects: "ui" against the mock server (landing,
 widget citations, small talk, EN switch, wrong password, zero horizontal overflow on every page at
-390 px and 1440 px) and "worker" against wrangler dev --local with a fresh local D1, a seeded
-sample document and a fake Telegram/WhatsApp API (security headers, admin lockout, body limits,
-no secrets in admin responses, webhook auth, greetings, sourced answers via the excerpt fallback,
-retry dedupe, group behaviour, WhatsApp handshake and signatures). Unit tests with node:test for
-the formatters and small talk. CI: qa.yml on PRs and non-main pushes; deploy.yml calls it and
+390 px and 1440 px) and "worker" against wrangler dev --local with a fresh local D1 and a seeded
+sample document (security headers, admin lockout, body limits, no secrets in admin responses,
+greetings, sourced answers via the excerpt fallback). Unit tests with node:test for small talk. CI: qa.yml on PRs and non-main pushes; deploy.yml calls it and
 deploys only when it passes. No real keys and no calls to external services in tests.
 </qa_spec>
 
@@ -537,9 +512,8 @@ tanyasaya/
 │                                   owner guide, privacy, limits, FAQ; one ## / ### section per topic)
 ├── scripts/seed-document.mjs      (indexes a Markdown file through the admin API with the dashboard's
 │                                   heading chunking; skips when a document is active unless --replace)
-├── src/channels.ts  src/channel-format.ts  migrations/0003_channels.sql
 ├── playwright.config.ts  tests/ui/*.spec.ts  tests/worker/*.spec.ts  tests/unit/*.test.ts
-├── tests/support/start-worker.mjs  tests/support/fake-chat-api.ts
+├── tests/support/start-worker.mjs  (fresh local D1 + migrations + seeded sample document)
 ├── .github/workflows/qa.yml       (Playwright QA; reused by deploy.yml as a required job)
 ├── dev-server.mjs            (Node mock with the same endpoints; keyword scoring; no keys;
 │                              imports src/smalltalk.ts directly, Node >= 22.18)
