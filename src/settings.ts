@@ -21,7 +21,9 @@ export const KEYED_PROVIDERS = (Object.keys(PROVIDERS) as ProviderId[]).filter((
 export const WORKERS_AI_PRIMARY = '@cf/zai-org/glm-4.7-flash';
 export const WORKERS_AI_BACKUP = '@cf/meta/llama-3.1-8b-instruct-fast';
 export const EMBEDDING_MODEL = '@cf/baai/bge-m3'; // 1024 dimensi, multibahasa
-export const GEMINI_EMBEDDING_MODEL = 'gemini-embedding-001'; // dipotong ke 1024 dimensi (MRL)
+// VERIFY: gemini-embedding-2 accepts outputDimensionality 1024 (Matryoshka truncation). Every embedder in this
+// app writes 1024-dim vectors so one Vectorize index serves Gemini and Workers AI bge-m3 alike.
+export const GEMINI_EMBEDDING_MODEL = 'gemini-embedding-2';
 export const VECTOR_DIM = 1024;
 export type Embedder = 'gemini' | 'workers-ai';
 export type Lang = 'id' | 'en';
@@ -112,13 +114,14 @@ export const DEFAULT_SETTINGS: BotSettings = {
   themeColor: '#5B3FE0',
   prompt: { ...DEFAULT_LAYERS },
   chain: [
-    { provider: 'gemini', model: 'gemini-3.8-flash' },
+    { provider: 'gemini', model: 'gemini-3.5-flash' },
     { provider: 'gemini', model: 'gemini-3.5-flash-lite' },
+    { provider: 'huggingface', model: 'openai/gpt-oss-120b' },
   ],
   workersAiFallback: true,
   embeddingProvider: 'auto',
   temperature: 0.2,
-  maxTokens: 900,
+  maxTokens: 1024,
   reasoningEffort: 'low',
   rag: {
     chunkSize: 1000,
@@ -269,7 +272,7 @@ function fromLegacy(name: string, cfg: any): { settings: BotSettings; keys: KeyS
   const chain: ChainEntry[] = [];
   if (cfg?.Gemini?.ApiKey) {
     keys.gemini = String(cfg.Gemini.ApiKey);
-    chain.push({ provider: 'gemini', model: cfg.Gemini.ChatModel || 'gemini-3.8-flash' });
+    chain.push({ provider: 'gemini', model: cfg.Gemini.ChatModel || 'gemini-3.5-flash' });
     if (cfg.Gemini.ChatFallbackModel) chain.push({ provider: 'gemini', model: cfg.Gemini.ChatFallbackModel });
   }
   if (cfg?.HuggingFace?.ApiKey) {

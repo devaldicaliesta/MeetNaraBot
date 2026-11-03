@@ -7,12 +7,22 @@
 # Optional secrets (only pushed to the Worker when present):
 #   ADMIN_PASSWORD         Dashboard password (required once, before the first sign-in)
 #   GEMINI_API_KEY         Gemini key (can also be pasted in the dashboard instead)
+#   HF_TOKEN               Hugging Face token for the gpt-oss-120b fallback
+#
+# After deploying, docs/knowledge/meetnarabot.md is indexed as the bot's reference document
+# when no document is active yet (needs ADMIN_PASSWORD). Run the workflow manually with
+# "reseed" ticked to replace the active document with the current file.
 name: Deploy to Cloudflare
 
 on:
   push:
     branches: [main]
   workflow_dispatch:
+    inputs:
+      reseed:
+        description: Replace the active document with docs/knowledge/meetnarabot.md
+        type: boolean
+        default: false
 
 concurrency:
   group: deploy-cloudflare
@@ -69,12 +79,18 @@ jobs:
         run: npx wrangler d1 migrations apply tanyasaya-db --remote
 
       - name: Deploy Worker
-        run: npx wrangler deploy
+        id: deploy
+        run: |
+          set -euo pipefail
+          npx wrangler deploy | tee deploy.log
+          URL=$(grep -oE 'https://[a-zA-Z0-9.-]+\.workers\.dev' deploy.log | head -n1 || true)
+          echo "url=$URL" >> "$GITHUB_OUTPUT"
 
       - name: Push optional Worker secrets
         env:
           ADMIN_PASSWORD: ${{ secrets.ADMIN_PASSWORD }}
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
         run: |
           set -euo pipefail
           if [ -n "$ADMIN_PASSWORD" ]; then
@@ -83,3 +99,16 @@ jobs:
             echo "::warning::ADMIN_PASSWORD repository secret is empty or missing, so the dashboard cannot be used yet. Add it under Settings > Secrets and variables > Actions > Repository secrets (not Environment secrets or Variables), then re-run this workflow."
           fi
           if [ -n "$GEMINI_API_KEY" ]; then printf '%s' "$GEMINI_API_KEY" | npx wrangler secret put GEMINI_API_KEY; fi
+          if [ -n "$HF_TOKEN" ]; then printf '%s' "$HF_TOKEN" | npx wrangler secret put HF_TOKEN; fi
+
+      - name: Index the reference document
+        env:
+          ADMIN_PASSWORD: ${{ secrets.ADMIN_PASSWORD }}
+          WORKER_URL: ${{ steps.deploy.outputs.url }}
+          RESEED: ${{ inputs.reseed && '--replace' || '' }}
+        run: |
+          set -euo pipefail
+          if [ -z "$ADMIN_PASSWORD" ]; then echo "::warning::Skipped: ADMIN_PASSWORD is not set."; exit 0; fi
+          if [ -z "$WORKER_URL" ]; then echo "::warning::Skipped: could not read the Worker URL from the deploy output."; exit 0; fi
+          sleep 5
+          node scripts/seed-document.mjs "$WORKER_URL" docs/knowledge/meetnarabot.md $RESEED

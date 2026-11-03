@@ -41,8 +41,9 @@ Platform and budget:
   waiting on fetch does not count), D1 (SQLite), Vectorize (1024-dim, cosine),
   Workers AI, and static assets served by the Worker.
 - Gemini is the primary model family (this is a Gemini prompt competition entry).
-  Default chat model: gemini-3.8-flash with reasoning_effort "low" for speed,
-  then gemini-3.5-flash-lite, then Workers AI as the always-free safety net.
+  Default chat model: gemini-3.5-flash with reasoning_effort "low" for speed,
+  then gemini-3.5-flash-lite, then openai/gpt-oss-120b through the Hugging Face router
+  (secret HF_TOKEN), then Workers AI as the always-free safety net. maxTokens default 1024.
 - Workers AI catalog note (May 2026 refresh): @cf/meta/llama-3.1-8b-instruct is
   deprecated. Use @cf/zai-org/glm-4.7-flash, then @cf/meta/llama-3.1-8b-instruct-fast.
 
@@ -169,7 +170,7 @@ Unknown /api/* -> JSON 404; everything else -> env.ASSETS.fetch.
 
 <embeddings>
 Vector dimension is fixed at 1024 for every embedder.
-- gemini: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-embedding-001:batchEmbedContents
+- gemini: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-embedding-2:batchEmbedContents
   header x-goog-api-key; each request {model, content:{parts:[{text}]}, taskType
   RETRIEVAL_DOCUMENT | RETRIEVAL_QUERY, outputDimensionality:1024}; L2-normalise results.
 - workers-ai: env.AI.run('@cf/baai/bge-m3', {text:[...]}) -> result.data (VERIFY shape, accept bare arrays).
@@ -480,8 +481,13 @@ tanyasaya/
 ├── migrations/0002_rag_upgrade.sql
 ├── src/types.ts  src/settings.ts  src/llm.ts  src/rag.ts  src/smalltalk.ts  src/index.ts
 ├── .github/workflows/deploy.yml  (push to main -> typecheck, find/create D1 + Vectorize,
-│                                  migrate, wrangler deploy, optional secrets)
+│                                  migrate, wrangler deploy, optional secrets ADMIN_PASSWORD /
+│                                  GEMINI_API_KEY / HF_TOKEN, then index the reference document)
 ├── public/index.html  public/admin.html  public/widget.js  public/widget.css
+├── docs/knowledge/meetnarabot.md  (the bot's own reference document: what MeetNaraBot is, how to ask,
+│                                   owner guide, privacy, limits, FAQ; one ## / ### section per topic)
+├── scripts/seed-document.mjs      (indexes a Markdown file through the admin API with the dashboard's
+│                                   heading chunking; skips when a document is active unless --replace)
 ├── dev-server.mjs            (Node mock with the same endpoints; keyword scoring; no keys;
 │                              imports src/smalltalk.ts directly, Node >= 22.18)
 └── README.md                 (Indonesian: setup from zero, secrets, migrations, embed, limits, troubleshooting)
@@ -501,7 +507,7 @@ Document section "Biaya": "Biaya pendaftaran sebesar Rp150.000 dibayar sekali. B
 Visitor: Berapa biaya daftarnya?
 NDJSON: {"type":"sources","items":[{"number":1,"label":"Panduan Pendaftaran › Biaya",...}]}
         {"type":"delta","text":"Biaya pendaftaran sebesar **Rp150.000** dan cukup dibayar sekali [1]."}
-        {"type":"done","refused":false,"provider":"gemini","model":"gemini-3.8-flash","ms":1840}
+        {"type":"done","refused":false,"provider":"gemini","model":"gemini-3.5-flash","ms":1840}
 Widget: answer with a highlighted "1" button; source card "Panduan Pendaftaran › Biaya".
 </example>
 

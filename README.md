@@ -1,6 +1,6 @@
 # MeetNaraBot v2
 
-Chatbot yang menjawab pertanyaan pengunjung **hanya dari satu dokumen milik Anda**, lengkap dengan nomor sumber yang bisa dicek. Ditenagai **Gemini 3.8 Flash**, berjalan di **Cloudflare Workers** (paket gratis), dan dipasang di website mana pun dengan dua baris kode.
+Chatbot yang menjawab pertanyaan pengunjung **hanya dari satu dokumen milik Anda**, lengkap dengan nomor sumber yang bisa dicek. Ditenagai **Gemini 3.5 Flash**, berjalan di **Cloudflare Workers** (paket gratis), dan dipasang di website mana pun dengan dua baris kode.
 
 - `PROMPT.md`: prompt lengkap 7 layer (bahasa Inggris) untuk membangun ulang aplikasi ini dengan Gemini.
 - Isi 7 layer prompt chatbot ada di `src/settings.ts` (`DEFAULT_LAYERS`); ubah di sana bila perlu.
@@ -19,7 +19,7 @@ Chatbot yang menjawab pertanyaan pengunjung **hanya dari satu dokumen milik Anda
 | Embedding | bge-m3 (tetap) | **Gemini embedding** (RETRIEVAL_QUERY/DOCUMENT, 1024 dim) atau bge-m3 |
 | Prompt | Satu blok aturan | Prompt sistem **7 layer** (peran, konteks, tugas, pengetahuan, aturan, format, contoh + cek mutu) |
 | Jawaban | JSON sekaligus, sitasi tidak pernah muncul | **Streaming** + sitasi `[n]` yang bisa diklik ke potongan sumber |
-| Model | `llama-3.1-8b-instruct` (sudah dihentikan Cloudflare) | Gemini 3.8 Flash → 3.5 Flash-Lite → GLM-4.7-Flash → Llama 3.1 8B fast |
+| Model | `llama-3.1-8b-instruct` (sudah dihentikan Cloudflare) | Gemini 3.5 Flash → 3.5 Flash-Lite → gpt-oss-120b (Hugging Face) → GLM-4.7-Flash → Llama 3.1 8B fast |
 | Keamanan | API key contoh tertanam di kode; key dikirim balik ke browser | Key **tidak pernah ditampilkan**; honeypot, kuota harian, batas login |
 | Widget | CORS rusak di domain lain, CSS global bisa bentrok | CORS benar, **Shadow DOM**, tema terang/gelap, mobile layar penuh |
 | Dashboard | Satu halaman + textarea JSON | 7 menu, form terstruktur, **X-ray hasil pencarian**, riwayat pertanyaan |
@@ -64,8 +64,11 @@ Workflow `.github/workflows/deploy.yml` menerbitkan Worker setiap kali ada push 
 3. Di GitHub, buka **Settings → Secrets and variables → Actions → New repository secret**, lalu tambahkan:
    - `CLOUDFLARE_API_TOKEN` dan `CLOUDFLARE_ACCOUNT_ID` (wajib)
    - `ADMIN_PASSWORD` (wajib sekali sebelum masuk dashboard pertama kali)
-   - `GEMINI_API_KEY` (opsional; bisa juga ditempel di dashboard)
+   - `GEMINI_API_KEY` (disarankan; dipakai untuk menjawab dan untuk embedding dokumen)
+   - `HF_TOKEN` (opsional; cadangan model `openai/gpt-oss-120b` lewat Hugging Face)
 4. Push ke `main`, atau buka tab **Actions → Deploy to Cloudflare → Run workflow**. Alamat Worker muncul di log langkah *Deploy Worker*.
+
+Setelah deploy, workflow mengindeks `docs/knowledge/meetnarabot.md` sebagai dokumen referensi bot, tetapi hanya jika belum ada dokumen aktif. Dokumen yang Anda unggah lewat dashboard tidak akan tertimpa. Untuk mengganti dokumen aktif dengan isi terbaru file itu, jalankan workflow secara manual dan centang **reseed**. Isi secret `GEMINI_API_KEY` sebelum indeks pertama agar dokumen memakai embedding Gemini; embedding tidak bisa diganti tanpa mengindeks ulang.
 
 `database_id` di `wrangler.jsonc` sengaja dibiarkan `REPLACE_WITH_D1_ID`; workflow mengisinya sendiri saat deploy.
 
@@ -132,4 +135,5 @@ Tidak ada kode yang membuat interaksi buatan. Endpoint chat publik dilindungi:
 ## Perlu diverifikasi saat deploy pertama (VERIFY)
 - Bentuk respons streaming `@cf/zai-org/glm-4.7-flash` (kode menerima format `response` maupun `choices[].delta`).
 - Skala skor `@cf/baai/bge-reranker-base` (dinormalisasi dengan sigmoid bila di luar 0–1).
-- Parameter `reasoning_effort` di endpoint OpenAI-compatible Gemini untuk `gemini-3.8-flash`.
+- Parameter `reasoning_effort` di endpoint OpenAI-compatible Gemini untuk `gemini-3.5-flash`.
+- Model embedding `gemini-embedding-2` dengan `outputDimensionality: 1024`.

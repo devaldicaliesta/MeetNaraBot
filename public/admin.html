@@ -1199,7 +1199,7 @@ async function loadChunks(reset) {
 /* =================================================================== */
 /*  Model chain & keys                                                  */
 /* =================================================================== */
-const MODEL_HINTS = { gemini: 'gemini-3.8-flash', groq: 'llama-3.3-70b-versatile', openrouter: 'google/gemini-3.8-flash', cerebras: 'gpt-oss-120b', sambanova: 'Meta-Llama-3.3-70B-Instruct', huggingface: 'openai/gpt-oss-120b', 'workers-ai': '@cf/zai-org/glm-4.7-flash' };
+const MODEL_HINTS = { gemini: 'gemini-3.5-flash', groq: 'llama-3.3-70b-versatile', openrouter: 'google/gemini-3.8-flash', cerebras: 'gpt-oss-120b', sambanova: 'Meta-Llama-3.3-70B-Instruct', huggingface: 'openai/gpt-oss-120b', 'workers-ai': '@cf/zai-org/glm-4.7-flash' };
 function renderChain() {
   const box = $('#chainEdit');
   box.innerHTML = S.draft.chain.map((c, i) => `
