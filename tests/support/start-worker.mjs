@@ -29,6 +29,7 @@ wrangler('d1', 'execute', 'tanyasaya-db', '--file', path.join(state, 'seed.sql')
 
 const vars = {
   ADMIN_PASSWORD: password,
+  DEPLOY_TOKEN: 'qa-deploy-token-0123456789abcdef0123456789abcdef',
   TELEGRAM_BOT_TOKEN: '123456:qa-dummy-telegram-token',
   TELEGRAM_API_BASE: `http://127.0.0.1:${fakePort}/telegram`,
   WHATSAPP_TOKEN: 'qa-dummy-whatsapp-token',

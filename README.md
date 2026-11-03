@@ -68,7 +68,7 @@ Workflow `.github/workflows/deploy.yml` menerbitkan Worker setiap kali ada push 
    - `HF_TOKEN` (opsional; cadangan model `openai/gpt-oss-120b` lewat Hugging Face)
 4. Push ke `main`, atau buka tab **Actions → Deploy to Cloudflare → Run workflow**. Alamat Worker muncul di log langkah *Deploy Worker*.
 
-Setelah deploy, workflow mengindeks `docs/knowledge/meetnarabot.md` sebagai dokumen referensi bot, tetapi hanya jika belum ada dokumen aktif. Dokumen yang Anda unggah lewat dashboard tidak akan tertimpa. Untuk mengganti dokumen aktif dengan isi terbaru file itu, jalankan workflow secara manual dan centang **reseed**. Isi secret `GEMINI_API_KEY` sebelum indeks pertama agar dokumen memakai embedding Gemini; embedding tidak bisa diganti tanpa mengindeks ulang.
+Setelah deploy, workflow mengindeks `docs/knowledge/meetnarabot.md` sebagai dokumen referensi bot, tetapi hanya jika belum ada dokumen aktif. Untuk itu workflow membuat token acak `DEPLOY_TOKEN` di setiap run. Token ini hanya bisa mengindeks dokumen dan menyambungkan Telegram, jadi bot langsung bisa menjawab walau `ADMIN_PASSWORD` belum diset. Dokumen yang Anda unggah lewat dashboard tidak akan tertimpa. Untuk mengganti dokumen aktif dengan isi terbaru file itu, jalankan workflow secara manual dan centang **reseed**. Isi secret `GEMINI_API_KEY` sebelum indeks pertama agar dokumen memakai embedding Gemini; embedding tidak bisa diganti tanpa mengindeks ulang.
 
 `database_id` di `wrangler.jsonc` sengaja dibiarkan `REPLACE_WITH_D1_ID`; workflow mengisinya sendiri saat deploy.
 

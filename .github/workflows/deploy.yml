@@ -13,7 +13,8 @@
 #                          WhatsApp Cloud API (Meta) credentials
 #
 # After deploying, docs/knowledge/meetnarabot.md is indexed as the bot's reference document
-# when no document is active yet (needs ADMIN_PASSWORD). Run the workflow manually with
+# when no document is active yet, using a random DEPLOY_TOKEN minted for this run (it can only
+# index documents and connect Telegram, and is replaced on every deploy). Run the workflow manually with
 # "reseed" ticked to replace the active document with the current file.
 name: Deploy to Cloudflare
 
@@ -119,26 +120,34 @@ jobs:
             if [ -n "$value" ]; then printf '%s' "$value" | npx wrangler secret put "$name"; fi
           done
 
+      - name: Mint a one-run deploy token
+        id: token
+        run: |
+          set -euo pipefail
+          TOKEN=$(openssl rand -hex 32)
+          echo "::add-mask::$TOKEN"
+          printf '%s' "$TOKEN" | npx wrangler secret put DEPLOY_TOKEN > /dev/null
+          echo "token=$TOKEN" >> "$GITHUB_OUTPUT"
+
       - name: Index the reference document
         env:
-          ADMIN_PASSWORD: ${{ secrets.ADMIN_PASSWORD }}
+          ADMIN_PASSWORD: ${{ steps.token.outputs.token }}
           WORKER_URL: ${{ steps.deploy.outputs.url }}
           RESEED: ${{ inputs.reseed && '--replace' || '' }}
         run: |
           set -euo pipefail
-          if [ -z "$ADMIN_PASSWORD" ]; then echo "::warning::Skipped: ADMIN_PASSWORD is not set."; exit 0; fi
           if [ -z "$WORKER_URL" ]; then echo "::warning::Skipped: could not read the Worker URL from the deploy output."; exit 0; fi
-          sleep 5
+          sleep 8
           node scripts/seed-document.mjs "$WORKER_URL" docs/knowledge/meetnarabot.md $RESEED
 
       - name: Connect the Telegram webhook
         env:
-          ADMIN_PASSWORD: ${{ secrets.ADMIN_PASSWORD }}
+          DEPLOY_TOKEN: ${{ steps.token.outputs.token }}
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           WORKER_URL: ${{ steps.deploy.outputs.url }}
         run: |
           set -euo pipefail
           if [ -z "$TELEGRAM_BOT_TOKEN" ]; then echo "Telegram not configured; skipped."; exit 0; fi
-          if [ -z "$ADMIN_PASSWORD" ] || [ -z "$WORKER_URL" ]; then echo "::warning::Skipped: ADMIN_PASSWORD or the Worker URL is missing."; exit 0; fi
-          curl -fsS -X POST "$WORKER_URL/api/admin/channels/telegram/connect" -H "Authorization: Bearer $ADMIN_PASSWORD" -H 'X-Lang: en' > /dev/null
+          if [ -z "$WORKER_URL" ]; then echo "::warning::Skipped: the Worker URL is missing."; exit 0; fi
+          curl -fsS -X POST "$WORKER_URL/api/admin/channels/telegram/connect" -H "Authorization: Bearer $DEPLOY_TOKEN" -H 'X-Lang: en' > /dev/null
           echo "Telegram webhook connected."

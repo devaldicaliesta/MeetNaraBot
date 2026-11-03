@@ -328,15 +328,24 @@ app.get('/api/health', async (c) => {
 /*  Admin API                                                            */
 /* ------------------------------------------------------------------ */
 
+// Routes the deploy workflow's DEPLOY_TOKEN may call: index the reference document and connect Telegram.
+const DEPLOY_ROUTES = /^\/api\/admin\/(status|file(\/chunks|\/done)?|channels\/telegram\/connect)$/;
+
 app.use('/api/admin/*', async (c, next) => {
+  const auth = c.req.header('Authorization') || '';
+  const token = auth.startsWith('Bearer ') ? auth.slice(7) : '';
+  const deploy = c.env.DEPLOY_TOKEN;
+  if (deploy && deploy.length >= 32 && token && DEPLOY_ROUTES.test(c.req.path) && (await secretEquals(token, deploy))) {
+    if (tooLarge(c, MAX_ADMIN_BODY)) return c.json({ error: 'Too large' }, 413);
+    c.header('Cache-Control', 'no-store');
+    return next();
+  }
   if (!c.env.ADMIN_PASSWORD) {
     return c.json({ error: tr(c, "ADMIN_PASSWORD belum diset. Tambahkan repository secret ADMIN_PASSWORD di GitHub lalu jalankan ulang workflow deploy, atau jalankan: npx wrangler secret put ADMIN_PASSWORD", "ADMIN_PASSWORD is not set. Add the ADMIN_PASSWORD repository secret on GitHub and re-run the deploy workflow, or run: npx wrangler secret put ADMIN_PASSWORD") }, 503);
   }
   if (await loginLocked(c)) {
     return c.json({ error: tr(c, `Terlalu banyak percobaan masuk yang salah. Tunggu ${LOGIN_WINDOW_MIN} menit, lalu coba lagi.`, `Too many failed sign-in attempts. Wait ${LOGIN_WINDOW_MIN} minutes, then try again.`) }, 429);
   }
-  const auth = c.req.header('Authorization') || '';
-  const token = auth.startsWith('Bearer ') ? auth.slice(7) : '';
   if (!token || token.length > 512 || !(await secretEquals(token, c.env.ADMIN_PASSWORD))) {
     await recordLoginFailure(c);
     return c.json({ error: tr(c, "Kata sandi admin salah.", "Wrong admin password.") }, 401);

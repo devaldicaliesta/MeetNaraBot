@@ -4,6 +4,9 @@ export type Bindings = {
   AI: Ai;
   ASSETS: Fetcher;
   ADMIN_PASSWORD?: string;
+  /** Random token minted by the deploy workflow on every run (never shown to anyone). It can only
+   *  index the reference document and connect Telegram, so a fresh install works without ADMIN_PASSWORD. */
+  DEPLOY_TOKEN?: string;
   GEMINI_API_KEY?: string;
   GROQ_API_KEY?: string;
   OPENROUTER_API_KEY?: string;

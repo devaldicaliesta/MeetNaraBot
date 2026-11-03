@@ -64,11 +64,20 @@ test('admin channel status shows Telegram and WhatsApp as configured', async ({ 
   expect(JSON.stringify(ch)).not.toContain('qa-dummy');
 });
 
+test('the deploy token can only index documents, not read settings or logs', async ({ request }) => {
+  const deploy = { Authorization: 'Bearer qa-deploy-token-0123456789abcdef0123456789abcdef' };
+  expect((await request.get('/api/admin/status', { headers: deploy })).status()).toBe(200);
+  expect((await request.get('/api/admin/config', { headers: deploy })).status()).toBe(401);
+  expect((await request.get('/api/admin/logs', { headers: deploy })).status()).toBe(401);
+  expect((await request.post('/api/admin/config', { headers: deploy, data: { settings: {} } })).status()).toBe(401);
+});
+
 // Keep last: it locks this client's IP out of the admin API for the rest of the window.
 test('admin lockout refuses even the correct password after 8 failures', async ({ request }) => {
+  // Earlier tests may already have used part of this IP's budget of 8 failures.
   for (let i = 1; i <= 8; i++) {
     const res = await request.get('/api/admin/status', { headers: { Authorization: `Bearer wrong-${i}` } });
-    expect(res.status()).toBe(401);
+    expect([401, 429]).toContain(res.status());
   }
   expect((await request.get('/api/admin/status', { headers: { Authorization: 'Bearer wrong-9' } })).status()).toBe(429);
   expect((await request.get('/api/admin/status', { headers: admin })).status()).toBe(429);
