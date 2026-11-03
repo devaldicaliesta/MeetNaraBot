@@ -3,8 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>MeetNaraBot · Chatbot yang menjawab dari dokumen Anda</title>
-<meta name="description" content="Chatbot RAG yang menjawab pertanyaan pengunjung hanya dari dokumen Anda, lengkap dengan sumbernya. Ditenagai Gemini dan berjalan di Cloudflare.">
+<title>Nara · Narasumber Anda</title>
+<meta name="description" content="Nara, narasumber Anda: chatbot RAG yang menjawab pertanyaan pengunjung hanya dari dokumen Anda, lengkap dengan sumbernya. Ditenagai Gemini dan berjalan di Cloudflare.">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
@@ -126,7 +126,7 @@ footer{padding:36px 0 120px;color:var(--ink-3);font-size:13.5px;display:flex;jus
 <body>
 <header class="top">
   <div class="bar">
-    <a class="brand" href="/"><i>M</i><span id="bn">MeetNaraBot</span></a>
+    <a class="brand" href="/"><i>N</i><span id="bn">Nara</span></a>
     <nav class="links" aria-label="Halaman"><a href="#fitur" data-en="Features">Fitur</a><a href="#cara" data-en="How it works">Cara kerja</a></nav>
     <div class="nav">
       <div class="lang-switch" role="group" aria-label="Bahasa / Language"><button type="button" data-lang="id">ID</button><button type="button" data-lang="en">EN</button></div>
@@ -137,9 +137,9 @@ footer{padding:36px 0 120px;color:var(--ink-3);font-size:13.5px;display:flex;jus
 
 <main class="wrap">
   <div class="hero">
-    <span class="eyebrow"><b>RAG</b><span data-en="Powered by Gemini, runs on Cloudflare">Ditenagai Gemini, berjalan di Cloudflare</span></span>
+    <span class="eyebrow"><b>Nara</b><span data-en="Your trusted source, powered by Gemini">Narasumber Anda, ditenagai Gemini</span></span>
     <h1><span data-en="Visitors ask,">Pengunjung bertanya,</span> <em data-en="your document answers.">dokumen Anda menjawab.</em></h1>
-    <p class="lede" data-en="MeetNaraBot reads one document you own (a guide, FAQ, catalogue or set of rules), then answers visitor questions only from its content, with source numbers anyone can check.">MeetNaraBot membaca satu dokumen milik Anda (panduan, FAQ, katalog, atau peraturan), lalu menjawab pertanyaan pengunjung hanya dari isinya, lengkap dengan nomor sumber yang bisa dicek.</p>
+    <p class="lede" data-en="Nara reads one document you own (a guide, FAQ, catalogue or set of rules), then answers visitor questions only from its content, with source numbers anyone can check.">Nara membaca satu dokumen milik Anda (panduan, FAQ, katalog, atau peraturan), lalu menjawab pertanyaan pengunjung hanya dari isinya, lengkap dengan nomor sumber yang bisa dicek.</p>
     <div class="ctas">
       <button class="btn" id="try" type="button"><span data-en="Try asking now">Coba tanya sekarang</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></button>
       <a class="btn line" href="#cara" data-en="See how it works">Lihat cara kerjanya</a>
@@ -155,7 +155,7 @@ footer{padding:36px 0 120px;color:var(--ink-3);font-size:13.5px;display:flex;jus
       <p style="margin:0">Kelas akhir pekan berlangsung setiap Sabtu pukul 09.00–12.00.</p>
     </div>
     <div class="card chat">
-      <div class="chat-head"><i>M</i><div><b>MeetNaraBot</b><small data-en="Answers from panduan-pendaftaran.md">Menjawab dari panduan-pendaftaran.md</small></div></div>
+      <div class="chat-head"><i>N</i><div><b>Nara</b><small data-en="Answers from panduan-pendaftaran.md">Menjawab dari panduan-pendaftaran.md</small></div></div>
       <div class="q">Berapa biaya daftarnya?</div>
       <div class="a">Biaya pendaftaran sebesar <strong>Rp150.000</strong>, dibayar lewat transfer setelah formulir disetujui <sup>1</sup></div>
       <div class="src"><b>1</b> Panduan Pendaftaran › Biaya</div>
@@ -163,7 +163,7 @@ footer{padding:36px 0 120px;color:var(--ink-3);font-size:13.5px;display:flex;jus
   </div>
 
   <section class="sec" id="fitur">
-    <p class="kicker" data-en="Why MeetNaraBot">Kenapa MeetNaraBot</p>
+    <p class="kicker" data-en="Why Nara">Kenapa Nara</p>
     <h2 class="title" data-en="Honest answers, with receipts.">Jawaban jujur, lengkap dengan buktinya.</h2>
     <p class="sub" data-en="Every answer points back to the part of your document it came from, so visitors can check it themselves.">Setiap jawaban menunjuk ke bagian dokumen asalnya, jadi pengunjung bisa mengeceknya sendiri.</p>
     <div class="features">
@@ -206,7 +206,7 @@ footer{padding:36px 0 120px;color:var(--ink-3);font-size:13.5px;display:flex;jus
     </div>
   </div>
 
-  <footer><span>MeetNaraBot</span><span data-en="Answers come from the document and can be wrong. Check the sources.">Jawaban berasal dari dokumen dan bisa keliru. Cek sumbernya.</span></footer>
+  <footer><span>Nara</span><span data-en="Answers come from the document and can be wrong. Check the sources.">Jawaban berasal dari dokumen dan bisa keliru. Cek sumbernya.</span></footer>
 </main>
 <script src="/widget.js" defer></script>
 <tanyasaya-chat id="chat"></tanyasaya-chat>
@@ -218,7 +218,7 @@ fetch('/api/public/info').then(r => r.json()).then(i => { if (i.name) document.g
 // Page language follows the widget's saved choice (or the browser), and the switch keeps both in sync.
 function pageLang(lang) {
   document.documentElement.lang = lang;
-  document.title = lang === 'en' ? 'MeetNaraBot · A chatbot that answers from your document' : 'MeetNaraBot · Chatbot yang menjawab dari dokumen Anda';
+  document.title = lang === 'en' ? 'Nara · Your trusted source' : 'Nara · Narasumber Anda';
   document.querySelectorAll('[data-en]').forEach((el) => {
     if (el.dataset.id === undefined) el.dataset.id = el.textContent;
     el.textContent = lang === 'en' ? el.dataset.en : el.dataset.id;

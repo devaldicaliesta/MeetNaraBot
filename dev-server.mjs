@@ -21,7 +21,7 @@ const LAYERS = {
   examples: '<example>\nVisitor: Berapa lama proses pendaftaran?\nAssistant: Proses pendaftaran memakan waktu **3 hari kerja** [1].\n</example>',
 };
 const DEFAULTS = {
-  name: 'MeetNaraBot', language: 'id', greeting: '', greetingEn: '', suggestions: [], suggestionsEn: [],
+  name: 'Nara', language: 'id', greeting: '', greetingEn: '', suggestions: [], suggestionsEn: [],
   refusalMessage: 'Maaf, informasi itu tidak ada di dokumen yang saya miliki.', refusalMessageEn: "Sorry, that information isn't in the document I have.",
   launcherLabel: '', launcherLabelEn: '', themeColor: '#5B3FE0', prompt: { ...LAYERS },
   chain: [{ provider: 'gemini', model: 'gemini-3.5-flash' }, { provider: 'gemini', model: 'gemini-3.5-flash-lite' }, { provider: 'huggingface', model: 'openai/gpt-oss-120b' }],
@@ -184,4 +184,4 @@ http.createServer(async (req, res) => {
     return fs.createReadStream(fp).pipe(res);
   }
   res.writeHead(404); res.end('Not found');
-}).listen(PORT, process.env.HOST || '127.0.0.1', () => console.log(`Mock MeetNaraBot: http://localhost:${PORT}  ·  dashboard /admin.html  ·  kata sandi: ${PASSWORD === 'dev' ? 'dev (ubah dengan ADMIN_PASSWORD=...)' : '(dari ADMIN_PASSWORD)'}`));
+}).listen(PORT, process.env.HOST || '127.0.0.1', () => console.log(`Mock Nara: http://localhost:${PORT}  ·  dashboard /admin.html  ·  kata sandi: ${PASSWORD === 'dev' ? 'dev (ubah dengan ADMIN_PASSWORD=...)' : '(dari ADMIN_PASSWORD)'}`));

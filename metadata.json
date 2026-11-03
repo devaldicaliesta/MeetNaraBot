@@ -1,6 +1,6 @@
 {
-  "name": "MeetNaraBot",
-  "description": "Platform chatbot RAG MeetNaraBot berbasis dokumen dengan dukungan konfigurasi bot dinamis dan failover LLM.",
+  "name": "Nara",
+  "description": "Platform chatbot RAG Nara berbasis dokumen dengan dukungan konfigurasi bot dinamis dan failover LLM.",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

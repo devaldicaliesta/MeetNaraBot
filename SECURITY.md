@@ -1,4 +1,4 @@
-# Keamanan MeetNaraBot
+# Keamanan Nara
 
 ## Audit November 2026
 

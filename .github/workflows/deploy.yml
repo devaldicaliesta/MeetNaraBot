@@ -1,4 +1,4 @@
-# Deploys MeetNaraBot to Cloudflare on every push to main (and on demand).
+# Deploys Nara to Cloudflare on every push to main (and on demand).
 #
 # Required GitHub repository secrets (Settings > Secrets and variables > Actions):
 #   CLOUDFLARE_API_TOKEN   API token with: Workers Scripts:Edit, D1:Edit, Vectorize:Edit,
@@ -12,7 +12,7 @@
 #   WHATSAPP_TOKEN, WHATSAPP_PHONE_NUMBER_ID, WHATSAPP_VERIFY_TOKEN, WHATSAPP_APP_SECRET
 #                          WhatsApp Cloud API (Meta) credentials
 #
-# After deploying, docs/knowledge/meetnarabot.md is indexed as the bot's reference document
+# After deploying, docs/knowledge/nara.md is indexed as the bot's reference document
 # when no document is active yet, using a random DEPLOY_TOKEN minted for this run (it can only
 # index documents and connect Telegram, and is replaced on every deploy). Run the workflow manually with
 # "reseed" ticked to replace the active document with the current file.
@@ -24,7 +24,7 @@ on:
   workflow_dispatch:
     inputs:
       reseed:
-        description: Replace the active document with docs/knowledge/meetnarabot.md
+        description: Replace the active document with docs/knowledge/nara.md
         type: boolean
         default: false
 
@@ -138,7 +138,7 @@ jobs:
           set -euo pipefail
           if [ -z "$WORKER_URL" ]; then echo "::warning::Skipped: could not read the Worker URL from the deploy output."; exit 0; fi
           sleep 8
-          node scripts/seed-document.mjs "$WORKER_URL" docs/knowledge/meetnarabot.md $RESEED
+          node scripts/seed-document.mjs "$WORKER_URL" docs/knowledge/nara.md $RESEED
 
       - name: Connect the Telegram webhook
         env:

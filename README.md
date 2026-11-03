@@ -1,4 +1,4 @@
-# MeetNaraBot v2
+# Nara — Narasumber Anda
 
 Chatbot yang menjawab pertanyaan pengunjung **hanya dari satu dokumen milik Anda**, lengkap dengan nomor sumber yang bisa dicek. Ditenagai **Gemini 3.5 Flash**, berjalan di **Cloudflare Workers** (paket gratis), dan dipasang di website mana pun dengan dua baris kode.
 
@@ -68,7 +68,7 @@ Workflow `.github/workflows/deploy.yml` menerbitkan Worker setiap kali ada push 
    - `HF_TOKEN` (opsional; cadangan model `openai/gpt-oss-120b` lewat Hugging Face)
 4. Push ke `main`, atau buka tab **Actions → Deploy to Cloudflare → Run workflow**. Alamat Worker muncul di log langkah *Deploy Worker*.
 
-Setelah deploy, workflow mengindeks `docs/knowledge/meetnarabot.md` sebagai dokumen referensi bot, tetapi hanya jika belum ada dokumen aktif. Untuk itu workflow membuat token acak `DEPLOY_TOKEN` di setiap run. Token ini hanya bisa mengindeks dokumen dan menyambungkan Telegram, jadi bot langsung bisa menjawab walau `ADMIN_PASSWORD` belum diset. Dokumen yang Anda unggah lewat dashboard tidak akan tertimpa. Untuk mengganti dokumen aktif dengan isi terbaru file itu, jalankan workflow secara manual dan centang **reseed**. Isi secret `GEMINI_API_KEY` sebelum indeks pertama agar dokumen memakai embedding Gemini; embedding tidak bisa diganti tanpa mengindeks ulang.
+Setelah deploy, workflow mengindeks `docs/knowledge/nara.md` sebagai dokumen referensi bot, tetapi hanya jika belum ada dokumen aktif. Untuk itu workflow membuat token acak `DEPLOY_TOKEN` di setiap run. Token ini hanya bisa mengindeks dokumen dan menyambungkan Telegram, jadi bot langsung bisa menjawab walau `ADMIN_PASSWORD` belum diset. Dokumen yang Anda unggah lewat dashboard tidak akan tertimpa. Untuk mengganti dokumen aktif dengan isi terbaru file itu, jalankan workflow secara manual dan centang **reseed**. Isi secret `GEMINI_API_KEY` sebelum indeks pertama agar dokumen memakai embedding Gemini; embedding tidak bisa diganti tanpa mengindeks ulang.
 
 `database_id` di `wrangler.jsonc` sengaja dibiarkan `REPLACE_WITH_D1_ID`; workflow mengisinya sendiri saat deploy.
 
@@ -178,4 +178,4 @@ Tidak ada kode yang membuat interaksi buatan. Endpoint chat publik dilindungi:
 
 ## Lisensi
 
-MeetNaraBot dirilis dengan [Apache License 2.0](LICENSE). Anda boleh memakai, mengubah, dan mendistribusikan ulang kode ini, termasuk untuk keperluan komersial, selama menyertakan file `LICENSE` dan `NOTICE` serta mencantumkan perubahan yang Anda buat. Hak cipta © 2026 devaldicaliesta.
+Nara dirilis dengan [Apache License 2.0](LICENSE). Anda boleh memakai, mengubah, dan mendistribusikan ulang kode ini, termasuk untuk keperluan komersial, selama menyertakan file `LICENSE` dan `NOTICE` serta mencantumkan perubahan yang Anda buat. Hak cipta © 2026 devaldicaliesta.

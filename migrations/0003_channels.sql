@@ -1,4 +1,4 @@
--- MeetNaraBot v3: Telegram and WhatsApp channels.
+-- Nara v3: Telegram and WhatsApp channels.
 
 -- Short conversation memory per chat. `id` is a salted hash of "<channel>:<chat id>", so raw
 -- phone numbers and Telegram IDs are never stored. Rows idle for more than a day are pruned.

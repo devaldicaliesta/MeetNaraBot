@@ -1,4 +1,4 @@
-// Turns a MeetNaraBot answer (light Markdown with [n] citations) into a chat-app message.
+// Turns a Nara answer (light Markdown with [n] citations) into a chat-app message.
 // Pure functions with no imports, so they can be unit-tested directly with Node.
 
 export type FormatSource = { number: number; label: string };

@@ -1,8 +1,8 @@
-// Indexes a Markdown reference document into a deployed MeetNaraBot through the admin API,
+// Indexes a Markdown reference document into a deployed Nara through the admin API,
 // using the same heading-based chunking as the dashboard. Used by the deploy workflow; can also
 // be run by hand:
 //
-//   ADMIN_PASSWORD=... node scripts/seed-document.mjs https://<worker>.workers.dev docs/knowledge/meetnarabot.md [--replace]
+//   ADMIN_PASSWORD=... node scripts/seed-document.mjs https://<worker>.workers.dev docs/knowledge/nara.md [--replace]
 //
 // Without --replace it does nothing when a document is already active, so redeploys never wipe
 // a document the owner uploaded through the dashboard.

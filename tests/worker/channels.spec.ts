@@ -33,7 +33,7 @@ test.describe('Telegram webhook', () => {
     expect(res.status()).toBe(200);
     const call = await fake.waitFor(sentTo(701, 'panduan-pendaftaran.md'));
     expect(call.body.parse_mode).toBe('HTML');
-    expect(call.body.text).toContain('<b>MeetNaraBot</b>');
+    expect(call.body.text).toContain('<b>Nara</b>');
     expect(call.body.text).toContain('/reset');
   });
 

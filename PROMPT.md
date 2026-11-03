@@ -1,4 +1,4 @@
-# MeetNaraBot — Full Build Prompt (7-Layer)
+# Nara (Narasumber Anda) — Full Build Prompt (7-Layer)
 
 > Paste everything below the line into Gemini (Google AI Studio Build mode, Antigravity, or the Gemini app with code execution).
 > It is structured as seven XML-tagged layers. Each layer controls one failure mode, so when output drifts you can tell which layer to fix.
@@ -26,7 +26,7 @@ model id or binding exists, you say so in a code comment marked VERIFY.
 </role>
 
 <context>
-Product: "MeetNaraBot", a single-tenant chatbot that answers
+Product: "Nara" (short for "Narasumber Anda", Indonesian for "your trusted source"), a single-tenant chatbot that answers
 website visitors' questions ONLY from one document uploaded by the site owner, and
 always shows numbered citations to the excerpts it used.
 
@@ -338,11 +338,11 @@ marker stroke under key words and behind citation numbers.
 <landing_spec>
 public/index.html, fully bilingual through data-en attributes and synced with the widget
 language. Sections: floating rounded nav bar (brand, Fitur / Cara kerja anchors, ID|EN
-switch, "Dashboard pemilik" pill) -> centred hero (eyebrow pill, headline with a marker
+switch, "Dashboard pemilik" pill) -> centred hero (eyebrow pill "Nara · Narasumber Anda, ditenagai Gemini", headline with a marker
 highlight on "dokumen Anda menjawab", lede, dark "Coba tanya sekarang" pill that opens the
 widget + outlined "Lihat cara kerjanya") -> lilac stage block with two sticker cards (a
 document excerpt with a highlighted fact and a chat answer with citation [1] and its source)
--> "Kenapa MeetNaraBot" with three pastel feature blocks (mint, peach, sky) -> "Cara kerja",
+-> "Kenapa Nara" with three pastel feature blocks (mint, peach, sky) -> "Cara kerja",
 three numbered step cards -> dark ink closing band with a butter CTA -> footer disclaimer.
 </landing_spec>
 
@@ -508,7 +508,7 @@ tanyasaya/
 │                                  migrate, wrangler deploy, optional secrets ADMIN_PASSWORD /
 │                                  GEMINI_API_KEY / HF_TOKEN, then index the reference document)
 ├── public/index.html  public/admin.html  public/widget.js  public/widget.css
-├── docs/knowledge/meetnarabot.md  (the bot's own reference document: what MeetNaraBot is, how to ask,
+├── docs/knowledge/nara.md  (the bot's own reference document: what Nara is, how to ask,
 │                                   owner guide, privacy, limits, FAQ; one ## / ### section per topic)
 ├── scripts/seed-document.mjs      (indexes a Markdown file through the admin API with the dashboard's
 │                                   heading chunking; skips when a document is active unless --replace)
@@ -559,7 +559,7 @@ visitor's actual question or refuses.
 
 <example name="small_talk">
 Visitor: halo kak
-Expected: no retrieval, no LLM call. NDJSON: sources [] -> delta "Halo, aku **MeetNaraBot**. Aku
+Expected: no retrieval, no LLM call. NDJSON: sources [] -> delta "Halo, aku **Nara**. Aku
 menjawab pertanyaan seputar **panduan-pendaftaran.md** ... Ada yang ingin kamu tanyakan?" plus up to
 3 starter questions -> done {refused:false, provider:"smalltalk", model:"greeting"}.
 Visitor: terima kasih ya -> "Sama-sama. ..." (refused:false).
