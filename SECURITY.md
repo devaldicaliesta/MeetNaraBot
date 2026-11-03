@@ -36,6 +36,19 @@ Audit memakai alur yang sama (profil quick, satu agen) dan berfokus pada batas a
 
 Catatan: PBKDF2 memakai 30.000 iterasi agar login muat dalam batas CPU Workers gratis (sekitar 10 ms). Ini di bawah rekomendasi OWASP. Kompensasinya: kunci login per IP dan per email, minimal 10 karakter, dan password tidak boleh memuat email. Di paket Workers berbayar, naikkan `PBKDF2_ITERATIONS`; hash lama tetap berlaku karena jumlah iterasi disimpan per pengguna.
 
+## Audit ketiga: crosscheck seluruh kode (November 2026)
+
+Putaran ini memeriksa ulang seluruh kode setelah fitur multi-pengguna, dengan fokus pada pengaturan yang bisa diubah pengguna, sisi browser, dan siklus data. Rekamannya ada di `docs/security/audit-2026-11-run3-crosscheck.json` dan lolos `validate-findings.cjs`.
+
+| Temuan | Status | Tingkat | Perbaikan |
+|---|---|---|---|
+| Bot pengguna bisa memilih model Workers AI apa saja (misalnya model 70B), sehingga kuota bersama cepat habis | Terkonfirmasi | Sedang | Bot pengguna hanya boleh memakai dua model Workers AI yang diizinkan; dicek tepat sebelum `env.AI.run` (ada tesnya) |
+| "Buat ulang saran pertanyaan" memanggil AI tanpa batas | Terkonfirmasi | Rendah | 3 kali per menit per bot, dan dihitung dalam kuota harian bot pengguna |
+| Siapa pun bisa mendaftar memakai email orang lain (tanpa verifikasi email) | Terkonfirmasi, diterima | Rendah | Diterima untuk sekarang: akun kedaluwarsa dalam 7 hari dan tidak berisi data korban. Perbaikan penuh: tautan verifikasi email |
+| CSRF pada API akun dan admin | Ditolak | – | Kredensial hanya lewat header `Authorization`, tanpa cookie |
+| XSS lewat nama bot atau nama akun di dashboard | Ditolak | – | Di-escape atau memakai `textContent`; server membuang `<`, `>`, dan baris baru |
+| Menghabiskan CPU lewat hashing password saat login | Ditolak | – | Kunci login dicek sebelum hashing; tiap request adalah invokasi Worker terpisah |
+
 ## Penguatan yang aktif
 
 - **Login admin:** 8 kali salah per IP atau 100 kali salah secara global dalam 10 menit membuat semua permintaan admin ditolak, termasuk yang memakai password benar, sampai jendela waktunya berganti. Password yang lebih pendek dari 12 karakter ditandai di checklist Ringkasan.

@@ -1,0 +1,306 @@
+[
+  {
+    "verdict": "rejected",
+    "fingerprint": "public/admin.html:xss:bot-and-account-names",
+    "title": "Stored XSS through bot names or account names in the dashboard",
+    "description": "Bot names and e-mail addresses are rendered in the new switcher and account card.",
+    "claimed_root_cause": "User text inserted into HTML.",
+    "trace": [
+      {
+        "kind": "sink",
+        "file": "public/admin.html",
+        "line": 837,
+        "scope": "renderBotSwitch()",
+        "description": "Bot names in <option>."
+      }
+    ],
+    "evidence": [
+      {
+        "file": "public/admin.html",
+        "line": 837,
+        "description": "esc(b.name), esc(b.id)"
+      },
+      {
+        "file": "public/admin.html",
+        "line": 840,
+        "description": "textContent for account info"
+      }
+    ],
+    "reason": "All values are HTML-escaped or set as textContent; names are also stripped of <, > and newlines on the server; CSP limits script sources."
+  },
+  {
+    "verdict": "rejected",
+    "fingerprint": "src/index.ts:auth:csrf-on-bearer-api",
+    "title": "CSRF against the account and bot admin APIs",
+    "description": "State-changing account and admin routes.",
+    "claimed_root_cause": "Cross-site requests with ambient credentials.",
+    "trace": [
+      {
+        "kind": "entrypoint",
+        "file": "src/index.ts",
+        "line": 460,
+        "scope": "bearer()",
+        "description": "Credentials come only from the Authorization header."
+      }
+    ],
+    "evidence": [
+      {
+        "file": "src/index.ts",
+        "line": 460,
+        "description": "No cookies are issued; tokens live in sessionStorage and are sent explicitly."
+      }
+    ],
+    "reason": "Without ambient credentials a cross-site page cannot authenticate; /api/auth/* and /api/admin/* send no CORS headers, so cross-origin reads are also blocked."
+  },
+  {
+    "verdict": "rejected",
+    "fingerprint": "src/index.ts:login:pbkdf2-cpu-exhaustion",
+    "title": "CPU exhaustion through password hashing on sign-in",
+    "description": "Each sign-in runs PBKDF2.",
+    "claimed_root_cause": "Unauthenticated expensive work.",
+    "trace": [
+      {
+        "kind": "entrypoint",
+        "file": "src/index.ts",
+        "line": 502,
+        "scope": "POST /api/auth/login",
+        "description": "Unauthenticated."
+      },
+      {
+        "kind": "sink",
+        "file": "src/index.ts",
+        "line": 506,
+        "scope": "loginLocked()",
+        "description": "Lock checked before any hashing."
+      }
+    ],
+    "evidence": [
+      {
+        "file": "src/index.ts",
+        "line": 506,
+        "description": "if (await loginLocked(c, scope)) return 429 — before verifyLogin()"
+      }
+    ],
+    "reason": "Hashing costs ~5 ms per attempt and only 8 failed attempts per IP per 10 minutes reach it; each request is its own Worker invocation, so there is no shared CPU to exhaust."
+  },
+  {
+    "verdict": "confirmed",
+    "fingerprint": "src/index.ts:signup:email-squatting-without-verification",
+    "title": "Anyone can register someone else's e-mail address",
+    "description": "Sign-up does not verify e-mail ownership, so an attacker can register a victim's address first; the victim then gets 409 until the squatted account expires after 7 days.",
+    "root_cause": "No e-mail ownership proof before creating the account.",
+    "intended_behavior": "Only the owner of an e-mail address can create an account for it.",
+    "trace": [
+      {
+        "kind": "entrypoint",
+        "file": "src/index.ts",
+        "line": 478,
+        "scope": "POST /api/auth/signup",
+        "description": "Unauthenticated."
+      },
+      {
+        "kind": "sink",
+        "file": "src/index.ts",
+        "line": 495,
+        "scope": "createUser()",
+        "description": "Account bound to an unverified e-mail."
+      }
+    ],
+    "evidence": [
+      {
+        "file": "src/index.ts",
+        "line": 496,
+        "description": "Second sign-up with the same e-mail gets 409"
+      }
+    ],
+    "conditions": [
+      {
+        "kind": "user_interaction",
+        "description": "Attacker knows the victim's e-mail and signs up first."
+      }
+    ],
+    "execution": {
+      "attacker_perspective": "Unauthenticated visitor.",
+      "payloads": [
+        "POST /api/auth/signup {email:'victim@example.com', ...}"
+      ],
+      "instructions": [
+        "Sign up with an address you do not own; the real owner's sign-up then returns 409."
+      ],
+      "observed_result": "Covered by the duplicate-e-mail test (409)."
+    },
+    "remediation": {
+      "strategy": "Accepted for now: accounts expire after 7 days and hold no data of the victim. Proper fix: e-mail verification link (Cloudflare Email Routing / an e-mail API) before activation.",
+      "code_changes": []
+    },
+    "severity": {
+      "likelihood": {
+        "score": "low",
+        "reason": "Targeted, needs the victim's address in advance."
+      },
+      "impact": {
+        "score": "low",
+        "reason": "Delays the victim's sign-up by up to 7 days; no access to the victim's data."
+      },
+      "overall_severity": "low"
+    },
+    "confidence": {
+      "score": "high",
+      "reason": "Deterministic from source."
+    }
+  },
+  {
+    "verdict": "confirmed",
+    "fingerprint": "src/index.ts:suggestions-regenerate:unthrottled-ai-call",
+    "title": "Suggestion regeneration called the AI without any limit",
+    "description": "POST /api/admin/suggestions/regenerate ran generateSuggestions (an LLM call) on every request with no rate limit or quota, so an owner could loop it to spend shared AI budget.",
+    "root_cause": "An AI-spending admin action was not metered.",
+    "intended_behavior": "Regeneration is rate-limited per bot and counted in the user bot's daily quota.",
+    "trace": [
+      {
+        "kind": "entrypoint",
+        "file": "src/index.ts",
+        "line": 807,
+        "scope": "POST /api/admin/suggestions/regenerate",
+        "description": "Owner-triggered."
+      },
+      {
+        "kind": "sink",
+        "file": "src/index.ts",
+        "line": 817,
+        "scope": "generateSuggestions()",
+        "description": "LLM call through the bot's chain."
+      }
+    ],
+    "evidence": [
+      {
+        "file": "src/index.ts",
+        "line": 812,
+        "description": "Fixed: allow(`regen:${bot}`, 3) per minute and dailyQuota('owner-regen', 20, ...) for user bots"
+      }
+    ],
+    "conditions": [
+      {
+        "kind": "authentication_level",
+        "description": "Any self-registered account with an indexed document."
+      }
+    ],
+    "execution": {
+      "attacker_perspective": "Owner of a user bot.",
+      "payloads": [
+        "Repeated POST /api/admin/suggestions/regenerate"
+      ],
+      "instructions": [
+        "Reason from source: no limiter before the AI call."
+      ],
+      "observed_result": "Source-confirmed; now returns 429 after 3 calls per minute."
+    },
+    "remediation": {
+      "strategy": "Per-bot rate limit plus daily quota before the AI call.",
+      "code_changes": [
+        {
+          "file_name": "src/index.ts",
+          "fixed_code": "if (!allow(`regen:${bot}`, 3)) return 429; if (bot !== DEFAULT_BOT && !(await dailyQuota(...))) return 429;"
+        }
+      ]
+    },
+    "severity": {
+      "likelihood": {
+        "score": "medium",
+        "reason": "Reachable by any account."
+      },
+      "impact": {
+        "score": "low",
+        "reason": "Bounded by the per-isolate rate and the platform daily total."
+      },
+      "overall_severity": "low"
+    },
+    "confidence": {
+      "score": "high",
+      "reason": "Direct source path."
+    }
+  },
+  {
+    "verdict": "confirmed",
+    "fingerprint": "src/llm.ts:workers-ai:user-chosen-model",
+    "title": "User bots could run any Workers AI model on the platform's account",
+    "description": "normalizeSettings accepts any model string for the 'workers-ai' provider, and openStream/completeChat passed it straight to env.AI.run. A free account could configure a much larger model (for example a 70B model) for its bot and its owner tests, multiplying the neurons each question costs on the shared platform account.",
+    "root_cause": "The model id for the platform-paid provider was owner-controlled with no allow-list at the call site.",
+    "intended_behavior": "User bots may only call the allow-listed Workers AI chat models; other providers use the owner's own keys.",
+    "trace": [
+      {
+        "kind": "entrypoint",
+        "file": "src/index.ts",
+        "line": 653,
+        "scope": "POST /api/admin/config",
+        "description": "Owner saves settings.chain with provider 'workers-ai' and any model."
+      },
+      {
+        "kind": "propagation",
+        "file": "src/settings.ts",
+        "line": 163,
+        "scope": "normalizeSettings()",
+        "description": "Model string kept as is (only length-limited)."
+      },
+      {
+        "kind": "sink",
+        "file": "src/llm.ts",
+        "line": 101,
+        "scope": "openStream()",
+        "description": "env.AI.run(entry.model, ...) on the shared account."
+      }
+    ],
+    "evidence": [
+      {
+        "file": "src/llm.ts",
+        "line": 93,
+        "description": "Fixed: assertWorkersAiModel() rejects non-allow-listed models when env.TENANT_BOT is set"
+      },
+      {
+        "file": "src/llm.ts",
+        "line": 168,
+        "description": "Fixed: same check in completeChat()"
+      }
+    ],
+    "conditions": [
+      {
+        "kind": "authentication_level",
+        "description": "Any self-registered account."
+      }
+    ],
+    "execution": {
+      "attacker_perspective": "Owner of a user bot.",
+      "payloads": [
+        "POST /api/admin/test-provider {provider:'workers-ai', model:'@cf/meta/llama-3.3-70b-instruct-fp8-fast'}"
+      ],
+      "instructions": [
+        "Run the Worker locally, sign in as a seeded user and test a large Workers AI model."
+      ],
+      "observed_result": "After the fix the call is refused before env.AI.run with 'tidak tersedia untuk bot pengguna' (Playwright: 'user bots cannot pick expensive Workers AI models')."
+    },
+    "remediation": {
+      "strategy": "Mark tenant environments (tenantEnv sets TENANT_BOT) and enforce the Workers AI model allow-list right before every env.AI.run chat call.",
+      "code_changes": [
+        {
+          "file_name": "src/llm.ts",
+          "fixed_code": "if (env.TENANT_BOT && model !== WORKERS_AI_PRIMARY && model !== WORKERS_AI_BACKUP) throw { status: 403, ... }"
+        }
+      ]
+    },
+    "severity": {
+      "likelihood": {
+        "score": "medium",
+        "reason": "Sign-up is open; the setting is reachable through the documented config API."
+      },
+      "impact": {
+        "score": "medium",
+        "reason": "Faster exhaustion of the shared AI allowance for every tenant; no data exposure."
+      },
+      "overall_severity": "medium"
+    },
+    "confidence": {
+      "score": "high",
+      "reason": "Direct source path; fix covered by a local Worker test."
+    }
+  }
+]

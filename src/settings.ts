@@ -275,6 +275,7 @@ export function tenantEnv(env: Bindings, bot: string): Bindings {
   if (bot === 'default') return env;
   const copy = { ...env } as Record<string, unknown>;
   for (const k of PROVIDER_SECRETS) delete copy[k];
+  copy.TENANT_BOT = bot;
   return copy as Bindings;
 }
 

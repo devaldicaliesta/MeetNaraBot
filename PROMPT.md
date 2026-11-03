@@ -520,6 +520,9 @@ Multi-user isolation and shared budget
 - Tenant isolation is deterministic, never prompt-based: Vectorize query filter {bot}, FTS and
   chunk queries with bot_id, and every vector candidate re-checked in D1 with bot_id before it can
   become a passage. Chunk/vector ids use the full random file UUID (never a prefix).
+- User bots may only call the allow-listed Workers AI chat models (checked right before every
+  env.AI.run; tenantEnv marks the environment), and suggestion regeneration is limited to 3 per
+  minute per bot and counted in the daily quota.
 - User bots: documents at most 400 chunks; Workers AI embeddings for all user bots together at
   most PLATFORM_DAILY_EMBEDS (4000) chunks per day; owner test chats count toward daily quotas.
 - Account lifecycle: 7-day accounts; sessions never outlive the account; a daily Cron Trigger

@@ -99,7 +99,7 @@ test('anyone can sign up, get their own bot, add a second one and embed it', asy
 
   await page.goto('/admin#pasang');
   await expect(page.locator('#snippet')).toContainText(`bot="${botId}"`);
-  await expect(page.locator('#channels')).toContainText('bot platform');
+  await expect(page.locator('#channelsPanel')).toBeHidden();
 
   page.once('dialog', (d) => d.accept());
   await page.click('#botDelete');

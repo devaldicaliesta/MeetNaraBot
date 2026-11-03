@@ -808,7 +808,13 @@ app.post('/api/admin/suggestions/regenerate', async (c) => {
   const bot = c.get('bot');
   const file = await activeFile(c.env.DB, bot);
   if (!file || file.status !== 'selesai') return c.json({ error: tr(c, 'Belum ada dokumen aktif.', 'No active document yet.') }, 400);
-  const suggestions = await generateSuggestions(c.env, await getSettings(c.env, bot), file.name, bot);
+  // Each regeneration is an AI call: a few per minute, and user bots count it in the daily quota.
+  if (!allow(`regen:${bot}`, 3)) return c.json({ error: tr(c, 'Tunggu sebentar sebelum membuat ulang saran.', 'Wait a moment before regenerating suggestions.') }, 429);
+  const settings = await getSettings(c.env, bot);
+  if (bot !== DEFAULT_BOT && !(await dailyQuota(c.env, 'owner-regen', 20, settings.limits.dailyTotal, bot))) {
+    return c.json({ error: tr(c, 'Kuota hari ini untuk membuat ulang saran sudah habis.', "Today's quota for regenerating suggestions is used up.") }, 429);
+  }
+  const suggestions = await generateSuggestions(c.env, settings, file.name, bot);
   await writeSetting(c.env.DB, settingKey('auto_suggestions', bot), suggestions);
   return c.json({ suggestions });
 });

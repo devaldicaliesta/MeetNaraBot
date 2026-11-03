@@ -82,9 +82,15 @@ input[type=range]{width:100%;accent-color:var(--laut)}
 .auth-tabs{margin:0 0 14px}
 .linkish{border:0;background:none;padding:0;font:inherit;font-size:13px;font-weight:600;color:var(--laut);cursor:pointer;justify-self:center;text-decoration:underline}
 .bot-switch{display:grid;gap:8px;margin:0 8px 20px;padding:12px;border:1px solid var(--line);border-radius:var(--r-sm);background:var(--canvas)}
-.bot-switch .row{gap:6px}
-.bot-switch select{padding:7px 10px;font-size:13.5px}
-.account-info{font-size:12px;color:var(--ink-3);line-height:1.4}
+.bot-switch .row{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.bot-switch .row .btn{width:100%}
+.bot-switch select{padding:8px 10px;font-size:13.5px;font-weight:600}
+.bot-switch .field>span{font-size:12px;color:var(--ink-3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px}
+.account-info{font-size:12px;color:var(--ink-3);line-height:1.45;overflow-wrap:anywhere}
+.account-card{display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;padding:16px 20px;margin-bottom:18px;border-radius:var(--r);background:var(--butter);color:var(--ink)}
+.account-card b{font-size:15px}
+.account-card span{font-size:13.5px;color:#3b3748}
+.account-card .days{font-weight:800;font-size:22px;letter-spacing:-.02em}
 .brand{display:flex;align-items:center;gap:12px;margin-bottom:28px}
 .brand-mark{display:grid;place-items:center;width:42px;height:42px;border-radius:14px;background:var(--laut);color:#fff;font-weight:800;font-size:20px}
 .brand-name{font-size:20px;font-weight:800;letter-spacing:-.02em}
@@ -220,7 +226,7 @@ input[type=range]{width:100%;accent-color:var(--laut)}
 
 /* ---------- Embed ---------- */
 .snippet{position:relative}
-.snippet pre{margin:0;padding:16px;border-radius:var(--r-sm);background:var(--ink);color:#ebe7f5;overflow:auto;white-space:pre}
+.snippet pre{margin:0;padding:52px 16px 16px;border-radius:var(--r-sm);background:var(--ink);color:#ebe7f5;overflow:auto;white-space:pre}
 .snippet .btn{position:absolute;top:8px;right:8px}
 
 /* ---------- Save bar & toast ---------- */
@@ -239,6 +245,11 @@ input[type=range]{width:100%;accent-color:var(--laut)}
   .side,.main{min-width:0}
   .side{position:sticky;top:0;z-index:10;height:auto;border-right:0;border-bottom:1px solid var(--line);padding:12px 14px}
   .side .brand{margin:0 4px 10px}
+  .bot-switch{grid-template-columns:minmax(0,1fr) auto;align-items:end;margin:0 4px 10px;padding:8px;gap:6px}
+  .bot-switch .field>span,.bot-switch .account-info{display:none}
+  .bot-switch .row{grid-template-columns:auto auto}
+  .bot-switch .row .btn{width:auto;padding:0 10px}
+  body > tanyasaya-chat{display:none}
   .nav{grid-auto-flow:column;overflow:auto;grid-auto-columns:max-content}
   .nav a[aria-current=page]::before{display:none}
   .side-foot{position:absolute;top:16px;right:14px;display:flex;margin:0;padding:0}
@@ -247,6 +258,9 @@ input[type=range]{width:100%;accent-color:var(--laut)}
   .xray{position:static}
 }
 @media (max-width:640px){
+  .composer{flex-wrap:wrap}
+  .composer input{flex:1 1 100%}
+  .composer .btn{flex:1}
   .grid2,.grid3{grid-template-columns:1fr}
   .figures{grid-template-columns:1fr;gap:10px}
   .figure{padding:16px 18px}
@@ -320,6 +334,7 @@ input[type=range]{width:100%;accent-color:var(--laut)}
     <!-- ===== Ringkasan ===== -->
     <section class="page" data-page="ringkasan">
       <div class="page-head"><div><h1 id="hello">Ringkasan</h1><p>Status chatbot dan apa yang perlu disiapkan sebelum dipasang di website.</p></div></div>
+      <div class="account-card hidden" id="accountCard" data-noi18n></div>
       <div class="figures">
         <div class="figure"><b id="stTotal">–</b><span>pertanyaan pengunjung, 7 hari</span></div>
         <div class="figure"><b id="stRefused">–</b><span>tidak ditemukan di dokumen</span></div>
@@ -504,7 +519,7 @@ input[type=range]{width:100%;accent-color:var(--laut)}
         <div class="snippet"><pre id="snippet"></pre><button class="btn sm" type="button" id="copySnippet">Salin kode</button></div>
         <div class="grid3" style="margin-top:16px">
           <label class="field"><span>Posisi</span><select id="optPos"><option value="right">Kanan bawah</option><option value="left">Kiri bawah</option></select></label>
-          <label class="field"><span>Bahasa widget</span><select id="optLang"><option value="auto">Otomatis (bahasa browser pengunjung)</option><option value="id">Bahasa Indonesia</option><option value="en">English</option></select></label>
+          <label class="field"><span>Bahasa widget</span><select id="optLang"><option value="auto">Otomatis (ikuti browser)</option><option value="id">Bahasa Indonesia</option><option value="en">English</option></select></label>
           <label class="field"><span>Tema</span><select id="optTheme"><option value="light">Terang</option><option value="dark">Gelap</option><option value="auto">Ikuti perangkat pengunjung</option></select></label>
         </div>
       </div>
@@ -512,7 +527,7 @@ input[type=range]{width:100%;accent-color:var(--laut)}
         <div class="panel-head"><div><h2>Domain yang diizinkan</h2><p>Satu domain per baris, contoh <code>https://tokosaya.com</code>. Kosongkan untuk mengizinkan semua domain. Domain dashboard ini selalu diizinkan.</p></div></div>
         <textarea data-k="allowedOrigins" rows="4" placeholder="https://tokosaya.com&#10;https://www.tokosaya.com"></textarea>
       </div>
-      <div class="panel">
+      <div class="panel" id="channelsPanel">
         <div class="panel-head"><div><h2>Telegram &amp; WhatsApp</h2><p>Bot yang sama bisa menjawab lewat chat Telegram dan WhatsApp, memakai dokumen, pengaturan, dan kuota yang sama dengan widget.</p></div><button class="btn ghost sm" type="button" id="channelsRefresh">Muat ulang</button></div>
         <div class="keys" id="channels"><div class="empty">Memuat status saluran…</div></div>
       </div>
@@ -603,7 +618,7 @@ const DICT = {
   'Hapus semua riwayat': 'Delete all history', 'Pengunjung': 'Visitors', 'Tidak terjawab': 'Unanswered', 'Uji admin': 'Admin tests', 'Belum ada riwayat di kategori ini.': 'No history in this category yet.',
   'Tempel kode ini sebelum tag': 'Paste this code before the', 'di website Anda. Widget memakai Shadow DOM, jadi tampilannya tidak bentrok dengan CSS website.': "tag on your website. The widget uses Shadow DOM, so it won't clash with your site's CSS.",
   'Salin kode': 'Copy code', 'Posisi': 'Position', 'Kanan bawah': 'Bottom right', 'Kiri bawah': 'Bottom left', 'Tema': 'Theme', 'Terang': 'Light', 'Gelap': 'Dark', 'Ikuti perangkat pengunjung': "Follow the visitor's device",
-  'Bahasa widget': 'Widget language', 'Otomatis (bahasa browser pengunjung)': "Automatic (visitor's browser language)",
+  'Bahasa widget': 'Widget language', 'Otomatis (ikuti browser)': 'Automatic (follow browser)',
   'Domain yang diizinkan': 'Allowed domains', 'Satu domain per baris, contoh': 'One domain per line, for example', '. Kosongkan untuk mengizinkan semua domain. Domain dashboard ini selalu diizinkan.': '. Leave empty to allow every domain. This dashboard\'s domain is always allowed.',
   'Ada perubahan yang belum disimpan': 'You have unsaved changes', 'Batalkan': 'Discard', 'Simpan perubahan': 'Save changes',
   'Perubahan disimpan dan langsung berlaku di widget.': 'Changes saved and live in the widget.', 'Sesi berakhir atau kata sandi salah.': 'Session expired or wrong password.', 'Sesi berakhir.': 'Session expired.', 'Gagal masuk.': 'Sign-in failed.',
@@ -984,8 +999,18 @@ window.addEventListener('beforeunload', (e) => { if (S.draft && dirtyCheck()) { 
 /* =================================================================== */
 /*  Overview                                                            */
 /* =================================================================== */
+function renderAccountCard() {
+  const box = $('#accountCard');
+  box.classList.toggle('hidden', S.mode !== 'user' || !S.user);
+  if (S.mode !== 'user' || !S.user) return;
+  const end = new Date(S.user.expires_at);
+  const days = Math.max(0, Math.ceil((end - Date.now()) / 864e5));
+  box.innerHTML = `<div><b>${esc(S.user.name || S.user.email)}</b><br><span>${esc(S.user.email)} · ${L('akun aktif sampai', 'account active until')} ${esc(end.toLocaleString(LOCALE(), { dateStyle: 'medium', timeStyle: 'short' }))}</span></div>`
+    + `<div><span class="days">${days}</span> <span>${L('hari tersisa', days === 1 ? 'day left' : 'days left')}</span></div>`;
+}
 function renderOverview() {
   const st = S.status;
+  renderAccountCard();
   $('#sideName').textContent = st.botName;
   $('#sideMark').textContent = st.botName.charAt(0).toUpperCase();
   $('#stTotal').textContent = fmt(st.stats?.total || 0);
@@ -1513,6 +1538,9 @@ $('#logClear').addEventListener('click', async () => {
 /* ---------- Telegram & WhatsApp ---------- */
 async function loadChannels() {
   const box = $('#channels');
+  // Telegram/WhatsApp run on platform secrets, so the panel only exists for the platform bot.
+  $('#channelsPanel').classList.toggle('hidden', S.mode === 'user');
+  if (S.mode === 'user') return;
   try {
     const ch = await api('/api/admin/channels');
     const tg = ch.telegram, wa = ch.whatsapp;

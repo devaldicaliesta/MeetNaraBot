@@ -86,8 +86,19 @@ async function* readSse(stream: ReadableStream<Uint8Array>): AsyncGenerator<stri
   }
 }
 
+/**
+ * User bots run on the platform's shared Workers AI account, so they may only call the two
+ * allow-listed chat models (a bot owner could otherwise pick a far more expensive model).
+ */
+function assertWorkersAiModel(env: Bindings, model: string) {
+  if (env.TENANT_BOT && model !== WORKERS_AI_PRIMARY && model !== WORKERS_AI_BACKUP) {
+    throw { status: 403, message: `Model Workers AI "${model.slice(0, 80)}" tidak tersedia untuk bot pengguna. Pakai ${WORKERS_AI_PRIMARY} atau ${WORKERS_AI_BACKUP}.` };
+  }
+}
+
 async function openStream(env: Bindings, keys: KeyStore, settings: BotSettings, entry: ChainEntry, messages: ChatMessage[]) {
   if (entry.provider === 'workers-ai') {
+    assertWorkersAiModel(env, entry.model);
     const res: any = await env.AI.run(entry.model as any, { messages, stream: true, max_tokens: settings.maxTokens, temperature: settings.temperature } as any);
     if (res instanceof ReadableStream) return res as ReadableStream<Uint8Array>;
     // Some models ignore `stream` → wrap the full answer as one SSE event.
@@ -154,6 +165,7 @@ export async function completeChat(
   for (const entry of buildChain(settings)) {
     try {
       if (entry.provider === 'workers-ai') {
+        assertWorkersAiModel(env, entry.model);
         const res: any = await env.AI.run(entry.model as any, { messages, max_tokens: maxTokens, temperature: 0.1 } as any);
         const text = deltaFrom(res).trim();
         if (text) return { text, provider: entry.provider, model: entry.model };

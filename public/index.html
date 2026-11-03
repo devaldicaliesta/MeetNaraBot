@@ -115,12 +115,14 @@ footer{padding:36px 0 120px;color:var(--ink-3);font-size:13.5px;display:flex;jus
 @media (max-width:560px){
   .wrap{padding:0 16px}
   .top{padding:0 10px}
-  .nav .btn.sm.line{display:none}
-  .nav .btn.sm{padding:0 14px}
+  .nav{gap:6px}
+  .nav .btn.sm{height:36px;padding:0 12px;font-size:13px}
+  .bar{padding:8px 8px 8px 12px}
   .bar{padding-left:14px}
   .card{box-shadow:4px 4px 0 var(--ink);padding:20px}
   .stage,.band{border-radius:28px}
 }
+@media (max-width:420px){.brand span{display:none}.lang-switch button{padding:5px 8px}}
 @media (prefers-reduced-motion:reduce){*{transition-duration:1ms!important}html{scroll-behavior:auto}}
 </style>
 </head>

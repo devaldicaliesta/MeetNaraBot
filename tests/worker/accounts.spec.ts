@@ -84,6 +84,15 @@ test("a user bot never sees the platform's provider secrets", async ({ request }
   expect(hf(await user.json())).toMatchObject({ configured: false, source: null });
 });
 
+test('user bots cannot pick expensive Workers AI models', async ({ request }) => {
+  const a = await login(request, 'owner-a@qa.test', 'owner-a-password');
+  const headers = { Authorization: `Bearer ${a.body.token}`, 'X-Bot-Id': 'qabotaaaa1' };
+  const res = await request.post('/api/admin/test-provider', { headers, data: { provider: 'workers-ai', model: '@cf/meta/llama-3.3-70b-instruct-fp8-fast' } });
+  const body = await res.json();
+  expect(body.ok).toBe(false);
+  expect(body.error).toContain('tidak tersedia untuk bot pengguna');
+});
+
 test('unknown bots are 404 and expired accounts stop answering', async ({ request }) => {
   expect((await request.get('/api/public/info?bot=doesnotexist1')).status()).toBe(404);
   const info = await request.get('/api/public/info?bot=qaexpired1');

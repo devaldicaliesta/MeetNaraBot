@@ -9,6 +9,8 @@ export type Bindings = {
   /** Random token minted by the deploy workflow on every run (never shown to anyone). It can only
    *  index the reference document and connect Telegram, so a fresh install works without ADMIN_PASSWORD. */
   DEPLOY_TOKEN?: string;
+  /** Set by tenantEnv() for user bots: limits them to the allow-listed Workers AI models. */
+  TENANT_BOT?: string;
   /** Optional caps for the multi-user platform (wrangler vars). */
   PLATFORM_DAILY_TOTAL?: string | number;
   MAX_SIGNUPS_PER_DAY?: string | number;
