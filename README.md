@@ -175,3 +175,7 @@ Tidak ada kode yang membuat interaksi buatan. Endpoint chat publik dilindungi:
 - Skala skor `@cf/baai/bge-reranker-base` (dinormalisasi dengan sigmoid bila di luar 0–1).
 - Parameter `reasoning_effort` di endpoint OpenAI-compatible Gemini untuk `gemini-3.5-flash`.
 - Model embedding `gemini-embedding-2` dengan `outputDimensionality: 1024`.
+
+## Lisensi
+
+MeetNaraBot dirilis dengan [Apache License 2.0](LICENSE). Anda boleh memakai, mengubah, dan mendistribusikan ulang kode ini, termasuk untuk keperluan komersial, selama menyertakan file `LICENSE` dan `NOTICE` serta mencantumkan perubahan yang Anda buat. Hak cipta © 2026 devaldicaliesta.
