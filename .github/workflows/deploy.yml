@@ -24,7 +24,7 @@ on:
   workflow_dispatch:
     inputs:
       reseed:
-        description: Replace the active document with docs/knowledge/nara.md
+        description: Replace the active document with docs/knowledge/nara.md (only if it came from that file; documents you uploaded are kept)
         type: boolean
         default: false
 

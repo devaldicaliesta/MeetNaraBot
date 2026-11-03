@@ -5,12 +5,16 @@
 //   ADMIN_PASSWORD=... node scripts/seed-document.mjs https://<worker>.workers.dev docs/knowledge/nara.md [--replace]
 //
 // Without --replace it does nothing when a document is already active, so redeploys never wipe
-// a document the owner uploaded through the dashboard.
+// a document the owner uploaded through the dashboard. With --replace it only replaces a document
+// that came from this seed script (same file name, or the bot's earlier reference documents); a
+// document the owner uploaded is left alone unless --force is also given.
 import fs from 'node:fs';
 import path from 'node:path';
 
 const [base, file, ...flags] = process.argv.slice(2);
 const replace = flags.includes('--replace');
+const force = flags.includes('--force');
+const SEEDED_NAMES = new Set(['nara.md', 'meetnarabot.md', 'tanyasaya.md']);
 const password = process.env.ADMIN_PASSWORD;
 if (!base || !file) { console.error('Usage: node scripts/seed-document.mjs <worker-url> <file.md> [--replace]'); process.exit(2); }
 if (!password) { console.error('ADMIN_PASSWORD is not set.'); process.exit(2); }
@@ -100,6 +104,10 @@ console.log(`${name}: ${chunks.length} chunks`);
 const status = await api('GET', '/api/admin/status');
 if (status.file) {
   if (!replace) { console.log(`A document is already active (${status.file.name}); nothing to do. Use --replace to overwrite it.`); process.exit(0); }
+  if (!force && !SEEDED_NAMES.has(status.file.name) && status.file.name !== name) {
+    console.log(`::warning::The active document "${status.file.name}" was uploaded by the owner, so it was kept. Use --force to replace it anyway.`);
+    process.exit(0);
+  }
   await api('DELETE', '/api/admin/file');
   console.log(`Removed ${status.file.name}`);
 }
