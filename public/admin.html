@@ -270,7 +270,6 @@ input[type=range]{width:100%;accent-color:var(--laut)}
       <h2>Masuk</h2>
       <label class="field"><span>Kata sandi admin</span>
         <input type="password" id="pass" autocomplete="current-password" required>
-        <small>Kata sandi dari secret <code>ADMIN_PASSWORD</code> (GitHub Actions atau <code>wrangler secret put</code>).</small>
       </label>
       <div class="err hidden" id="loginErr"></div>
       <button class="btn" type="submit">Masuk ke dashboard</button>
@@ -515,7 +514,7 @@ const L = (id, en) => (LANG.cur === 'en' ? en : id);
 const LOCALE = () => (LANG.cur === 'en' ? 'en-GB' : 'id-ID');
 const DICT = {
   'Nara': 'Nara', 'Dashboard pemilik chatbot': 'Chatbot owner dashboard', 'Masuk': 'Sign in', 'Kata sandi admin': 'Admin password',
-  'Kata sandi dari secret': 'The password from the', '(GitHub Actions atau': '(GitHub Actions or', 'Masuk ke dashboard': 'Sign in to the dashboard', 'Dashboard': 'Dashboard', 'Menu': 'Menu',
+  'Masuk ke dashboard': 'Sign in to the dashboard', 'Dashboard': 'Dashboard', 'Menu': 'Menu',
   'Ringkasan': 'Overview', 'Dokumen': 'Document', 'Bot & model': 'Bot & model', 'Pencarian (RAG)': 'Retrieval (RAG)', 'Uji coba': 'Playground',
   'Riwayat': 'History', 'Pasang widget': 'Embed widget', 'Lihat halaman demo': 'View demo page', 'Keluar': 'Sign out',
   'Status chatbot dan apa yang perlu disiapkan sebelum dipasang di website.': 'Chatbot status and what to set up before embedding it on your website.',
