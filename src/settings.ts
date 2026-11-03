@@ -99,7 +99,7 @@ export type BotSettings = {
 };
 
 export const DEFAULT_SETTINGS: BotSettings = {
-  name: 'TanyaSaya',
+  name: 'MeetNaraBot',
   language: 'id',
   greeting: '',
   greetingEn: '',

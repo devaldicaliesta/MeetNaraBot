@@ -1,4 +1,4 @@
-/* TanyaSaya widget — rendered inside a shadow root, so nothing leaks into the host page. */
+/* MeetNaraBot widget — rendered inside a shadow root, so nothing leaks into the host page. */
 :host {
   --ts-accent: #5b3fe0;
   --ts-accent-ink: #ffffff;

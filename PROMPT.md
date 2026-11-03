@@ -1,4 +1,4 @@
-# TanyaSaya — Full Build Prompt (7-Layer)
+# MeetNaraBot — Full Build Prompt (7-Layer)
 
 > Paste everything below the line into Gemini (Google AI Studio Build mode, Antigravity, or the Gemini app with code execution).
 > It is structured as seven XML-tagged layers. Each layer controls one failure mode, so when output drifts you can tell which layer to fix.
@@ -26,7 +26,7 @@ model id or binding exists, you say so in a code comment marked VERIFY.
 </role>
 
 <context>
-Product: "TanyaSaya" ("Ask Me" in Indonesian), a single-tenant chatbot that answers
+Product: "MeetNaraBot", a single-tenant chatbot that answers
 website visitors' questions ONLY from one document uploaded by the site owner, and
 always shows numbered citations to the excerpts it used.
 
@@ -336,7 +336,7 @@ switch, "Dashboard pemilik" pill) -> centred hero (eyebrow pill, headline with a
 highlight on "dokumen Anda menjawab", lede, dark "Coba tanya sekarang" pill that opens the
 widget + outlined "Lihat cara kerjanya") -> lilac stage block with two sticker cards (a
 document excerpt with a highlighted fact and a chat answer with citation [1] and its source)
--> "Kenapa TanyaSaya" with three pastel feature blocks (mint, peach, sky) -> "Cara kerja",
+-> "Kenapa MeetNaraBot" with three pastel feature blocks (mint, peach, sky) -> "Cara kerja",
 three numbered step cards -> dark ink closing band with a butter CTA -> footer disclaimer.
 </landing_spec>
 
@@ -526,7 +526,7 @@ visitor's actual question or refuses.
 
 <example name="small_talk">
 Visitor: halo kak
-Expected: no retrieval, no LLM call. NDJSON: sources [] -> delta "Halo, aku **TanyaSaya**. Aku
+Expected: no retrieval, no LLM call. NDJSON: sources [] -> delta "Halo, aku **MeetNaraBot**. Aku
 menjawab pertanyaan seputar **panduan-pendaftaran.md** ... Ada yang ingin kamu tanyakan?" plus up to
 3 starter questions -> done {refused:false, provider:"smalltalk", model:"greeting"}.
 Visitor: terima kasih ya -> "Sama-sama. ..." (refused:false).

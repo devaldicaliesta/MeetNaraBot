@@ -1,4 +1,4 @@
-/*! TanyaSaya widget v2 — <tanyasaya-chat> web component (shadow DOM, no dependencies). */
+/*! MeetNaraBot widget v2 — <tanyasaya-chat> web component (shadow DOM, no dependencies). */
 (function () {
   "use strict";
 
@@ -183,8 +183,8 @@
       wrap.innerHTML =
         '<section class="panel" role="dialog" aria-modal="false" aria-labelledby="ts-title">' +
           '<header class="head">' +
-            '<div class="avatar" aria-hidden="true">T</div>' +
-            '<div class="title"><strong id="ts-title">TanyaSaya</strong><span class="sub"></span></div>' +
+            '<div class="avatar" aria-hidden="true">M</div>' +
+            '<div class="title"><strong id="ts-title">MeetNaraBot</strong><span class="sub"></span></div>' +
             '<button type="button" class="icon-btn lang"></button>' +
             '<button type="button" class="icon-btn reset">' + ICONS.reset + "</button>" +
             '<button type="button" class="icon-btn close">' + ICONS.close + "</button>" +

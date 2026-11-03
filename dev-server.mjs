@@ -21,7 +21,7 @@ const LAYERS = {
   examples: '<example>\nVisitor: Berapa lama proses pendaftaran?\nAssistant: Proses pendaftaran memakan waktu **3 hari kerja** [1].\n</example>',
 };
 const DEFAULTS = {
-  name: 'TanyaSaya', language: 'id', greeting: '', greetingEn: '', suggestions: [], suggestionsEn: [],
+  name: 'MeetNaraBot', language: 'id', greeting: '', greetingEn: '', suggestions: [], suggestionsEn: [],
   refusalMessage: 'Maaf, informasi itu tidak ada di dokumen yang saya miliki.', refusalMessageEn: "Sorry, that information isn't in the document I have.",
   launcherLabel: '', launcherLabelEn: '', themeColor: '#5B3FE0', prompt: { ...LAYERS },
   chain: [{ provider: 'gemini', model: 'gemini-3.8-flash' }, { provider: 'gemini', model: 'gemini-3.5-flash-lite' }],
@@ -180,4 +180,4 @@ http.createServer(async (req, res) => {
     return fs.createReadStream(fp).pipe(res);
   }
   res.writeHead(404); res.end('Not found');
-}).listen(PORT, () => console.log(`Mock TanyaSaya: http://localhost:${PORT}  ·  dashboard /admin.html  ·  kata sandi: ${PASSWORD === 'dev' ? 'dev (ubah dengan ADMIN_PASSWORD=...)' : '(dari ADMIN_PASSWORD)'}`));
+}).listen(PORT, () => console.log(`Mock MeetNaraBot: http://localhost:${PORT}  ·  dashboard /admin.html  ·  kata sandi: ${PASSWORD === 'dev' ? 'dev (ubah dengan ADMIN_PASSWORD=...)' : '(dari ADMIN_PASSWORD)'}`));

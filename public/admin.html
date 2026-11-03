@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="robots" content="noindex">
-<title>Dashboard · TanyaSaya</title>
+<title>Dashboard · MeetNaraBot</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -265,7 +265,7 @@ input[type=range]{width:100%;accent-color:var(--laut)}
 <!-- ============ Login ============ -->
 <div class="login" id="login">
   <div class="login-box">
-    <div class="row" style="justify-content:space-between;margin-bottom:28px"><div class="brand" style="margin:0"><div class="brand-mark">T</div><div><div class="brand-name">TanyaSaya</div><div class="brand-sub">Dashboard pemilik chatbot</div></div></div><div class="lang-switch" role="group" aria-label="Bahasa / Language"><button type="button" data-lang="id" aria-pressed="true">ID</button><button type="button" data-lang="en" aria-pressed="false">EN</button></div></div>
+    <div class="row" style="justify-content:space-between;margin-bottom:28px"><div class="brand" style="margin:0"><div class="brand-mark">M</div><div><div class="brand-name">MeetNaraBot</div><div class="brand-sub">Dashboard pemilik chatbot</div></div></div><div class="lang-switch" role="group" aria-label="Bahasa / Language"><button type="button" data-lang="id" aria-pressed="true">ID</button><button type="button" data-lang="en" aria-pressed="false">EN</button></div></div>
     <form id="loginForm">
       <h2>Masuk</h2>
       <label class="field"><span>Kata sandi admin</span>
@@ -281,7 +281,7 @@ input[type=range]{width:100%;accent-color:var(--laut)}
 <!-- ============ App ============ -->
 <div class="shell hidden" id="app">
   <aside class="side">
-    <div class="brand"><div class="brand-mark" id="sideMark">T</div><div><div class="brand-name" id="sideName">TanyaSaya</div><div class="brand-sub">Dashboard</div></div></div>
+    <div class="brand"><div class="brand-mark" id="sideMark">M</div><div><div class="brand-name" id="sideName">MeetNaraBot</div><div class="brand-sub">Dashboard</div></div></div>
     <nav class="nav" aria-label="Menu">
       <a href="#ringkasan"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 13h6V4H4zM14 20h6v-9h-6zM4 20h6v-3H4zM14 4v3h6V4z"/></svg>Ringkasan</a>
       <a href="#dokumen"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5M9 13h6M9 17h4"/></svg>Dokumen</a>
@@ -510,7 +510,7 @@ const LANG = { cur: (() => { try { const v = localStorage.getItem('ts.adminLang'
 const L = (id, en) => (LANG.cur === 'en' ? en : id);
 const LOCALE = () => (LANG.cur === 'en' ? 'en-GB' : 'id-ID');
 const DICT = {
-  'TanyaSaya': 'TanyaSaya', 'Dashboard pemilik chatbot': 'Chatbot owner dashboard', 'Masuk': 'Sign in', 'Kata sandi admin': 'Admin password',
+  'MeetNaraBot': 'MeetNaraBot', 'Dashboard pemilik chatbot': 'Chatbot owner dashboard', 'Masuk': 'Sign in', 'Kata sandi admin': 'Admin password',
   'Kata sandi yang diset dengan': 'The password set with', 'Masuk ke dashboard': 'Sign in to the dashboard', 'Dashboard': 'Dashboard', 'Menu': 'Menu',
   'Ringkasan': 'Overview', 'Dokumen': 'Document', 'Bot & model': 'Bot & model', 'Pencarian (RAG)': 'Retrieval (RAG)', 'Uji coba': 'Playground',
   'Riwayat': 'History', 'Pasang widget': 'Embed widget', 'Lihat halaman demo': 'View demo page', 'Keluar': 'Sign out',
@@ -664,7 +664,7 @@ function setLang(lang) {
   LANG.cur = lang;
   try { localStorage.setItem('ts.adminLang', lang); } catch {}
   document.documentElement.lang = lang;
-  document.title = L('Dashboard · TanyaSaya', 'Dashboard · TanyaSaya');
+  document.title = L('Dashboard · MeetNaraBot', 'Dashboard · MeetNaraBot');
   document.querySelectorAll('.lang-switch button').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.lang === lang)));
   i18nNode(document.body);
   window.dispatchEvent(new Event('ts:lang'));
