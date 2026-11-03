@@ -25,8 +25,11 @@ Batas kepercayaan yang diperiksa:
 - **Login admin:** 8 kali salah per IP atau 100 kali salah secara global dalam 10 menit membuat semua permintaan admin ditolak, termasuk yang memakai password benar, sampai jendela waktunya berganti. Password yang lebih pendek dari 12 karakter ditandai di checklist Ringkasan.
 - **Ukuran request:** body chat publik di atas 32 KB dan body admin di atas 512 KB ditolak sebelum diproses (413).
 - **Header:** CSP di semua halaman (dashboard hanya boleh memuat skrip dari dirinya sendiri dan `cdn.jsdelivr.net`). Dashboard memakai `frame-ancestors 'none'`, `X-Frame-Options: DENY`, `Referrer-Policy: no-referrer`, dan `Cache-Control: no-store`. Semua halaman memakai `nosniff`, `Permissions-Policy`, dan `Cross-Origin-Opener-Policy`.
+- **Webhook Telegram:** wajib header `X-Telegram-Bot-Api-Secret-Token` yang cocok (dibandingkan dengan waktu konstan); body di atas 256 KB ditolak.
+- **Webhook WhatsApp:** setiap POST wajib bertanda tangan `X-Hub-Signature-256` dari App Secret; verifikasi GET memakai `WHATSAPP_VERIFY_TOKEN`; hanya pesan untuk `WHATSAPP_PHONE_NUMBER_ID` milik Anda yang diproses.
+- **Pesan chat-app:** format Telegram memakai HTML yang di-escape lebih dulu, sehingga hanya tag `<b>`, `<i>`, dan `<code>` yang dihasilkan. Pratinjau tautan dimatikan. Kuota per menit dan harian berlaku per pengguna chat.
 - **Privasi:** IP pengunjung hanya disimpan sebagai hash harian dengan salt acak. Data pribadi tidak diminta.
-- **Secret:** API key dan password hanya disimpan sebagai secret Worker atau GitHub. Key tidak pernah dikirim balik ke browser. Workflow tidak berjalan untuk pull request dari fork.
+- **Secret:** API key dan password hanya disimpan sebagai secret Worker atau GitHub. Key tidak pernah dikirim balik ke browser. Workflow deploy (yang memegang secret) tidak pernah berjalan untuk pull request; workflow QA berjalan tanpa secret dan dengan izin baca saja.
 
 ## Rekomendasi untuk pemilik
 

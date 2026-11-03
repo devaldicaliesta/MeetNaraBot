@@ -39,6 +39,9 @@ MeetNaraBot berjalan di Cloudflare Workers. Dokumen dan riwayat pertanyaan disim
 
 ## Cara bertanya ke MeetNaraBot
 
+MeetNaraBot bisa ditanya lewat jendela chat di website, dan juga lewat Telegram atau WhatsApp kalau pemilik sudah menyambungkannya. Di Telegram dan WhatsApp, kirim pertanyaan seperti biasa. Kirim /start atau "bantuan" untuk perkenalan dan contoh pertanyaan, dan /reset atau "reset" untuk memulai percakapan baru. Di Telegram, MeetNaraBot hanya menjawab di chat pribadi.
+
+
 Klik tombol MeetNaraBot di pojok kanan bawah halaman untuk membuka jendela chat. Ketik pertanyaan, lalu tekan Enter atau tombol kirim.
 
 Tips agar jawabannya tepat:

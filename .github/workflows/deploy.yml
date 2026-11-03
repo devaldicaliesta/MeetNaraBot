@@ -8,6 +8,9 @@
 #   ADMIN_PASSWORD         Dashboard password (required once, before the first sign-in)
 #   GEMINI_API_KEY         Gemini key (can also be pasted in the dashboard instead)
 #   HF_TOKEN               Hugging Face token for the gpt-oss-120b fallback
+#   TELEGRAM_BOT_TOKEN     Telegram bot token from @BotFather (webhook is connected automatically)
+#   WHATSAPP_TOKEN, WHATSAPP_PHONE_NUMBER_ID, WHATSAPP_VERIFY_TOKEN, WHATSAPP_APP_SECRET
+#                          WhatsApp Cloud API (Meta) credentials
 #
 # After deploying, docs/knowledge/meetnarabot.md is indexed as the bot's reference document
 # when no document is active yet (needs ADMIN_PASSWORD). Run the workflow manually with
@@ -28,8 +31,15 @@ concurrency:
   group: deploy-cloudflare
   cancel-in-progress: false
 
+permissions:
+  contents: read
+
 jobs:
+  qa:
+    uses: ./.github/workflows/qa.yml
+
   deploy:
+    needs: qa
     runs-on: ubuntu-latest
     env:
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
@@ -91,6 +101,11 @@ jobs:
           ADMIN_PASSWORD: ${{ secrets.ADMIN_PASSWORD }}
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          WHATSAPP_TOKEN: ${{ secrets.WHATSAPP_TOKEN }}
+          WHATSAPP_PHONE_NUMBER_ID: ${{ secrets.WHATSAPP_PHONE_NUMBER_ID }}
+          WHATSAPP_VERIFY_TOKEN: ${{ secrets.WHATSAPP_VERIFY_TOKEN }}
+          WHATSAPP_APP_SECRET: ${{ secrets.WHATSAPP_APP_SECRET }}
         run: |
           set -euo pipefail
           if [ -n "$ADMIN_PASSWORD" ]; then
@@ -99,7 +114,10 @@ jobs:
             echo "::warning::ADMIN_PASSWORD repository secret is empty or missing, so the dashboard cannot be used yet. Add it under Settings > Secrets and variables > Actions > Repository secrets (not Environment secrets or Variables), then re-run this workflow."
           fi
           if [ -n "$GEMINI_API_KEY" ]; then printf '%s' "$GEMINI_API_KEY" | npx wrangler secret put GEMINI_API_KEY; fi
-          if [ -n "$HF_TOKEN" ]; then printf '%s' "$HF_TOKEN" | npx wrangler secret put HF_TOKEN; fi
+          for name in HF_TOKEN TELEGRAM_BOT_TOKEN WHATSAPP_TOKEN WHATSAPP_PHONE_NUMBER_ID WHATSAPP_VERIFY_TOKEN WHATSAPP_APP_SECRET; do
+            value="${!name}"
+            if [ -n "$value" ]; then printf '%s' "$value" | npx wrangler secret put "$name"; fi
+          done
 
       - name: Index the reference document
         env:
@@ -112,3 +130,15 @@ jobs:
           if [ -z "$WORKER_URL" ]; then echo "::warning::Skipped: could not read the Worker URL from the deploy output."; exit 0; fi
           sleep 5
           node scripts/seed-document.mjs "$WORKER_URL" docs/knowledge/meetnarabot.md $RESEED
+
+      - name: Connect the Telegram webhook
+        env:
+          ADMIN_PASSWORD: ${{ secrets.ADMIN_PASSWORD }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          WORKER_URL: ${{ steps.deploy.outputs.url }}
+        run: |
+          set -euo pipefail
+          if [ -z "$TELEGRAM_BOT_TOKEN" ]; then echo "Telegram not configured; skipped."; exit 0; fi
+          if [ -z "$ADMIN_PASSWORD" ] || [ -z "$WORKER_URL" ]; then echo "::warning::Skipped: ADMIN_PASSWORD or the Worker URL is missing."; exit 0; fi
+          curl -fsS -X POST "$WORKER_URL/api/admin/channels/telegram/connect" -H "Authorization: Bearer $ADMIN_PASSWORD" -H 'X-Lang: en' > /dev/null
+          echo "Telegram webhook connected."

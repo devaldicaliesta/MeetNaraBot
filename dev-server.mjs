@@ -133,6 +133,10 @@ http.createServer(async (req, res) => {
   if (p.startsWith('/api/admin/')) {
     if ((req.headers.authorization || '') !== 'Bearer ' + PASSWORD) return send(res, { error: req.headers['x-lang'] === 'en' ? 'Wrong admin password.' : 'Kata sandi admin salah.' }, 401);
     const b = req.method === 'POST' ? await body(req) : {};
+    if (p === '/api/admin/channels') {
+      const base = `http://localhost:${PORT}`;
+      return send(res, { telegram: { configured: false, webhookUrl: `${base}/api/channels/telegram` }, whatsapp: { configured: false, webhookUrl: `${base}/api/channels/whatsapp`, missing: ['WHATSAPP_TOKEN', 'WHATSAPP_PHONE_NUMBER_ID', 'WHATSAPP_APP_SECRET', 'WHATSAPP_VERIFY_TOKEN'] } });
+    }
     if (p === '/api/admin/status') {
       const w = logs.filter((l) => l.source === 'widget');
       return send(res, { bindings: { db: true, vectorize: true, ai: true }, file, botName: settings.name, weakPassword: PASSWORD.length < 12, keys: keyStatus(), chain: chain(), embedderForNextUpload: keys.gemini ? 'gemini' : 'workers-ai', stats: { total: w.length, refused: w.filter((l) => l.refused).length, failed: 0 } });

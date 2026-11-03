@@ -99,6 +99,39 @@ pertanyaan ─► tulis ulang (jika ada riwayat) ─┬─► vektor (Gemini / b
 - **Sitasi**: AI wajib menulis `[n]` setelah tiap fakta; widget mengubahnya menjadi tombol yang membuka potongan sumber.
 - **Basa-basi**: pesan pendek yang isinya hanya sapaan ("halo", "selamat pagi kak", "mau tanya dong"), terima kasih, salam penutup, "kamu siapa?", atau "oke" dijawab dengan balasan tetap yang ramah sebelum masuk pencarian, lengkap dengan contoh pertanyaan. Tidak ada panggilan AI dan kuota tidak terpakai. Pesan yang berisi pertanyaan sungguhan ("halo, berapa biayanya?") tetap diproses RAG seperti biasa. Polanya ada di `src/smalltalk.ts`.
 
+## Telegram & WhatsApp
+
+Bot yang sama juga bisa menjawab lewat chat Telegram dan WhatsApp. Dokumen, pengaturan, kuota, dan riwayat pertanyaannya sama dengan widget, dan riwayat menampilkan label Telegram/WhatsApp. Perintah yang dikenali adalah `/start`, `/help`, dan `/reset` (di WhatsApp cukup ketik `reset` atau `bantuan`).
+
+### Telegram
+1. Chat [@BotFather](https://t.me/BotFather) di Telegram, kirim `/newbot`, lalu salin token yang diberikan.
+2. Simpan token itu sebagai repository secret **`TELEGRAM_BOT_TOKEN`** di GitHub, lalu jalankan workflow deploy.
+3. Workflow otomatis menyambungkan webhook ke `https://<worker>/api/channels/telegram` jika `ADMIN_PASSWORD` juga sudah diset. Anda juga bisa menekan **Sambungkan** di dashboard → Pasang widget → Telegram & WhatsApp.
+
+Webhook diamankan dengan `secret_token` yang diturunkan dari token bot. Permintaan tanpa header yang cocok ditolak (401). Bot hanya menjawab di chat pribadi; di grup, bot hanya membalas perintah dengan ajakan chat pribadi.
+
+### WhatsApp (WhatsApp Cloud API resmi dari Meta)
+1. Buat aplikasi di [Meta for Developers](https://developers.facebook.com/) dengan produk **WhatsApp**, lalu tambahkan nomor telepon bisnis.
+2. Simpan repository secret berikut, lalu jalankan workflow deploy:
+   - `WHATSAPP_TOKEN`: access token permanen (System User token)
+   - `WHATSAPP_PHONE_NUMBER_ID`: ID nomor telepon, bukan nomornya
+   - `WHATSAPP_VERIFY_TOKEN`: teks acak buatan Anda sendiri
+   - `WHATSAPP_APP_SECRET`: App Secret di App settings → Basic
+3. Di WhatsApp → Configuration, isi **Callback URL** `https://<worker>/api/channels/whatsapp` dan **Verify token** yang sama dengan `WHATSAPP_VERIFY_TOKEN`. Setelah itu, langganan field **messages**.
+
+Setiap pesan masuk diverifikasi dengan tanda tangan `X-Hub-Signature-256` (HMAC dari App Secret). Pesan yang dikirim ulang oleh Meta hanya dijawab sekali. Nomor telepon dan ID Telegram tidak disimpan mentah: riwayat percakapan memakai hash bergaram dan dihapus setelah satu hari tidak aktif.
+
+## QA dengan Playwright
+
+```bash
+npm run qa
+```
+Perintah ini menjalankan typecheck, tes unit (format pesan Telegram/WhatsApp, deteksi sapaan), lalu 24 tes Playwright:
+- **ui**: landing page, widget, dan dashboard di server mock. Ini mencakup jawaban dengan sitasi, sapaan, ganti bahasa, password salah, dan tidak ada scroll ke samping di layar 390 px maupun 1440 px.
+- **worker**: Worker asli yang dijalankan lokal (`wrangler dev --local`, D1 lokal) dengan server Telegram/WhatsApp palsu. Ini mencakup header keamanan, kunci login admin, batas ukuran request, secret yang tidak bocor, webhook Telegram dan WhatsApp (autentikasi, sapaan, jawaban bersumber, cadangan saat AI tidak tersedia, pesan ganda, grup), dan verifikasi webhook WhatsApp.
+
+Tes ini tidak memakai key sungguhan dan tidak menghubungi Telegram, Meta, Google, atau Cloudflare. Di GitHub, workflow **QA** berjalan untuk setiap pull request dan push ke branch lain. Deploy ke `main` hanya jalan setelah QA lulus.
+
 ## Keamanan
 Ringkasan audit dan penguatan ada di [`SECURITY.md`](SECURITY.md): throttle login yang tahan isolate, batas ukuran request, header CSP/anti-framing di `public/_headers`, dan salt acak untuk hash IP.
 

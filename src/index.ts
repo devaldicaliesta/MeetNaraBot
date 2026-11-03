@@ -24,6 +24,7 @@ import {
 } from './settings';
 import { answer, buildSystemPrompt, buildUserTurn, generateSuggestions, normalizeHistory } from './rag';
 import { buildChain, embed, pickEmbedder } from './llm';
+import { channelRoutes } from './channels';
 
 type Env = { Bindings: Bindings };
 type FileRow = { id: string; name: string; status: string; chunk_count: number; error: string | null; created_at: string; embedder: Embedder | null };
@@ -351,7 +352,7 @@ app.get('/api/admin/status', async (c) => {
     `SELECT COUNT(*) AS total,
             COALESCE(SUM(refused), 0) AS refused,
             COALESCE(SUM(failed), 0) AS failed
-       FROM chat_log WHERE source = 'widget' AND created_at >= datetime('now', '-7 days')`
+       FROM chat_log WHERE source IN ('widget', 'telegram', 'whatsapp') AND created_at >= datetime('now', '-7 days')`
   )
     .first<{ total: number; refused: number; failed: number }>()
     .catch(() => ({ total: 0, refused: 0, failed: 0 }));
@@ -543,7 +544,7 @@ app.post('/api/admin/test-chat', async (c) => {
 app.get('/api/admin/logs', async (c) => {
   const filter = c.req.query('filter');
   const where =
-    filter === 'refused' ? 'WHERE refused = 1' : filter === 'failed' ? 'WHERE failed = 1' : filter === 'widget' ? "WHERE source = 'widget'" : filter === 'admin' ? "WHERE source = 'admin'" : '';
+    filter === 'refused' ? 'WHERE refused = 1' : filter === 'failed' ? 'WHERE failed = 1' : filter === 'widget' ? "WHERE source IN ('widget', 'telegram', 'whatsapp')" : filter === 'admin' ? "WHERE source = 'admin'" : '';
   const rows = await c.env.DB.prepare(`SELECT id, created_at, source, question, answer, refused, failed, provider, best_score FROM chat_log ${where} ORDER BY id DESC LIMIT 100`).all();
   return c.json({ items: rows.results || [] });
 });
@@ -552,6 +553,9 @@ app.delete('/api/admin/logs', async (c) => {
   await c.env.DB.prepare('DELETE FROM chat_log').run();
   return c.json({ success: true });
 });
+
+// Telegram and WhatsApp webhooks plus their admin endpoints (behind the admin middleware above).
+channelRoutes(app, { activeFile, visitorSuggestions, dailyQuota, allow, logChat });
 
 app.notFound((c) => (c.req.path.startsWith('/api/') ? c.json({ error: tr(c, "Endpoint tidak ditemukan.", "Endpoint not found.") }, 404) : c.env.ASSETS.fetch(c.req.raw)));
 

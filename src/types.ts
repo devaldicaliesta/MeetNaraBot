@@ -10,6 +10,16 @@ export type Bindings = {
   CEREBRAS_API_KEY?: string;
   SAMBANOVA_API_KEY?: string;
   HF_TOKEN?: string;
+  /** Telegram bot token from @BotFather. Enables the /api/channels/telegram webhook. */
+  TELEGRAM_BOT_TOKEN?: string;
+  /** WhatsApp Cloud API (Meta): permanent access token, phone number ID, webhook verify token and app secret. */
+  WHATSAPP_TOKEN?: string;
+  WHATSAPP_PHONE_NUMBER_ID?: string;
+  WHATSAPP_VERIFY_TOKEN?: string;
+  WHATSAPP_APP_SECRET?: string;
+  /** Test-only overrides for the chat-app API hosts (point them at a local fake server in QA). */
+  TELEGRAM_API_BASE?: string;
+  WHATSAPP_API_BASE?: string;
   LLM_CHAIN?: unknown;
   SYSTEM_PROMPT?: string;
   ALLOWED_ORIGINS?: unknown;
