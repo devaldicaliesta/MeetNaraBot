@@ -33,6 +33,8 @@ Langkah-langkahnya:
 
 Jawaban disusun oleh Google Gemini 3.5 Flash. Kalau Gemini sedang penuh atau kuotanya habis, Nara otomatis pindah ke Gemini 3.5 Flash-Lite, lalu ke model gpt-oss-120b lewat Hugging Face, lalu ke model Workers AI dari Cloudflare. Pengunjung tidak perlu melakukan apa pun saat perpindahan ini terjadi.
 
+Pemilik bot juga bisa memakai model lain dengan menyimpan kunci API-nya sendiri di menu Bot & model: DeepSeek, Kimi (Moonshot AI), GLM (Z.ai), Groq, OpenRouter, Cerebras, SambaNova, dan Hugging Face.
+
 ### Tempat Nara berjalan
 
 Nara berjalan di Cloudflare Workers. Dokumen dan riwayat pertanyaan disimpan di database Cloudflare D1, sedangkan indeks pencarian makna disimpan di Cloudflare Vectorize.
@@ -68,7 +70,13 @@ Satu pertanyaan maksimal 500 karakter. Untuk mencegah penyalahgunaan, setiap pen
 
 ## Panduan untuk pemilik website
 
-Pemilik mengatur Nara lewat dashboard di alamat /admin.html, misalnya https://nara.panduarahid.workers.dev/admin.html. Masuk dengan kata sandi admin yang diatur sebagai secret ADMIN_PASSWORD.
+Siapa pun bisa membuat bot Nara sendiri. Buka https://nara.panduarahid.workers.dev, klik Daftar gratis, lalu isi nama, email, dan kata sandi minimal 10 karakter. Setelah mendaftar, Anda langsung mendapat satu bot dan bisa masuk ke dashboard kapan saja lewat tombol Masuk.
+
+### Akun dan masa aktif
+
+Setiap akun aktif selama 7 hari sejak mendaftar. Setelah 7 hari, akun tidak bisa dipakai masuk, bot-botnya berhenti menjawab, lalu akun beserta semua dokumen, pengaturan, dan riwayatnya dihapus otomatis. Satu akun bisa memiliki sampai 3 bot, dan setiap bot punya dokumen, pengaturan, kunci API, dan riwayat sendiri yang tidak bisa dilihat pengguna lain.
+
+Bot yang belum diberi kunci API sendiri memakai model gratis Workers AI dengan kuota harian bersama. Ukuran dokumen untuk bot pengguna maksimal 400 potongan. Untuk jawaban yang lebih baik, simpan kunci API Anda sendiri di menu Bot & model.
 
 ### Mengunggah dokumen
 
@@ -129,4 +137,8 @@ Nara hanya menjawab dari dokumen dan selalu menunjukkan sumbernya, tetapi AI tet
 
 ### Bagaimana cara memasang Nara di website saya?
 
-Pemilik website membuka dashboard, mengunggah dokumen, lalu menyalin dua baris kode dari menu Pasang widget ke halaman website. Widget langsung muncul di pojok halaman.
+Daftar gratis, unggah dokumen di menu Dokumen, lalu salin dua baris kode dari menu Pasang widget ke halaman website Anda. Kode itu sudah berisi ID bot Anda, dan widget langsung muncul di pojok halaman.
+
+### Berapa lama akun saya aktif?
+
+Akun aktif selama 7 hari sejak mendaftar. Setelah itu akun dan semua datanya dihapus otomatis. Anda bisa mendaftar lagi dengan email yang sama setelah datanya terhapus.

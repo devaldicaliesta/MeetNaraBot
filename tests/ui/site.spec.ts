@@ -59,14 +59,57 @@ test('switching to English translates the landing page', async ({ page }) => {
 
 test('dashboard rejects a wrong password', async ({ page }) => {
   await page.goto('/admin.html');
+  await page.fill('#email', 'nobody@qa.test');
   await page.fill('#pass', 'wrong-password');
   await page.press('#pass', 'Enter');
   await expect(page.locator('#loginErr')).toBeVisible();
+  await page.click('#platformToggle');
+  await page.fill('#pass', 'wrong-password');
+  await page.press('#pass', 'Enter');
+  await expect(page.locator('#loginErr')).toContainText(/salah|Wrong/);
+});
+
+test('the dashboard links back to the landing page', async ({ page }) => {
+  await page.goto('/admin');
+  await page.locator('.back-home').click();
+  await expect(page).toHaveURL(/\/$/);
+  await expect(page.locator('h1')).toContainText('Pengunjung bertanya');
+});
+
+test('anyone can sign up, get their own bot, add a second one and embed it', async ({ page }) => {
+  const email = `ui-${Date.now()}@qa.test`;
+  await page.goto('/');
+  await page.locator('a[href="/admin#daftar"]').first().click();
+  await expect(page.locator('#fName')).toBeVisible();
+  await page.fill('#name', 'Sinta');
+  await page.fill('#email', email);
+  await page.fill('#pass', 'sinta-password-123');
+  await page.click('#authSubmit');
+  await expect(page.locator('#app')).toBeVisible();
+  await expect(page.locator('#botSwitch')).toBeVisible();
+  await expect(page.locator('#botSelect option')).toHaveCount(1);
+  await expect(page.locator('#accountInfo')).toContainText(email);
+  await expect(page.locator('#accountInfo')).toContainText('aktif sampai');
+
+  page.once('dialog', (d) => d.accept('Bot Kedua'));
+  await page.click('#botNew');
+  await expect(page.locator('#botSelect option')).toHaveCount(2);
+  await expect(page.locator('#botSelect')).toHaveValue(/[a-z0-9]{10}/);
+  const botId = await page.locator('#botSelect').inputValue();
+
+  await page.goto('/admin#pasang');
+  await expect(page.locator('#snippet')).toContainText(`bot="${botId}"`);
+  await expect(page.locator('#channels')).toContainText('bot platform');
+
+  page.once('dialog', (d) => d.accept());
+  await page.click('#botDelete');
+  await expect(page.locator('#botSelect option')).toHaveCount(1);
 });
 
 test('every dashboard page fits a phone screen', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/admin.html');
+  await page.click('#platformToggle');
   await page.fill('#pass', QA_PASSWORD);
   await page.press('#pass', 'Enter');
   await expect(page.locator('#app')).toBeVisible();

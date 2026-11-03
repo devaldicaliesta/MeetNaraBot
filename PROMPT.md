@@ -26,9 +26,12 @@ model id or binding exists, you say so in a code comment marked VERIFY.
 </role>
 
 <context>
-Product: "Nara" (short for "Narasumber Anda", Indonesian for "your trusted source"), a single-tenant chatbot that answers
-website visitors' questions ONLY from one document uploaded by the site owner, and
-always shows numbered citations to the excerpts it used.
+Product: "Nara" (short for "Narasumber Anda", Indonesian for "your trusted source"), a multi-user
+platform: anyone signs up with e-mail and password and builds their own chatbot(s); each bot
+answers website visitors' questions ONLY from one document uploaded by its owner, and always
+shows numbered citations to the excerpts it used. Accounts are active for 7 days, then they and
+all of their data are deleted. The platform's own demo bot ("Nara", id 'default') is managed
+with ADMIN_PASSWORD and powers the landing page.
 
 Audience:
 - Owner: a small-business owner, school, community or government office in Indonesia.
@@ -100,6 +103,18 @@ chat_log(id INTEGER PK AUTOINCREMENT, created_at, source TEXT 'widget'|'admin',
          question, answer, refused INT, failed INT, provider, best_score REAL)
 usage(day TEXT, key TEXT, n INT, PRIMARY KEY(day,key))  -- daily quotas, hashed IPs
 
+-- 0004_accounts.sql (multi-user)
+users(id PK, email UNIQUE NOCASE, name, pass_hash, pass_salt, pass_iter, created_at, last_login_at,
+      expires_at)                       -- PBKDF2-SHA256, 30,000 iterations (Workers free CPU budget)
+sessions(id PK = sha256(token), user_id, created_at, expires_at)   -- raw token never stored
+bots(id PK = 10-char public id, owner_id, name, created_at)        -- max 3 per user
+ALTER TABLE file|chunks|chat_log ADD COLUMN bot_id TEXT NOT NULL DEFAULT 'default'
+chunks_fts rebuilt as fts5(chunk_id UNINDEXED, bot_id UNINDEXED, label, text)
+vector_tombstones(id PK, created_at)    -- vector deletions to retry when Vectorize fails
+Settings rows are namespaced: 'bot' | 'keys' | 'auto_suggestions' for the platform bot, and
+'<name>:<botId>' for user bots. settings['salt'] is a random per-install salt.
+Vectorize metadata {idx, bot}; a metadata index on 'bot' (type string) is required.
+
 On first read, if settings['bot'] is missing but bot_config has a row, convert the v1
 JSON (ChatProvider, Gemini.ApiKey, Gemini.ChatModel, HuggingFace.ApiKey, TopK,
 MinScore, ...) into v2 settings, move API keys into settings['keys'], then delete
@@ -127,8 +142,13 @@ openrouter https://openrouter.ai/api/v1                             secret OPENR
 cerebras https://api.cerebras.ai/v1                                 secret CEREBRAS_API_KEY
 sambanova https://api.sambanova.ai/v1                               secret SAMBANOVA_API_KEY
 huggingface https://router.huggingface.co/v1                        secret HF_TOKEN
+deepseek   https://api.deepseek.com/v1                              secret DEEPSEEK_API_KEY  (deepseek-chat)
+moonshot   https://api.moonshot.ai/v1                               secret MOONSHOT_API_KEY  (Kimi, kimi-k2-turbo-preview)
+zai        https://api.z.ai/api/paas/v4                             secret ZAI_API_KEY       (GLM, glm-4.6)
 workers-ai via env.AI binding (no key).
-Key resolution: key pasted in dashboard (settings['keys']) overrides the Worker secret.
+Key resolution: key pasted in dashboard (settings['keys']) overrides the Worker secret. Worker
+secrets (and LLM_CHAIN / SYSTEM_PROMPT / MIN_SCORE vars) apply ONLY to the platform bot:
+tenantEnv(env, bot) strips them for user bots, which use their owner's keys or Workers AI.
 </settings_schema>
 
 <api_contract>
@@ -148,8 +168,27 @@ POST /api/public/chat {question, history[{role:'user'|'assistant', content}], we
 Aliases for v1 widgets: /api/chat -> /api/public/chat, /api/bot/info -> /api/public/info.
 GET /api/health -> {ok, ready, bindings}
 
-Admin (Authorization: Bearer <ADMIN_PASSWORD>, constant-time compare, 8 failures/min/IP
-then 429; 503 with setup hint if the secret is missing). Admin error messages follow the
+Accounts (same origin, bodies <= 4 KB, Cache-Control no-store):
+POST /api/auth/signup {email, password>=10 (not containing the e-mail), name} -> 201 {token
+     "nara_"+64 hex, user{id,email,name,expires_at = now+7 days}, bots[first bot]}; 409 existing
+     e-mail; 5 sign-ups per IP per day and MAX_SIGNUPS_PER_DAY (200) overall.
+POST /api/auth/login {email, password} -> {token, user, bots}; one message for unknown e-mail
+     and wrong password, with equal PBKDF2 work; 403 with a friendly message when expired.
+POST /api/auth/logout; GET /api/auth/me -> {user, bots, maxBots}; POST /api/auth/bots {name}
+     (409 at 3 bots); DELETE /api/auth/bots/:id (owner only; purges everything of that bot).
+Sign-in throttling (D1, 10-minute windows, checked BEFORE comparing): 8 failures per salted IP
+hash; account sign-ins also 8 per salted e-mail hash; only the platform-admin password has a
+global counter (100), so nobody can lock every account out.
+
+Public bot selection: the widget passes ?bot=<id> on /api/public/*; no id = platform bot;
+unknown id -> 404; bot of an expired account -> info {ready:false, subtitle "Tidak aktif"},
+chat 403 with a friendly message. Per-minute limit per bot+IP; daily quotas per visitor per bot,
+per bot (settings.limits.dailyTotal) and for all user bots together (PLATFORM_DAILY_TOTAL 5000).
+
+Bot admin API (all /api/admin/* routes act on ONE bot):
+- Session token + X-Bot-Id of a bot the user owns (else 403; expired/unknown session 401).
+- ADMIN_PASSWORD (constant-time digest compare) -> platform bot only; X-Bot-Id of any other bot -> 403.
+Every query, vector write and setting is scoped by that bot id. Admin error messages follow the
 dashboard's `X-Lang: id|en` header:
 GET  /api/admin/status   -> bindings, file, botName, keys (status only), chain, embedderForNextUpload, stats (widget only, 7 days)
 GET  /api/admin/config   -> settings, defaults{settings, layers}, keys (status only), providers, workersAiModels
@@ -364,7 +403,12 @@ Playwright 1.63 (playwright.config.ts) with two projects: "ui" against the mock 
 widget citations, small talk, EN switch, wrong password, zero horizontal overflow on every page at
 390 px and 1440 px) and "worker" against wrangler dev --local with a fresh local D1 and a seeded
 sample document (security headers, admin lockout, body limits, no secrets in admin responses,
-greetings, sourced answers via the excerpt fallback). Unit tests with node:test for small talk. CI: qa.yml on PRs and non-main pushes; deploy.yml calls it and
+greetings, sourced answers via the excerpt fallback) plus accounts: sign-up/login/logout, 7-day
+expiry and the cron cleanup (wrangler dev --test-scheduled, GET /__scheduled), cross-tenant
+isolation with two seeded bots holding different secret codes, platform-secret isolation, bot
+limit, oversized documents, per-e-mail login locks and sign-up limits. The ui project also signs
+up through the landing page, creates and deletes a second bot and checks the embed snippet.
+Unit tests with node:test for small talk. CI: qa.yml on PRs and non-main pushes; deploy.yml calls it and
 deploys only when it passes. No real keys and no calls to external services in tests.
 </qa_spec>
 
@@ -409,7 +453,14 @@ with hairline borders; the sign-in card is a sticker card on a cream canvas with
 butter circles; the X-ray uses lilac bars for candidates and the highlight colour for chunks
 sent to the AI; small talk shows "Basa-basi: <kind>" instead of retrieval details.
 Pages (all copy in Indonesian):
-1. Masuk — password form; password kept in sessionStorage only.
+1. Masuk / Daftar — "← Kembali ke beranda" link to the landing page; tabs Masuk (e-mail +
+   password) and Daftar (name, e-mail, password, note about the 7-day period); a link "Masuk
+   sebagai admin platform" switches to the ADMIN_PASSWORD form. /admin#daftar opens the sign-up
+   tab. The session token lives in sessionStorage only.
+   After sign-in the sidebar shows a bot switcher (select, "+ Bot baru" up to 3, "Hapus bot" with
+   confirm), "e-mail · aktif sampai <date>", and a "← Kembali ke beranda" button. Every API call
+   sends Authorization + X-Bot-Id; the widget preview and the embed snippet use the selected bot
+   (snippet adds bot="<id>").
 2. Ringkasan — three figures (visitor questions 7 days, % not found, provider failures;
    widget traffic only), setup checklist (bindings, Gemini key, document indexed, domain
    allow-list) with "Buka" links, provider chain preview, next embedder.
@@ -444,7 +495,8 @@ Responsive to 390 px, visible focus rings, reduced motion respected.
 Security and secrets
 - NEVER hard-code, log, echo, pre-fill or return any API key or password. Not in source,
   samples, presets, README, mock server, tests or screenshots. Placeholders only.
-- Admin endpoints require ADMIN_PASSWORD (Worker secret); there is no default password.
+- Admin endpoints require a valid session for a bot the user owns, or ADMIN_PASSWORD (Worker
+  secret, platform bot only); there is no default password.
 - Admin sign-in throttling is checked BEFORE the password comparison and counted durably in
   D1 (per salted IP hash and globally, 10-minute windows: 8 per IP, 100 global), so a correct
   guess during a lockout is refused too. Compare SHA-256 digests with timingSafeEqual. Flag
@@ -464,6 +516,16 @@ Security and secrets
 Anti-abuse and fair play (organic usage only)
 - The project must not contain anything that generates artificial engagement: no
   auto-chatters, traffic generators, self-pings, scripted voting or fake reviews.
+Multi-user isolation and shared budget
+- Tenant isolation is deterministic, never prompt-based: Vectorize query filter {bot}, FTS and
+  chunk queries with bot_id, and every vector candidate re-checked in D1 with bot_id before it can
+  become a passage. Chunk/vector ids use the full random file UUID (never a prefix).
+- User bots: documents at most 400 chunks; Workers AI embeddings for all user bots together at
+  most PLATFORM_DAILY_EMBEDS (4000) chunks per day; owner test chats count toward daily quotas.
+- Account lifecycle: 7-day accounts; sessions never outlive the account; a daily Cron Trigger
+  deletes expired accounts with all bots, chunks, vectors (failed deletions go to
+  vector_tombstones and are retried), logs and settings.
+
 - Protect the public chat: hidden honeypot field must be empty; reject requests without a
   User-Agent; per-IP per-minute limit (in-isolate map); durable per-IP daily and global
   daily caps in D1 using a salted daily SHA-256 hash of the IP (never store raw IPs);
@@ -503,7 +565,8 @@ tanyasaya/
 ├── .env.example / .gitignore
 ├── migrations/0001_init.sql
 ├── migrations/0002_rag_upgrade.sql
-├── src/types.ts  src/settings.ts  src/llm.ts  src/rag.ts  src/smalltalk.ts  src/index.ts
+├── migrations/0004_accounts.sql   (users, sessions, bots, bot_id columns, FTS rebuild, tombstones)
+├── src/types.ts  src/settings.ts  src/llm.ts  src/rag.ts  src/smalltalk.ts  src/auth.ts  src/index.ts
 ├── .github/workflows/deploy.yml  (push to main -> typecheck, find/create D1 + Vectorize,
 │                                  migrate, wrangler deploy, optional secrets ADMIN_PASSWORD /
 │                                  GEMINI_API_KEY / HF_TOKEN, then index the reference document)
@@ -590,6 +653,15 @@ Before you finish, verify each item and fix anything that fails:
     small-talk replies (refused:false, no LLM call); "halo, berapa biayanya?" still runs RAG.
 [ ] Follow-up question works thanks to rewrite; history roles are user/assistant.
 [ ] Cross-origin embed works for allowed origins and gets 403 for others (when a list is set).
+[ ] Sign-up gives a token, a first bot and expires_at = now + 7 days; duplicate e-mail -> 409.
+[ ] A user gets 403 for another user's bot, the platform bot or an expired bot on every admin route;
+    the platform password gets 403 for user bots.
+[ ] Bot A never answers with bot B's document (seed two bots with different secret codes).
+[ ] User bots never see the platform's provider secrets (key status shows them only for 'default').
+[ ] Expired account: login 403, widget "Tidak aktif"; after the cron run the bot is 404.
+[ ] 4th bot -> 409; deleting a bot removes it publicly; logout invalidates the token.
+[ ] Oversized user-bot document -> 413; 9 failed logins lock that e-mail, not other accounts;
+    6th sign-up from one IP in a day -> 429.
 [ ] Honeypot filled -> 400; missing User-Agent -> 400; daily cap reached -> 429.
 [ ] Widget styles do not leak into or get affected by the host page; works at 390 px.
 [ ] Landing page and every dashboard page have zero horizontal overflow at 390 px and 1440 px.

@@ -1,0 +1,334 @@
+[
+  {
+    "verdict": "rejected",
+    "fingerprint": "src/index.ts:admin-api:cross-tenant-bot-id",
+    "title": "Reading or changing another user's bot through X-Bot-Id",
+    "description": "The admin API selects the bot from the X-Bot-Id header.",
+    "claimed_root_cause": "Client-chosen tenant id.",
+    "trace": [
+      {
+        "kind": "entrypoint",
+        "file": "src/index.ts",
+        "line": 572,
+        "scope": "admin middleware",
+        "description": "ownedBot(user.id, X-Bot-Id)"
+      }
+    ],
+    "evidence": [
+      {
+        "file": "src/index.ts",
+        "line": 572,
+        "description": "Bot must belong to the session user; otherwise 403."
+      }
+    ],
+    "reason": "Ownership is checked for every admin request; tests cover status, config, logs and chunks for foreign, platform, expired and empty ids (all 403)."
+  },
+  {
+    "verdict": "confirmed",
+    "fingerprint": "src/index.ts:chunk-id:file-id-prefix-collision",
+    "title": "Chunk and vector ids used only 8 characters of the file id",
+    "description": "Chunk rows and vectors were keyed `${fileId.slice(0,8)}-${idx}` and written with INSERT OR REPLACE / upsert. With many bots, two uploads sharing the 32-bit prefix would overwrite each other's chunk rows, keyword rows and vectors across tenants.",
+    "root_cause": "Ids were not globally unique once documents from many tenants share one table and index.",
+    "intended_behavior": "Every chunk id is unique across all bots, and keyword-index deletes are bot-scoped.",
+    "trace": [
+      {
+        "kind": "entrypoint",
+        "file": "src/index.ts",
+        "line": 724,
+        "scope": "POST /api/admin/file/chunks",
+        "description": "User uploads chunks."
+      },
+      {
+        "kind": "sink",
+        "file": "src/index.ts",
+        "line": 752,
+        "scope": "entries",
+        "description": "Vector/chunk id construction."
+      }
+    ],
+    "evidence": [
+      {
+        "file": "src/index.ts",
+        "line": 752,
+        "description": "Fixed: id: `${file.id}-${idx}` (full random UUID)"
+      }
+    ],
+    "conditions": [
+      {
+        "kind": "data_state",
+        "description": "Two documents whose random file ids share the first 8 hex characters (birthday bound ~65k uploads)."
+      }
+    ],
+    "execution": {
+      "attacker_perspective": "Any user uploading documents; the collision is not attacker-chosen.",
+      "payloads": [
+        "Two uploads with colliding id prefixes"
+      ],
+      "instructions": [
+        "Reason from source: INSERT OR REPLACE on a shared id replaces the other bot's row."
+      ],
+      "observed_result": "Source-confirmed overwrite path; fixed by using the full id."
+    },
+    "remediation": {
+      "strategy": "Use the full file UUID in chunk and vector ids and scope FTS deletes by bot_id.",
+      "code_changes": [
+        {
+          "file_name": "src/index.ts",
+          "fixed_code": "id: `${file.id}-${startIdx + i}`; DELETE FROM chunks_fts WHERE chunk_id = ? AND bot_id = ?"
+        }
+      ]
+    },
+    "severity": {
+      "likelihood": {
+        "score": "low",
+        "reason": "Requires a random 32-bit prefix collision."
+      },
+      "impact": {
+        "score": "medium",
+        "reason": "Silent cross-tenant overwrite of document chunks."
+      },
+      "overall_severity": "low"
+    },
+    "confidence": {
+      "score": "high",
+      "reason": "Deterministic from source."
+    }
+  },
+  {
+    "verdict": "confirmed",
+    "fingerprint": "src/index.ts:login-lock:global-counter-locks-all-users",
+    "title": "Failed sign-ins could lock every account out",
+    "description": "The sign-in throttle kept a single global counter (100 failures per 10 minutes) shared by every login. Once accounts existed, anyone failing logins from a handful of IPs could make all sign-ins, for every user, return 429.",
+    "root_cause": "The global failure counter protecting the platform-admin password was also applied to every account sign-in.",
+    "intended_behavior": "Guessing is limited per IP and per targeted e-mail; a global lock applies only to the single platform-admin password.",
+    "trace": [
+      {
+        "kind": "entrypoint",
+        "file": "src/index.ts",
+        "line": 507,
+        "scope": "POST /api/auth/login",
+        "description": "Unauthenticated sign-in endpoint."
+      },
+      {
+        "kind": "sink",
+        "file": "src/index.ts",
+        "line": 122,
+        "scope": "loginKeys()",
+        "description": "Counters chosen per attempt."
+      }
+    ],
+    "evidence": [
+      {
+        "file": "src/index.ts",
+        "line": 122,
+        "description": "Fixed: per-IP and per-email counters for accounts; 'lf:<slot>:all' only when scope.platform"
+      }
+    ],
+    "conditions": [
+      {
+        "kind": "authentication_level",
+        "description": "Unauthenticated network clients from about 13 IPs."
+      }
+    ],
+    "execution": {
+      "attacker_perspective": "Unauthenticated client(s).",
+      "payloads": [
+        "POST /api/auth/login with wrong passwords"
+      ],
+      "instructions": [
+        "Fail 9 logins for one e-mail from different source IPs, then sign in as another user."
+      ],
+      "observed_result": "After the fix the targeted e-mail is locked (429, even with the right password) while another account signs in (200)."
+    },
+    "remediation": {
+      "strategy": "Scope counters: per IP always, per e-mail for accounts, global only for the platform-admin password.",
+      "code_changes": [
+        {
+          "file_name": "src/index.ts",
+          "fixed_code": "loginKeys(c, { email }) / loginKeys(c, { platform: true })"
+        }
+      ]
+    },
+    "severity": {
+      "likelihood": {
+        "score": "medium",
+        "reason": "Needs only a few source IPs."
+      },
+      "impact": {
+        "score": "medium",
+        "reason": "Every user loses dashboard access for the lock window; no data exposure."
+      },
+      "overall_severity": "medium"
+    },
+    "confidence": {
+      "score": "high",
+      "reason": "Covered by a local Worker test with distinct cf-connecting-ip values."
+    }
+  },
+  {
+    "verdict": "confirmed",
+    "fingerprint": "src/index.ts:shared-ai-budget:user-bot-ingest-and-tests",
+    "title": "One free account could exhaust the platform's shared Workers AI budget",
+    "description": "User bots without their own Gemini key embed documents and run owner test chats on the platform's Workers AI. Before the fix, ingestion had no per-bot size cap beyond 2,000 chunks and no platform-wide embedding budget, and /api/admin/test-chat was not counted in any daily quota, so one signed-up user could spend the free neuron allowance shared with every other user and the demo bot.",
+    "root_cause": "Work done for user bots on the platform's AI binding was not metered against a platform-level budget.",
+    "intended_behavior": "Each user bot is bounded, and all user bots together cannot spend more than a configured daily share of the platform's AI budget.",
+    "trace": [
+      {
+        "kind": "entrypoint",
+        "file": "src/index.ts",
+        "line": 724,
+        "scope": "POST /api/admin/file/chunks",
+        "description": "Any signed-in user can upload chunks for their own bot."
+      },
+      {
+        "kind": "propagation",
+        "file": "src/index.ts",
+        "line": 740,
+        "scope": "chunk handler",
+        "description": "No platform-wide metering existed before the fix (now spendPlatform)."
+      },
+      {
+        "kind": "sink",
+        "file": "src/index.ts",
+        "line": 750,
+        "scope": "embed()",
+        "description": "Chunks are embedded on the platform's Workers AI binding when the bot has no Gemini key."
+      }
+    ],
+    "evidence": [
+      {
+        "file": "src/index.ts",
+        "line": 740,
+        "description": "Fixed: spendPlatform('emb:all-users', ...) against PLATFORM_DAILY_EMBEDS (default 4000)"
+      },
+      {
+        "file": "src/index.ts",
+        "line": 91,
+        "description": "Fixed: USER_BOT_MAX_CHUNKS = 400"
+      },
+      {
+        "file": "src/index.ts",
+        "line": 830,
+        "description": "Fixed: owner tests counted with dailyQuota(..., bot)"
+      }
+    ],
+    "conditions": [
+      {
+        "kind": "authentication_level",
+        "description": "Any self-registered account (sign-up is open)."
+      }
+    ],
+    "execution": {
+      "attacker_perspective": "A registered user with up to 3 bots.",
+      "payloads": [
+        "POST /api/admin/file/chunks with startIdx 395 and 10 chunks"
+      ],
+      "instructions": [
+        "Run the Worker locally, sign in as a seeded user, create a document and post chunks past the cap."
+      ],
+      "observed_result": "After the fix the request is rejected with 413 before any embedding (Playwright: 'user bots cannot index oversized documents')."
+    },
+    "remediation": {
+      "strategy": "Cap user-bot documents at 400 chunks, meter Workers AI embeddings for all user bots in a daily D1 counter, and count owner test chats in the bot's daily quota.",
+      "code_changes": [
+        {
+          "file_name": "src/index.ts",
+          "fixed_code": "if (startIdx + n > USER_BOT_MAX_CHUNKS) return 413; if (embedder !== 'gemini' && !(await spendPlatform(env, 'emb:all-users', n, platformDailyEmbeds(env)))) return 429;"
+        }
+      ]
+    },
+    "severity": {
+      "likelihood": {
+        "score": "medium",
+        "reason": "Sign-up is open to anyone and needs no payment."
+      },
+      "impact": {
+        "score": "medium",
+        "reason": "Denial of AI answers for every tenant until the daily allowance resets; no data exposure."
+      },
+      "overall_severity": "medium"
+    },
+    "confidence": {
+      "score": "high",
+      "reason": "Source path is direct and the fixed limit is covered by a local Worker test."
+    }
+  },
+  {
+    "verdict": "rejected",
+    "fingerprint": "src/index.ts:signup:account-enumeration",
+    "title": "Sign-up reveals whether an e-mail is registered",
+    "description": "Sign-up returns 409 for an existing e-mail.",
+    "claimed_root_cause": "Distinct response for existing accounts.",
+    "trace": [
+      {
+        "kind": "sink",
+        "file": "src/index.ts",
+        "line": 496,
+        "scope": "POST /api/auth/signup",
+        "description": "409 for an existing e-mail."
+      }
+    ],
+    "evidence": [
+      {
+        "file": "src/index.ts",
+        "line": 496,
+        "description": "'Email ini sudah terdaftar' response"
+      }
+    ],
+    "reason": "Accepted product trade-off without a crossed boundary: sign-up is limited to 5 per IP per day, sign-in uses one message and equal PBKDF2 work for unknown e-mails."
+  },
+  {
+    "verdict": "needs_validation",
+    "fingerprint": "src/rag.ts:vectorize-filter:pre-index-vectors",
+    "title": "Vectorize metadata filtering for vectors written before the 'bot' index existed",
+    "description": "Tenant filtering in Vectorize uses metadata.bot, which requires a metadata index. Vectors upserted before the index is created are not filterable.",
+    "claimed_root_cause": "Metadata index creation order on an existing index.",
+    "trace": [
+      {
+        "kind": "sink",
+        "file": "src/rag.ts",
+        "line": 130,
+        "scope": "retrieve()",
+        "description": "VECTORIZE.query(..., { filter: { bot } })"
+      }
+    ],
+    "evidence": [
+      {
+        "file": "src/rag.ts",
+        "line": 180,
+        "description": "Defence in depth: candidates re-checked with WHERE bot_id = ? in D1, so foreign vectors can never become passages."
+      }
+    ],
+    "blockers": [
+      "Vectorize filtering behaviour is not observable locally (the binding only runs remotely)."
+    ],
+    "validation_plan": {
+      "local": "Not available; D1 re-check is covered by the cross-tenant chat test.",
+      "deployment": "After deploy, the workflow creates the 'bot' metadata index and the platform document is re-indexed; confirm with an owner-observed query that only that bot's vectors return."
+    }
+  },
+  {
+    "verdict": "rejected",
+    "fingerprint": "src/settings.ts:tenant-env:platform-secrets",
+    "title": "User bots spending the platform's provider keys",
+    "description": "Provider keys can come from Worker secrets.",
+    "claimed_root_cause": "Secrets visible to every bot.",
+    "trace": [
+      {
+        "kind": "sink",
+        "file": "src/settings.ts",
+        "line": 274,
+        "scope": "tenantEnv()",
+        "description": "Strips provider secrets for non-platform bots."
+      }
+    ],
+    "evidence": [
+      {
+        "file": "src/settings.ts",
+        "line": 274,
+        "description": "tenantEnv removes GEMINI_API_KEY, HF_TOKEN, DEEPSEEK_API_KEY, ... for user bots."
+      }
+    ],
+    "reason": "All model and embedding calls for a bot use tenantEnv; a test confirms the platform's HF secret is 'configured' for the platform bot and absent for a user bot."
+  }
+]

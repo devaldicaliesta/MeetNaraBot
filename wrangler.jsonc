@@ -5,6 +5,8 @@
   "compatibility_date": "2026-10-01",
   "compatibility_flags": ["nodejs_compat"],
   "observability": { "enabled": true },
+  // Daily cleanup of accounts whose 7-day period has ended (and all of their bots and data).
+  "triggers": { "crons": ["23 3 * * *"] },
   "assets": {
     "directory": "./public",
     "binding": "ASSETS",

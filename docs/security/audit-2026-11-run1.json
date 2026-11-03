@@ -1,0 +1,292 @@
+[
+  {
+    "verdict": "confirmed",
+    "fingerprint": "dev-server.mjs:mock-admin-listens-on-all-interfaces",
+    "title": "Mock server exposes its admin API to the local network with a default password",
+    "description": "npm run dev:mock listened on every interface with the admin password defaulting to 'dev', so anyone on the same network could use the mock dashboard API.",
+    "root_cause": "server.listen(PORT) without a host binds 0.0.0.0, combined with a fixed default password.",
+    "intended_behavior": "The development mock is reachable only from the developer's machine unless explicitly opted in.",
+    "trace": [
+      {
+        "kind": "entrypoint",
+        "file": "dev-server.mjs",
+        "line": 183,
+        "scope": "http.createServer().listen",
+        "description": "Binds all interfaces."
+      },
+      {
+        "kind": "sink",
+        "file": "dev-server.mjs",
+        "line": 13,
+        "scope": "PASSWORD",
+        "description": "Defaults to 'dev'."
+      }
+    ],
+    "evidence": [
+      {
+        "file": "dev-server.mjs",
+        "line": 183,
+        "description": "}).listen(PORT, () => ..."
+      },
+      {
+        "file": "dev-server.mjs",
+        "line": 13,
+        "description": "const PASSWORD = process.env.ADMIN_PASSWORD || 'dev';"
+      }
+    ],
+    "conditions": [
+      {
+        "kind": "network_routing",
+        "description": "Attacker on the same LAN while the developer runs the mock."
+      }
+    ],
+    "execution": {
+      "attacker_perspective": "Device on the same local network.",
+      "payloads": [
+        "Authorization: Bearer dev"
+      ],
+      "instructions": [
+        "Call http://<developer-ip>:8787/api/admin/config with the default password."
+      ],
+      "observed_result": "Mock admin API answers; it holds only mock data and in-memory keys that are never returned."
+    },
+    "remediation": {
+      "strategy": "Bind to 127.0.0.1 by default; HOST env var opts in to other interfaces.",
+      "code_changes": [
+        {
+          "file_name": "dev-server.mjs",
+          "fixed_code": "}).listen(PORT, process.env.HOST || '127.0.0.1', ...)"
+        }
+      ]
+    },
+    "severity": {
+      "likelihood": {
+        "score": "low",
+        "reason": "Requires a LAN attacker while the mock is running."
+      },
+      "impact": {
+        "score": "low",
+        "reason": "Mock data only; keys are never returned by the API."
+      },
+      "overall_severity": "low"
+    },
+    "confidence": {
+      "score": "high",
+      "reason": "Node's default listen host is all interfaces."
+    }
+  },
+  {
+    "verdict": "rejected",
+    "fingerprint": "public/admin.html:stored-xss-question-log",
+    "title": "Stored XSS through visitor questions in the dashboard log",
+    "description": "Visitor-controlled questions and model answers are rendered in the Riwayat page.",
+    "claimed_root_cause": "innerHTML with visitor text.",
+    "trace": [
+      {
+        "kind": "sink",
+        "file": "public/admin.html",
+        "line": 1367,
+        "scope": "renderLogs",
+        "description": "Log rows are built with innerHTML."
+      }
+    ],
+    "evidence": [
+      {
+        "file": "public/admin.html",
+        "line": 1367,
+        "description": "${esc(l.question)} ... ${esc(l.answer)}"
+      }
+    ],
+    "reason": "Every visitor- and model-controlled field passes through esc() before insertion; markdown formatting in the playground runs after escaping."
+  },
+  {
+    "verdict": "rejected",
+    "fingerprint": "public/widget.js:model-output-rendering",
+    "title": "Script injection through model output in the widget",
+    "description": "Model output is rendered as a markdown subset in the visitor widget.",
+    "claimed_root_cause": "Model output reaches innerHTML.",
+    "trace": [
+      {
+        "kind": "sink",
+        "file": "public/widget.js",
+        "line": 62,
+        "scope": "inline()",
+        "description": "Formats escaped text."
+      }
+    ],
+    "evidence": [
+      {
+        "file": "public/widget.js",
+        "line": 64,
+        "description": "var html = esc(text).replace(...)"
+      }
+    ],
+    "reason": "Text is HTML-escaped before any formatting; only fixed tags are produced and links are not rendered."
+  },
+  {
+    "verdict": "rejected",
+    "fingerprint": "public:missing-security-headers",
+    "title": "Pages served without CSP or anti-framing headers",
+    "description": "No CSP, X-Frame-Options or frame-ancestors on the landing page or dashboard.",
+    "claimed_root_cause": "No header policy for static assets.",
+    "trace": [
+      {
+        "kind": "entrypoint",
+        "file": "wrangler.jsonc",
+        "line": 7,
+        "scope": "assets",
+        "description": "Static pages served without a header policy."
+      }
+    ],
+    "evidence": [
+      {
+        "file": "wrangler.jsonc",
+        "line": 7,
+        "description": "\"assets\": { \"directory\": \"./public\" ... }"
+      }
+    ],
+    "reason": "Missing best practice without a demonstrated reachable exploit (no XSS sink found, dashboard actions need typed input). Added public/_headers as defence in depth."
+  },
+  {
+    "verdict": "confirmed",
+    "fingerprint": "src/index.ts:admin-auth:lockout-checked-after-compare",
+    "title": "Admin sign-in throttle does not stop password guessing",
+    "description": "The admin middleware compares the bearer token with ADMIN_PASSWORD before consulting the failure limiter, and the limiter only runs on the wrong-password branch. Once an IP is 'locked', wrong guesses get 429 but a correct guess still gets 200, so an attacker can keep guessing at full speed and recognise the right password by the status code.",
+    "root_cause": "The lockout decision is taken after, and only on the failure path of, the password comparison.",
+    "intended_behavior": "While an IP (or the whole deployment) is over the failure budget, every admin request is refused before the password is evaluated.",
+    "trace": [
+      {
+        "kind": "entrypoint",
+        "file": "src/index.ts",
+        "line": 291,
+        "scope": "app.use('/api/admin/*')",
+        "description": "Any unauthenticated client reaches the admin middleware with an arbitrary Authorization header."
+      },
+      {
+        "kind": "propagation",
+        "file": "src/index.ts",
+        "line": 297,
+        "scope": "admin middleware",
+        "description": "Token is compared with ADMIN_PASSWORD first."
+      },
+      {
+        "kind": "sink",
+        "file": "src/index.ts",
+        "line": 298,
+        "scope": "admin middleware",
+        "description": "allow('login-fail:ip', 8) is evaluated only when the comparison failed; a matching token skips it and next() grants full admin access."
+      }
+    ],
+    "evidence": [
+      {
+        "file": "src/index.ts",
+        "line": 297,
+        "description": "if (!token || !timingSafeEqual(token, c.env.ADMIN_PASSWORD)) {"
+      },
+      {
+        "file": "src/index.ts",
+        "line": 298,
+        "description": "if (!allow(`login-fail:${ip(c)}`, 8)) return ... 429"
+      }
+    ],
+    "conditions": [
+      {
+        "kind": "authentication_level",
+        "description": "Unauthenticated network client."
+      },
+      {
+        "kind": "system_configuration",
+        "description": "Impact grows with a short or guessable ADMIN_PASSWORD; the owner chose a 9-character password."
+      }
+    ],
+    "execution": {
+      "attacker_perspective": "Unauthenticated client that can reach the Worker URL.",
+      "payloads": [
+        "Authorization: Bearer <guess>"
+      ],
+      "instructions": [
+        "Run the Worker locally (wrangler dev --local) with a dummy ADMIN_PASSWORD.",
+        "Send 9 wrong guesses to GET /api/admin/status from one IP, then send the dummy password."
+      ],
+      "observed_result": "Before the fix: wrong guesses 9+ return 429 while the correct password still returns 200, so the throttle never limits guessing. After the fix (local run, dummy password): guesses 1-8 return 401, guess 9 returns 429, and the correct password during the lock also returns 429."
+    },
+    "remediation": {
+      "strategy": "Check a durable lock (D1, per hashed IP and global, 10-minute windows) before comparing the password, record failures in D1, and compare SHA-256 digests in constant time.",
+      "code_changes": [
+        {
+          "file_name": "src/index.ts",
+          "fixed_code": "if (await loginLocked(c)) return 429; ... if (!(await secretEquals(token, ADMIN_PASSWORD))) { await recordLoginFailure(c); return 401; }"
+        }
+      ]
+    },
+    "severity": {
+      "likelihood": {
+        "score": "medium",
+        "reason": "The admin URL is public and the chosen password is short and related to the product name."
+      },
+      "impact": {
+        "score": "high",
+        "reason": "A correct guess gives full dashboard control: replace the document, change the prompt and model chain, read the question log, and use stored provider keys."
+      },
+      "overall_severity": "medium"
+    },
+    "confidence": {
+      "score": "high",
+      "reason": "Source order is unambiguous and the fixed behaviour was reproduced on a local Worker with a dummy password."
+    }
+  },
+  {
+    "verdict": "needs_validation",
+    "fingerprint": "src/index.ts:admin-auth:per-isolate-throttle-scope",
+    "title": "Sign-in and per-minute limits live in per-isolate memory",
+    "description": "Failure and per-minute counters were kept in a module-level Map, so their scope is one Worker isolate. Requests spread across isolates or data centres each get a fresh budget.",
+    "claimed_root_cause": "Rate-limit state is not shared across isolates.",
+    "trace": [
+      {
+        "kind": "entrypoint",
+        "file": "src/index.ts",
+        "line": 37,
+        "scope": "module scope",
+        "description": "const hits = new Map() holds all rate-limit counters."
+      }
+    ],
+    "evidence": [
+      {
+        "file": "src/index.ts",
+        "line": 37,
+        "description": "const hits = new Map<string, { n: number; reset: number }>();"
+      }
+    ],
+    "blockers": [
+      "How many isolates and locations serve one attacker depends on Cloudflare's runtime placement, which is not observable from source."
+    ],
+    "validation_plan": {
+      "local": "Not reproducible with a single local isolate.",
+      "deployment": "Owner-observed: compare failure counts across rotating source locations against the Worker. The admin path now uses a durable D1 counter, so only the public per-minute limit still depends on isolate scope; the durable daily caps bound it."
+    }
+  },
+  {
+    "verdict": "rejected",
+    "fingerprint": "src/index.ts:ip-hash-salted-with-admin-password",
+    "title": "Admin password used as the salt for visitor IP hashes",
+    "description": "Daily usage rows stored sha(day|ip|ADMIN_PASSWORD).",
+    "claimed_root_cause": "Secret reused as a hash salt.",
+    "trace": [
+      {
+        "kind": "sink",
+        "file": "src/index.ts",
+        "line": 91,
+        "scope": "dailyQuota",
+        "description": "Hash stored in the usage table."
+      }
+    ],
+    "evidence": [
+      {
+        "file": "src/index.ts",
+        "line": 91,
+        "description": "sha(`${day}|${rawIp}|${env.ADMIN_PASSWORD || ''}`)"
+      }
+    ],
+    "reason": "Only the owner can read D1, so no lower-trust principal can use the hashes to attack the password. Changed anyway to a random per-install salt as hardening."
+  }
+]

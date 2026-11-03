@@ -1,6 +1,6 @@
 import type { Bindings, ChatEvent, ChatMessage, Source } from './types';
 import { detectSmallTalk, smallTalkReply } from './smalltalk';
-import { RERANK_MODEL, getKeys, refusalFor, type BotSettings, type Embedder, type KeyStore, type Lang, type Suggestions } from './settings';
+import { RERANK_MODEL, getKeys, refusalFor, tenantEnv, type BotSettings, type Embedder, type KeyStore, type Lang, type Suggestions } from './settings';
 import { AllProvidersFailed, completeChat, embed, streamChat } from './llm';
 
 /* ------------------------------------------------------------------ */
@@ -106,7 +106,8 @@ export async function retrieve(
   keys: KeyStore,
   settings: BotSettings,
   embedder: Embedder,
-  query: string
+  query: string,
+  bot: string
 ): Promise<{ passages: Passage[]; debug: Omit<RetrievalDebug, 'query' | 'rewritten'> }> {
   const r = settings.rag;
   const t0 = Date.now();
@@ -125,7 +126,8 @@ export async function retrieve(
     (async () => {
       try {
         const [v] = await embed(env, keys, embedder, [query], 'query');
-        const res = await env.VECTORIZE.query(v, { topK: r.candidateK, returnMetadata: 'none' });
+        // Tenant isolation, layer 1: only this bot's vectors (needs the 'bot' metadata index).
+        const res = await env.VECTORIZE.query(v, { topK: r.candidateK, returnMetadata: 'none', filter: { bot } });
         return res.matches || [];
       } catch (e: any) {
         vectorError = String(e?.message || e);
@@ -137,8 +139,8 @@ export async function retrieve(
     (async () => {
       if (!keywordQuery) return [] as Array<{ chunk_id: string }>;
       try {
-        const res = await env.DB.prepare('SELECT chunk_id FROM chunks_fts WHERE chunks_fts MATCH ? ORDER BY bm25(chunks_fts, 0, 2.0, 1.0) LIMIT ?')
-          .bind(keywordQuery, r.candidateK)
+        const res = await env.DB.prepare('SELECT chunk_id FROM chunks_fts WHERE chunks_fts MATCH ? AND bot_id = ? ORDER BY bm25(chunks_fts, 0, 0, 2.0, 1.0) LIMIT ?')
+          .bind(keywordQuery, bot, r.candidateK)
           .all<{ chunk_id: string }>();
         return res.results || [];
       } catch {
@@ -174,8 +176,9 @@ export async function retrieve(
   const ids = ranked.slice(0, Math.max(r.topK * 3, 15)).map((c) => c.id);
   const rows = new Map<string, ChunkRow>();
   if (ids.length) {
-    const res = await env.DB.prepare(`SELECT id, idx, label, text FROM chunks WHERE id IN (${ids.map(() => '?').join(',')})`)
-      .bind(...ids)
+    // Tenant isolation, layer 2: every candidate must be a chunk of this bot in D1, whatever the index returned.
+    const res = await env.DB.prepare(`SELECT id, idx, label, text FROM chunks WHERE bot_id = ? AND id IN (${ids.map(() => '?').join(',')})`)
+      .bind(bot, ...ids)
       .all<ChunkRow>();
     for (const row of res.results || []) rows.set(row.id, row);
   }
@@ -214,8 +217,8 @@ export async function retrieve(
       for (let d = -r.neighborWindow; d <= r.neighborWindow; d++) if (idx + d >= 0) wanted.add(idx + d);
     }
     const idxList = [...wanted];
-    const res = await env.DB.prepare(`SELECT id, idx, label, text FROM chunks WHERE idx IN (${idxList.map(() => '?').join(',')})`)
-      .bind(...idxList)
+    const res = await env.DB.prepare(`SELECT id, idx, label, text FROM chunks WHERE bot_id = ? AND idx IN (${idxList.map(() => '?').join(',')})`)
+      .bind(bot, ...idxList)
       .all<ChunkRow>();
     const byIdx = new Map((res.results || []).map((x) => [x.idx, x]));
     const used = new Set<number>();
@@ -330,10 +333,13 @@ export type AnswerInput = {
   emit: (e: ChatEvent) => Promise<void>;
   /** Starter questions in the visitor's language, offered in small-talk replies. */
   examples?: string[];
+  /** Which bot is answering; scopes retrieval, keys and the provider secrets it may use. */
+  bot: string;
 };
 
-export async function answer({ env, settings, question, history, file, lang, debug, emit, examples = [] }: AnswerInput) {
+export async function answer({ env: rawEnv, settings, question, history, file, lang, debug, emit, examples = [], bot }: AnswerInput) {
   const started = Date.now();
+  const env = tenantEnv(rawEnv, bot);
 
   // Greetings, thanks and "who are you?" are answered before retrieval; otherwise the gate
   // would treat them as out-of-scope questions and reply with the refusal message.
@@ -348,7 +354,7 @@ export async function answer({ env, settings, question, history, file, lang, deb
     return { refused: false, text, bestScore: 0, provider: `smalltalk:${small.kind}` as string | null };
   }
 
-  const keys = await getKeys(env);
+  const keys = await getKeys(env, bot);
 
   let rewritten: string | null = null;
   if (settings.rag.queryRewrite && history.length) {
@@ -361,7 +367,7 @@ export async function answer({ env, settings, question, history, file, lang, deb
   const lastUser = [...history].reverse().find((m) => m.role === 'user')?.content;
   const query = rewritten || (history.length && lastUser ? `${lastUser.slice(0, 300)}\n${question}` : question);
 
-  const { passages, debug: dbg } = await retrieve(env, keys, settings, file.embedder, query);
+  const { passages, debug: dbg } = await retrieve(env, keys, settings, file.embedder, query, bot);
   const sources: Source[] = passages.map((p, i) => ({
     number: i + 1,
     label: p.label,
@@ -429,9 +435,10 @@ export function excerptFallback(passages: Passage[], lang: Lang, quota: boolean)
 }
 
 /** Generates starter questions right after a document is indexed. */
-export async function generateSuggestions(env: Bindings, settings: BotSettings, fileName: string): Promise<Suggestions> {
-  const keys = await getKeys(env);
-  const res = await env.DB.prepare('SELECT label, text FROM chunks ORDER BY idx').all<{ label: string; text: string }>();
+export async function generateSuggestions(rawEnv: Bindings, settings: BotSettings, fileName: string, bot: string): Promise<Suggestions> {
+  const env = tenantEnv(rawEnv, bot);
+  const keys = await getKeys(env, bot);
+  const res = await env.DB.prepare('SELECT label, text FROM chunks WHERE bot_id = ? ORDER BY idx').bind(bot).all<{ label: string; text: string }>();
   const rows = res.results || [];
   if (!rows.length) return { id: [], en: [] };
   // Spread the sample across the document instead of only the beginning.

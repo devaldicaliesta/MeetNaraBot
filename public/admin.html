@@ -49,7 +49,7 @@ code,pre{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:13px}
 label.field{display:block}
 .field>span{display:block;font-size:13px;font-weight:600;margin-bottom:6px}
 .field>small{display:block;font-size:12.5px;color:var(--ink-3);margin-top:5px;line-height:1.45}
-input[type=text],input[type=password],input[type=number],input[type=url],select,textarea{width:100%;padding:9px 12px;border:1px solid var(--line-2);border-radius:var(--r-sm);background:var(--surface);font:inherit;font-size:14px;color:var(--ink);transition:border-color .15s,box-shadow .15s}
+input[type=text],input[type=email],input[type=password],input[type=number],input[type=url],select,textarea{width:100%;padding:9px 12px;border:1px solid var(--line-2);border-radius:var(--r-sm);background:var(--surface);font:inherit;font-size:14px;color:var(--ink);transition:border-color .15s,box-shadow .15s}
 textarea{resize:vertical;min-height:72px;line-height:1.5}
 input:focus,select:focus,textarea:focus{outline:0;border-color:var(--laut);box-shadow:0 0 0 4px rgba(91,63,224,.16)}
 input[type=color]{width:44px;height:40px;padding:3px;border:1px solid var(--line-2);border-radius:var(--r-sm);background:var(--surface)}
@@ -76,7 +76,15 @@ input[type=range]{width:100%;accent-color:var(--laut)}
 
 /* ---------- Login ---------- */
 .login{min-height:100vh;display:grid;place-items:center;padding:24px}
-.login-box{width:min(400px,100%)}
+.login-box{width:min(420px,100%)}
+.back-home{display:inline-flex;align-items:center;gap:6px;margin:0 0 18px;font-weight:700;font-size:14px;color:var(--ink);text-decoration:none}
+.back-home:hover{text-decoration:underline}
+.auth-tabs{margin:0 0 14px}
+.linkish{border:0;background:none;padding:0;font:inherit;font-size:13px;font-weight:600;color:var(--laut);cursor:pointer;justify-self:center;text-decoration:underline}
+.bot-switch{display:grid;gap:8px;margin:0 8px 20px;padding:12px;border:1px solid var(--line);border-radius:var(--r-sm);background:var(--canvas)}
+.bot-switch .row{gap:6px}
+.bot-switch select{padding:7px 10px;font-size:13.5px}
+.account-info{font-size:12px;color:var(--ink-3);line-height:1.4}
 .brand{display:flex;align-items:center;gap:12px;margin-bottom:28px}
 .brand-mark{display:grid;place-items:center;width:42px;height:42px;border-radius:14px;background:var(--laut);color:#fff;font-weight:800;font-size:20px}
 .brand-name{font-size:20px;font-weight:800;letter-spacing:-.02em}
@@ -266,13 +274,19 @@ input[type=range]{width:100%;accent-color:var(--laut)}
 <div class="login" id="login">
   <div class="login-box">
     <div class="row" style="justify-content:space-between;margin-bottom:28px"><div class="brand" style="margin:0"><div class="brand-mark">N</div><div><div class="brand-name">Nara</div><div class="brand-sub">Dashboard pemilik chatbot</div></div></div><div class="lang-switch" role="group" aria-label="Bahasa / Language"><button type="button" data-lang="id" aria-pressed="true">ID</button><button type="button" data-lang="en" aria-pressed="false">EN</button></div></div>
+    <a class="back-home" href="/"><span aria-hidden="true">←</span> Kembali ke beranda</a>
+    <div class="tabs auth-tabs" role="tablist" aria-label="Akun"><button type="button" role="tab" data-auth="login" aria-selected="true">Masuk</button><button type="button" role="tab" data-auth="signup" aria-selected="false">Daftar</button></div>
     <form id="loginForm">
-      <h2>Masuk</h2>
-      <label class="field"><span>Kata sandi admin</span>
-        <input type="password" id="pass" autocomplete="current-password" required>
+      <h2 id="authTitle">Masuk ke akun Anda</h2>
+      <label class="field hidden" id="fName"><span>Nama</span><input type="text" id="name" autocomplete="name" maxlength="80"></label>
+      <label class="field" id="fEmail"><span>Email</span><input type="email" id="email" autocomplete="email" maxlength="254"></label>
+      <label class="field"><span id="passLabel">Kata sandi</span>
+        <input type="password" id="pass" autocomplete="current-password" required maxlength="200">
       </label>
+      <p class="small muted hidden" id="authNote">Minimal 10 karakter. Akun aktif selama 7 hari sejak mendaftar; setelah itu akun dan semua datanya dihapus otomatis.</p>
       <div class="err hidden" id="loginErr"></div>
-      <button class="btn" type="submit">Masuk ke dashboard</button>
+      <button class="btn" type="submit" id="authSubmit">Masuk</button>
+      <button class="linkish" type="button" id="platformToggle">Masuk sebagai admin platform</button>
     </form>
   </div>
 </div>
@@ -281,6 +295,11 @@ input[type=range]{width:100%;accent-color:var(--laut)}
 <div class="shell hidden" id="app">
   <aside class="side">
     <div class="brand"><div class="brand-mark" id="sideMark">N</div><div><div class="brand-name" id="sideName">Nara</div><div class="brand-sub">Dashboard</div></div></div>
+    <div class="bot-switch hidden" id="botSwitch">
+      <label class="field"><span>Bot aktif</span><select id="botSelect" aria-label="Bot aktif"></select></label>
+      <div class="row"><button class="btn ghost sm" id="botNew" type="button">+ Bot baru</button><button class="btn danger sm" id="botDelete" type="button">Hapus bot</button></div>
+      <div class="account-info" id="accountInfo" data-noi18n></div>
+    </div>
     <nav class="nav" aria-label="Menu">
       <a href="#ringkasan"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 13h6V4H4zM14 20h6v-9h-6zM4 20h6v-3H4zM14 4v3h6V4z"/></svg>Ringkasan</a>
       <a href="#dokumen"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5M9 13h6M9 17h4"/></svg>Dokumen</a>
@@ -292,7 +311,7 @@ input[type=range]{width:100%;accent-color:var(--laut)}
     </nav>
     <div class="side-foot">
       <div class="lang-switch" role="group" aria-label="Bahasa / Language"><button type="button" data-lang="id" aria-pressed="true">ID</button><button type="button" data-lang="en" aria-pressed="false">EN</button></div>
-      <a class="btn ghost sm" href="/" target="_blank" rel="noopener">Lihat halaman demo</a>
+      <a class="btn ghost sm" href="/">← Kembali ke beranda</a>
       <button class="btn ghost sm" id="logout" type="button">Keluar</button>
     </div>
   </aside>
@@ -527,7 +546,7 @@ const DICT = {
   'Kunci Gemini tersimpan': 'Gemini key saved', 'Gemini menjadi model utama.': 'Gemini is the primary model.', 'Penyedia lain sudah ada, tetapi Gemini belum.': 'Other providers are set, but Gemini is not.',
   'Tanpa kunci, chatbot memakai cadangan Workers AI.': 'Without a key, the chatbot uses the Workers AI fallback.', 'Dokumen terindeks': 'Document indexed',
   'Unggahan belum selesai. Hapus lalu unggah ulang.': 'The upload did not finish. Delete it and upload again.', 'Unggah satu dokumen sebagai sumber jawaban.': 'Upload one document as the source of answers.',
-  'Kata sandi admin kuat': 'Strong admin password', 'Kata sandi kurang dari 12 karakter. Ganti secret ADMIN_PASSWORD dengan kalimat sandi yang lebih panjang.': 'The password is shorter than 12 characters. Replace the ADMIN_PASSWORD secret with a longer passphrase.', 'Kata sandi admin minimal 12 karakter.': 'The admin password is at least 12 characters long.', 'Bot yang sama bisa menjawab lewat chat Telegram dan WhatsApp, memakai dokumen, pengaturan, dan kuota yang sama dengan widget.': 'The same bot can answer in Telegram and WhatsApp chats, using the same document, settings and quotas as the widget.', 'Muat ulang': 'Reload', 'Memuat status saluran…': 'Loading channel status…', 'Domain website dibatasi': 'Website domain restricted', 'Disarankan agar widget hanya bisa dipakai di website Anda.': 'Recommended so the widget only works on your website.',
+  'Kata sandi admin kuat': 'Strong admin password', 'Kata sandi kurang dari 12 karakter. Ganti secret ADMIN_PASSWORD dengan kalimat sandi yang lebih panjang.': 'The password is shorter than 12 characters. Replace the ADMIN_PASSWORD secret with a longer passphrase.', 'Kata sandi admin minimal 12 karakter.': 'The admin password is at least 12 characters long.', 'Bot yang sama bisa menjawab lewat chat Telegram dan WhatsApp, memakai dokumen, pengaturan, dan kuota yang sama dengan widget.': 'The same bot can answer in Telegram and WhatsApp chats, using the same document, settings and quotas as the widget.', 'Muat ulang': 'Reload', 'Memuat status saluran…': 'Loading channel status…', 'Kembali ke beranda': 'Back to home', '← Kembali ke beranda': '← Back to home', 'Daftar': 'Sign up', 'Masuk ke akun Anda': 'Sign in to your account', 'Nama': 'Name', 'Email': 'E-mail', 'Kata sandi': 'Password', 'Minimal 10 karakter. Akun aktif selama 7 hari sejak mendaftar; setelah itu akun dan semua datanya dihapus otomatis.': 'At least 10 characters. Accounts are active for 7 days from sign-up; after that the account and all of its data are deleted automatically.', 'Masuk sebagai admin platform': 'Sign in as the platform admin', 'Bot aktif': 'Active bot', '+ Bot baru': '+ New bot', 'Hapus bot': 'Delete bot', 'Domain website dibatasi': 'Website domain restricted', 'Disarankan agar widget hanya bisa dipakai di website Anda.': 'Recommended so the widget only works on your website.',
   'Kunci belum diatur, akan dilewati': 'Key not set, will be skipped', 'Perlu tindakan': 'Needs attention',
   'Chatbot hanya menjawab dari satu dokumen ini. Dokumen dipotong di browser, lalu tiap potongan diubah menjadi vektor dan diindeks untuk pencarian kata kunci.': 'The chatbot answers only from this one document. It is split into chunks in your browser, then each chunk is turned into a vector and indexed for keyword search.',
   'Unggah dokumen': 'Upload a document', 'Paling akurat:': 'Most accurate:',
@@ -684,15 +703,19 @@ document.addEventListener('DOMContentLoaded', () => {
 /* =================================================================== */
 /*  State & API                                                         */
 /* =================================================================== */
-const S = { pass: sessionStorage.getItem('ts.pass') || '', cfg: null, draft: null, status: null, providers: [], wai: [], keyEdits: {}, history: [], chunkOffset: 0, prepared: null, logFilter: 'widget' };
+const ss = (k, v) => { try { if (v === undefined) return sessionStorage.getItem(k) || ''; if (v === null) sessionStorage.removeItem(k); else sessionStorage.setItem(k, v); } catch { return ''; } };
+const S = { mode: ss('ts.mode') || '', pass: ss('ts.token'), bot: ss('ts.bot') || 'default', bots: [], user: null, authTab: 'login', cfg: null, draft: null, status: null, providers: [], wai: [], keyEdits: {}, history: [], chunkOffset: 0, prepared: null, logFilter: 'widget' };
 const $ = (s, r = document) => r.querySelector(s);
 const $$ = (s, r = document) => [...r.querySelectorAll(s)];
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const fmt = (n) => new Intl.NumberFormat(LOCALE()).format(n);
 
+function authHeaders() {
+  return { Authorization: 'Bearer ' + S.pass, 'X-Lang': LANG.cur, ...(S.mode === 'user' ? { 'X-Bot-Id': S.bot } : {}) };
+}
 async function api(path, opts = {}) {
-  const res = await fetch(path, { ...opts, headers: { Authorization: 'Bearer ' + S.pass, 'X-Lang': LANG.cur, ...(opts.body && !(opts.body instanceof FormData) ? { 'Content-Type': 'application/json' } : {}), ...(opts.headers || {}) } });
-  if (res.status === 401) { logout('Sesi berakhir atau kata sandi salah.'); throw new Error('401'); }
+  const res = await fetch(path, { ...opts, headers: { ...authHeaders(), ...(opts.body && !(opts.body instanceof FormData) ? { 'Content-Type': 'application/json' } : {}), ...(opts.headers || {}) } });
+  if (res.status === 401) { const d = await res.clone().json().catch(() => ({})); logout(d.error || L('Sesi berakhir. Silakan masuk lagi.', 'Your session has ended. Please sign in again.')); throw new Error('401'); }
   const data = await res.json().catch(() => ({}));
   if (!res.ok) throw new Error(data.error || 'Permintaan gagal (' + res.status + ')');
   return data;
@@ -711,28 +734,130 @@ function toast(msg, err) {
 /* =================================================================== */
 /*  Auth                                                                */
 /* =================================================================== */
+function setAuthTab(tab) {
+  S.authTab = tab;
+  const platform = tab === 'platform', signup = tab === 'signup';
+  $$('[data-auth]').forEach((b) => b.setAttribute('aria-selected', String(b.dataset.auth === tab)));
+  $('#fName').classList.toggle('hidden', !signup);
+  $('#fEmail').classList.toggle('hidden', platform);
+  $('#email').required = !platform;
+  $('#authNote').classList.toggle('hidden', !signup);
+  $('#pass').autocomplete = signup ? 'new-password' : 'current-password';
+  $('#authTitle').textContent = platform ? L('Masuk sebagai admin platform', 'Sign in as the platform admin') : signup ? L('Buat akun baru', 'Create an account') : L('Masuk ke akun Anda', 'Sign in to your account');
+  $('#passLabel').textContent = platform ? L('Kata sandi admin', 'Admin password') : L('Kata sandi', 'Password');
+  $('#authSubmit').textContent = signup ? L('Daftar dan buat bot', 'Sign up and create a bot') : L('Masuk', 'Sign in');
+  $('#platformToggle').textContent = platform ? L('Masuk dengan akun email', 'Sign in with an e-mail account') : L('Masuk sebagai admin platform', 'Sign in as the platform admin');
+  $('#loginErr').classList.add('hidden');
+}
+$$('[data-auth]').forEach((b) => b.addEventListener('click', () => setAuthTab(b.dataset.auth)));
+$('#platformToggle').addEventListener('click', () => setAuthTab(S.authTab === 'platform' ? 'login' : 'platform'));
+if (location.hash === '#daftar') setAuthTab('signup');
+
 $('#loginForm').addEventListener('submit', async (e) => {
   e.preventDefault();
-  S.pass = $('#pass').value;
   const err = $('#loginErr');
   err.classList.add('hidden');
+  $('#authSubmit').disabled = true;
   try {
-    const res = await fetch('/api/admin/status', { headers: { Authorization: 'Bearer ' + S.pass, 'X-Lang': LANG.cur } });
-    const data = await res.json().catch(() => ({}));
-    if (!res.ok) throw new Error(data.error || 'Gagal masuk.');
-    sessionStorage.setItem('ts.pass', S.pass);
+    if (S.authTab === 'platform') {
+      S.mode = 'platform'; S.pass = $('#pass').value; S.bot = 'default';
+      const res = await fetch('/api/admin/status', { headers: authHeaders() });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || L('Gagal masuk.', 'Sign-in failed.'));
+    } else {
+      const signup = S.authTab === 'signup';
+      const res = await fetch(signup ? '/api/auth/signup' : '/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-Lang': LANG.cur },
+        body: JSON.stringify({ email: $('#email').value, password: $('#pass').value, name: signup ? $('#name').value : undefined }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || L('Gagal masuk.', 'Sign-in failed.'));
+      S.mode = 'user'; S.pass = data.token; S.user = data.user; S.bots = data.bots || [];
+      S.bot = S.bots.some((b) => b.id === ss('ts.bot')) ? ss('ts.bot') : S.bots[0]?.id || '';
+      if (!S.bot) S.bot = await createBotFlow(L('Bot pertama saya', 'My first bot'));
+    }
+    $('#pass').value = '';
+    ss('ts.mode', S.mode); ss('ts.token', S.pass); ss('ts.bot', S.bot);
     await boot();
+    if (S.mode === 'user' && S.authTab === 'signup') toast(L('Akun dibuat. Unggah dokumen di menu Dokumen untuk mulai.', 'Account created. Upload a document in the Document menu to begin.'));
   } catch (ex) {
+    if (S.mode === 'platform') { S.mode = ''; S.pass = ''; }
     err.textContent = ex.message;
     err.classList.remove('hidden');
+  } finally {
+    $('#authSubmit').disabled = false;
   }
 });
 function logout(msg) {
-  sessionStorage.removeItem('ts.pass');
-  S.pass = '';
+  if (S.mode === 'user' && S.pass) fetch('/api/auth/logout', { method: 'POST', headers: { Authorization: 'Bearer ' + S.pass } }).catch(() => {});
+  ss('ts.token', null); ss('ts.mode', null); ss('ts.pass', null);
+  S.pass = ''; S.mode = ''; S.draft = null;
   $('#app').classList.add('hidden');
   $('#login').classList.remove('hidden');
   if (msg) { $('#loginErr').textContent = msg; $('#loginErr').classList.remove('hidden'); }
+}
+
+/* ---------- Bots of the signed-in user ---------- */
+async function loadMe() {
+  const res = await fetch('/api/auth/me', { headers: { Authorization: 'Bearer ' + S.pass, 'X-Lang': LANG.cur } });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.error || '401');
+  S.user = data.user; S.bots = data.bots || []; S.maxBots = data.maxBots || 3;
+  if (!S.bots.some((b) => b.id === S.bot)) S.bot = S.bots[0]?.id || '';
+  if (!S.bot) S.bot = await createBotFlow(L('Bot baru', 'New bot'));
+  ss('ts.bot', S.bot);
+}
+async function createBotFlow(name) {
+  const res = await fetch('/api/auth/bots', { method: 'POST', headers: { Authorization: 'Bearer ' + S.pass, 'Content-Type': 'application/json', 'X-Lang': LANG.cur }, body: JSON.stringify({ name }) });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.error || L('Gagal membuat bot.', 'Could not create the bot.'));
+  S.bots.push(data.bot);
+  return data.bot.id;
+}
+function renderBotSwitch() {
+  const box = $('#botSwitch');
+  box.classList.toggle('hidden', S.mode !== 'user');
+  if (S.mode !== 'user') return;
+  $('#botSelect').innerHTML = S.bots.map((b) => `<option value="${esc(b.id)}" ${b.id === S.bot ? 'selected' : ''}>${esc(b.name)}</option>`).join('');
+  $('#botNew').disabled = S.bots.length >= (S.maxBots || 3);
+  const until = S.user?.expires_at ? new Date(S.user.expires_at).toLocaleDateString(LOCALE(), { dateStyle: 'medium' }) : '';
+  $('#accountInfo').textContent = `${S.user?.email || ''}${until ? ' · ' + L('aktif sampai ', 'active until ') + until : ''}`;
+}
+async function switchBot(id) {
+  if (S.draft && dirtyCheck() && !confirm(L('Perubahan yang belum disimpan akan hilang. Lanjutkan?', 'Unsaved changes will be lost. Continue?'))) { renderBotSwitch(); return; }
+  S.bot = id; ss('ts.bot', id);
+  S.history = []; S.prepared = null; S.keyEdits = {}; S.chunkOffset = 0;
+  $('#thread') && ($('#thread').innerHTML = '');
+  await boot();
+}
+$('#botSelect').addEventListener('change', (e) => switchBot(e.target.value).catch((err) => toast(err.message, true)));
+$('#botNew').addEventListener('click', async () => {
+  const name = prompt(L('Nama bot baru:', 'Name of the new bot:'), L('Bot baru', 'New bot'));
+  if (name === null) return;
+  try { const id = await createBotFlow(name.trim() || L('Bot baru', 'New bot')); await switchBot(id); toast(L('Bot baru dibuat.', 'New bot created.')); }
+  catch (err) { toast(err.message, true); }
+});
+$('#botDelete').addEventListener('click', async () => {
+  const bot = S.bots.find((b) => b.id === S.bot);
+  if (!bot || !confirm(L(`Hapus bot "${bot.name}" beserta dokumen, pengaturan, dan riwayatnya? Tindakan ini tidak bisa dibatalkan.`, `Delete the bot "${bot.name}" with its document, settings and history? This cannot be undone.`))) return;
+  try {
+    const res = await fetch('/api/auth/bots/' + encodeURIComponent(bot.id), { method: 'DELETE', headers: { Authorization: 'Bearer ' + S.pass, 'X-Lang': LANG.cur } });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.error || L('Gagal menghapus bot.', 'Could not delete the bot.'));
+    S.bots = S.bots.filter((b) => b.id !== bot.id);
+    S.draft = null;
+    await switchBot(S.bots[0]?.id || (await createBotFlow(L('Bot baru', 'New bot'))));
+    toast(L('Bot dihapus.', 'Bot deleted.'));
+  } catch (err) { toast(err.message, true); }
+});
+
+/** The live widget preview at the bottom of the dashboard follows the selected bot. */
+function mountPreview() {
+  document.querySelectorAll('body > tanyasaya-chat').forEach((el) => el.remove());
+  const el = document.createElement('tanyasaya-chat');
+  if (S.mode === 'user' && S.bot) el.setAttribute('bot', S.bot);
+  document.body.appendChild(el);
 }
 $('#logout').addEventListener('click', () => logout());
 
@@ -756,6 +881,7 @@ window.addEventListener('hashchange', route);
 /*  Boot                                                                */
 /* =================================================================== */
 async function boot() {
+  if (S.mode === 'user') await loadMe();
   const [status, cfg] = await Promise.all([api('/api/admin/status'), api('/api/admin/config')]);
   S.status = status;
   S.cfg = cfg;
@@ -764,7 +890,9 @@ async function boot() {
   S.draft = structuredClone(cfg.settings);
   $('#login').classList.add('hidden');
   $('#app').classList.remove('hidden');
+  renderBotSwitch();
   renderAll();
+  mountPreview();
   route();
 }
 function renderAll() {
@@ -873,7 +1001,7 @@ function renderOverview() {
     { done: geminiKey, title: 'Kunci Gemini tersimpan', text: geminiKey ? 'Gemini menjadi model utama.' : hasKey ? 'Penyedia lain sudah ada, tetapi Gemini belum.' : 'Tanpa kunci, chatbot memakai cadangan Workers AI.', link: '#model' },
     { done: doc, title: 'Dokumen terindeks', text: doc ? `${st.file.name} · ${fmt(st.file.chunk_count)} potongan` : st.file ? 'Unggahan belum selesai. Hapus lalu unggah ulang.' : 'Unggah satu dokumen sebagai sumber jawaban.', link: '#dokumen' },
     { done: (S.cfg.settings.allowedOrigins || []).length > 0, title: 'Domain website dibatasi', text: 'Disarankan agar widget hanya bisa dipakai di website Anda.', link: '#pasang' },
-    { done: !st.weakPassword, title: 'Kata sandi admin kuat', text: st.weakPassword ? 'Kata sandi kurang dari 12 karakter. Ganti secret ADMIN_PASSWORD dengan kalimat sandi yang lebih panjang.' : 'Kata sandi admin minimal 12 karakter.', link: null },
+    ...(st.platform === false ? [] : [{ done: !st.weakPassword, title: 'Kata sandi admin kuat', text: st.weakPassword ? 'Kata sandi kurang dari 12 karakter. Ganti secret ADMIN_PASSWORD dengan kalimat sandi yang lebih panjang.' : 'Kata sandi admin minimal 12 karakter.', link: null }]),
   ];
   $('#setup').innerHTML = steps.map((s) => `<li class="${s.done ? 'done' : ''}"><span class="tick">✓</span><div><b>${esc(s.title)}</b><span>${esc(s.text)}</span></div>${s.link && !s.done ? `<a class="btn ghost sm" href="${s.link}">Buka</a>` : '<span></span>'}</li>`).join('');
 
@@ -1204,7 +1332,7 @@ async function loadChunks(reset) {
 /* =================================================================== */
 /*  Model chain & keys                                                  */
 /* =================================================================== */
-const MODEL_HINTS = { gemini: 'gemini-3.5-flash', groq: 'llama-3.3-70b-versatile', openrouter: 'google/gemini-3.8-flash', cerebras: 'gpt-oss-120b', sambanova: 'Meta-Llama-3.3-70B-Instruct', huggingface: 'openai/gpt-oss-120b', 'workers-ai': '@cf/zai-org/glm-4.7-flash' };
+const MODEL_HINTS = { gemini: 'gemini-3.5-flash', groq: 'llama-3.3-70b-versatile', openrouter: 'google/gemini-3.8-flash', cerebras: 'gpt-oss-120b', sambanova: 'Meta-Llama-3.3-70B-Instruct', huggingface: 'openai/gpt-oss-120b', deepseek: 'deepseek-chat', moonshot: 'kimi-k2-turbo-preview', zai: 'glm-4.6', 'workers-ai': '@cf/zai-org/glm-4.7-flash' };
 function renderChain() {
   const box = $('#chainEdit');
   box.innerHTML = S.draft.chain.map((c, i) => `
@@ -1309,7 +1437,7 @@ $('#playForm').addEventListener('submit', async (e) => {
   thread.scrollTop = thread.scrollHeight;
   let text = '', sources = [], done = null, debug = {}, fails = [], error = null;
   try {
-    const res = await fetch('/api/admin/test-chat', { method: 'POST', headers: { Authorization: 'Bearer ' + S.pass, 'Content-Type': 'application/json', 'X-Lang': LANG.cur }, body: JSON.stringify({ question: q, history: S.history, lang: LANG.cur, settings: $('#useDraft').checked ? S.draft : undefined }) });
+    const res = await fetch('/api/admin/test-chat', { method: 'POST', headers: { ...authHeaders(), 'Content-Type': 'application/json' }, body: JSON.stringify({ question: q, history: S.history, lang: LANG.cur, settings: $('#useDraft').checked ? S.draft : undefined }) });
     if (res.status === 401) return logout('Sesi berakhir.');
     const reader = res.body.getReader(), dec = new TextDecoder(); let buf = '';
     const handle = (line) => {
@@ -1421,7 +1549,7 @@ $('#channels').addEventListener('click', async (e) => {
 
 function renderSnippet() {
   const host = location.origin, pos = $('#optPos').value, theme = $('#optTheme').value, lang = $('#optLang').value;
-  const attrs = [`api-base="${host}"`, pos !== 'right' ? `position="${pos}"` : '', theme !== 'light' ? `theme="${theme}"` : '', lang !== 'auto' ? `lang="${lang}"` : ''].filter(Boolean).join(' ');
+  const attrs = [`api-base="${host}"`, S.mode === 'user' && S.bot ? `bot="${S.bot}"` : '', pos !== 'right' ? `position="${pos}"` : '', theme !== 'light' ? `theme="${theme}"` : '', lang !== 'auto' ? `lang="${lang}"` : ''].filter(Boolean).join(' ');
   $('#snippet').textContent = `<script src="${host}/widget.js" defer><\/script>\n<tanyasaya-chat ${attrs}></tanyasaya-chat>`;
 }
 ['optPos', 'optTheme', 'optLang'].forEach((id) => $('#' + id).addEventListener('change', renderSnippet));
@@ -1435,9 +1563,10 @@ window.addEventListener('ts:lang', () => {
 });
 
 /* =================================================================== */
-if (S.pass) boot().catch(() => logout());
+// Sessions from before accounts existed stored the admin password under ts.pass.
+if (!S.mode && ss('ts.pass')) { S.mode = 'platform'; S.pass = ss('ts.pass'); }
+if (S.pass && S.mode) boot().catch((e) => logout(e.message === '401' ? '' : e.message));
 </script>
 <script src="/widget.js" defer></script>
-<tanyasaya-chat></tanyasaya-chat>
 </body>
 </html>

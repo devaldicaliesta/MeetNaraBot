@@ -6,12 +6,12 @@
 // raw body (app secret); GET verification uses WHATSAPP_VERIFY_TOKEN.
 
 import type { Context, Hono } from 'hono';
-import type { Bindings, ChatMessage } from './types';
+import type { AppEnv, Bindings, ChatMessage } from './types';
 import { channelCommand, toTelegram, toWhatsApp, type FormatSource } from './channel-format';
 import { answer } from './rag';
 import { getSalt, getSettings, type BotSettings, type Embedder, type Lang } from './settings';
 
-type Env = { Bindings: Bindings };
+type Env = AppEnv;
 type Channel = 'telegram' | 'whatsapp';
 type FileRow = { id: string; name: string; status: string; embedder: Embedder | null };
 type AnswerResult = { refused: boolean; text: string; bestScore: number; provider: string | null; error?: boolean };
@@ -159,6 +159,7 @@ async function converse(env: Bindings, deps: ChannelDeps, channel: Channel, user
     lang,
     debug: false,
     examples,
+    bot: 'default',
     emit: async (e) => {
       if (e.type === 'delta') out += e.text;
       else if (e.type === 'sources') sources = e.items.map((s) => ({ number: s.number, label: s.label }));
@@ -300,7 +301,13 @@ export function channelRoutes(app: Hono<Env>, deps: ChannelDeps) {
 
   const origin = (c: Context<Env>) => new URL(c.req.url).origin;
 
+  // Telegram/WhatsApp are configured with platform secrets, so only the platform bot can use them.
+  const platformOnly = (c: Context<Env>) =>
+    c.get('bot') === 'default' ? null : c.json({ error: c.req.header('X-Lang') === 'en' ? 'Telegram and WhatsApp are only available for the platform bot.' : 'Telegram dan WhatsApp hanya tersedia untuk bot platform.', available: false }, 403);
+
   app.get('/api/admin/channels', async (c) => {
+    const denied = platformOnly(c);
+    if (denied) return denied;
     const base = origin(c);
     const tg = c.env.TELEGRAM_BOT_TOKEN;
     let telegram: Record<string, unknown> = { configured: !!tg, webhookUrl: `${base}/api/channels/telegram` };
@@ -329,6 +336,8 @@ export function channelRoutes(app: Hono<Env>, deps: ChannelDeps) {
   });
 
   app.post('/api/admin/channels/telegram/connect', async (c) => {
+    const denied = platformOnly(c);
+    if (denied) return denied;
     const tg = c.env.TELEGRAM_BOT_TOKEN;
     if (!tg) return c.json({ error: c.req.header('X-Lang') === 'en' ? 'TELEGRAM_BOT_TOKEN is not set. Add it as a secret first.' : 'TELEGRAM_BOT_TOKEN belum diset. Tambahkan dulu sebagai secret.' }, 400);
     try {
@@ -354,6 +363,8 @@ export function channelRoutes(app: Hono<Env>, deps: ChannelDeps) {
   });
 
   app.post('/api/admin/channels/telegram/disconnect', async (c) => {
+    const denied = platformOnly(c);
+    if (denied) return denied;
     const tg = c.env.TELEGRAM_BOT_TOKEN;
     if (!tg) return c.json({ error: c.req.header('X-Lang') === 'en' ? 'TELEGRAM_BOT_TOKEN is not set. Add it as a secret first.' : 'TELEGRAM_BOT_TOKEN belum diset. Tambahkan dulu sebagai secret.' }, 400);
     try {

@@ -52,7 +52,7 @@ test('admin status never returns secrets', async ({ request }) => {
   const res = await request.get('/api/admin/status', { headers: admin });
   expect(res.ok()).toBeTruthy();
   const text = await res.text();
-  for (const secret of [QA_PASSWORD, 'qa-dummy-telegram-token', 'qa-dummy-whatsapp-token', 'qa-app-secret', 'qa-verify-token']) expect(text).not.toContain(secret);
+  for (const secret of [QA_PASSWORD, 'qa-dummy-hf-secret-value', 'qa-dummy-telegram-token', 'qa-dummy-whatsapp-token', 'qa-app-secret', 'qa-verify-token']) expect(text).not.toContain(secret);
   expect(JSON.parse(text).weakPassword).toBe(false);
 });
 

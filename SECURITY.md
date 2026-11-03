@@ -20,6 +20,22 @@ Batas kepercayaan yang diperiksa:
 | Password admin dipakai sebagai salt hash IP | Ditolak (penguatan) | – | Diganti salt acak per instalasi (`settings.salt`). |
 | Halaman tanpa CSP atau anti-framing | Ditolak (penguatan) | – | Ditambahkan `public/_headers`. |
 
+## Audit kedua: multi-pengguna (November 2026)
+
+Audit memakai alur yang sama (profil quick, satu agen) dan berfokus pada batas antar-pengguna. Hasilnya lolos `validate-findings.cjs`. Rekaman lengkapnya ada di `docs/security/audit-2026-11-run2-multi-user.json`.
+
+| Temuan | Status | Tingkat | Perbaikan |
+|---|---|---|---|
+| Satu akun gratis bisa menghabiskan kuota Workers AI bersama (unggahan besar, uji coba tanpa batas) | Terkonfirmasi | Sedang | Dokumen bot pengguna maksimal 400 potongan, embedding semua bot pengguna dibatasi per hari, dan uji coba pemilik ikut dihitung kuota |
+| Penghitung login global bisa mengunci semua pengguna | Terkonfirmasi | Sedang | Kunci per IP dan per email; penghitung global hanya untuk password admin platform |
+| ID potongan/vektor hanya memakai 8 karakter ID file, sehingga bisa saling menimpa antar bot | Terkonfirmasi | Rendah | Memakai UUID penuh; penghapusan FTS dibatasi `bot_id` |
+| Filter Vectorize untuk vektor lama sebelum index metadata `bot` dibuat | Perlu validasi | – | Index dibuat oleh workflow, dokumen platform diindeks ulang, dan kandidat selalu dicek ulang di D1 |
+| Akses bot pengguna lain lewat `X-Bot-Id` | Ditolak | – | Kepemilikan dicek di setiap request (ada tesnya) |
+| Bot pengguna memakai secret penyedia milik platform | Ditolak | – | `tenantEnv` menghapus secret platform untuk bot pengguna (ada tesnya) |
+| Pendaftaran membocorkan email yang sudah terdaftar | Ditolak (kompromi UX) | – | Dibatasi 5 per IP per hari; login memakai pesan dan kerja hash yang sama |
+
+Catatan: PBKDF2 memakai 30.000 iterasi agar login muat dalam batas CPU Workers gratis (sekitar 10 ms). Ini di bawah rekomendasi OWASP. Kompensasinya: kunci login per IP dan per email, minimal 10 karakter, dan password tidak boleh memuat email. Di paket Workers berbayar, naikkan `PBKDF2_ITERATIONS`; hash lama tetap berlaku karena jumlah iterasi disimpan per pengguna.
+
 ## Penguatan yang aktif
 
 - **Login admin:** 8 kali salah per IP atau 100 kali salah secara global dalam 10 menit membuat semua permintaan admin ditolak, termasuk yang memakai password benar, sampai jendela waktunya berganti. Password yang lebih pendek dari 12 karakter ditandai di checklist Ringkasan.
@@ -29,6 +45,7 @@ Batas kepercayaan yang diperiksa:
 - **Webhook Telegram:** wajib header `X-Telegram-Bot-Api-Secret-Token` yang cocok (dibandingkan dengan waktu konstan); body di atas 256 KB ditolak.
 - **Webhook WhatsApp:** setiap POST wajib bertanda tangan `X-Hub-Signature-256` dari App Secret; verifikasi GET memakai `WHATSAPP_VERIFY_TOKEN`; hanya pesan untuk `WHATSAPP_PHONE_NUMBER_ID` milik Anda yang diproses.
 - **Pesan chat-app:** format Telegram memakai HTML yang di-escape lebih dulu, sehingga hanya tag `<b>`, `<i>`, dan `<code>` yang dihasilkan. Pratinjau tautan dimatikan. Kuota per menit dan harian berlaku per pengguna chat.
+- **Akun:** sesi disimpan sebagai hash SHA-256, berlaku maksimal 7 hari dan tidak melebihi masa aktif akun. Akun kedaluwarsa dihapus beserta bot, dokumen, vektor, riwayat, dan pengaturannya oleh cron harian. Vektor yang gagal dihapus dicatat dan dicoba ulang.
 - **Privasi:** IP pengunjung hanya disimpan sebagai hash harian dengan salt acak. Data pribadi tidak diminta.
 - **Secret:** API key dan password hanya disimpan sebagai secret Worker atau GitHub. Key tidak pernah dikirim balik ke browser. Workflow deploy (yang memegang secret) tidak pernah berjalan untuk pull request; workflow QA berjalan tanpa secret dan dengan izin baca saja.
 

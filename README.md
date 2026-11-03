@@ -2,6 +2,8 @@
 
 Chatbot yang menjawab pertanyaan pengunjung **hanya dari satu dokumen milik Anda**, lengkap dengan nomor sumber yang bisa dicek. Ditenagai **Gemini 3.5 Flash**, berjalan di **Cloudflare Workers** (paket gratis), dan dipasang di website mana pun dengan dua baris kode.
 
+Nara adalah platform **multi-pengguna**. Siapa pun bisa mendaftar dengan email, mendapat bot sendiri (maksimal 3 per akun), dan memasangnya di website mereka. Akun aktif **7 hari**, lalu dihapus otomatis bersama datanya. Bot "Nara" di landing page adalah bot platform yang dikelola dengan `ADMIN_PASSWORD`.
+
 - `PROMPT.md`: prompt lengkap 7 layer (bahasa Inggris) untuk membangun ulang aplikasi ini dengan Gemini.
 - Isi 7 layer prompt chatbot ada di `src/settings.ts` (`DEFAULT_LAYERS`); ubah di sana bila perlu.
 - `public/admin.html`: dashboard pemilik.
@@ -74,6 +76,28 @@ Setelah deploy, workflow mengindeks `docs/knowledge/nara.md` sebagai dokumen ref
 
 ### Upgrade dari v1
 Jalankan `npm run db:migrate`. Migrasi `0002` menambah tabel baru dan mengisi indeks kata kunci dari potongan yang sudah ada. Konfigurasi lama (`bot_config`) dipindahkan otomatis saat dashboard pertama kali dibuka, dan kunci API lama ikut dipindah ke penyimpanan kunci. Nama binding di `wrangler.jsonc` berubah (`tanyasaya-db`, `tanyasaya-index`); jika ingin tetap memakai `rag-db`/`rag-index` milik v1, ganti saja namanya di file itu.
+
+## Akun dan bot pengguna
+
+| Hal | Aturan |
+|---|---|
+| Daftar | Email dan kata sandi minimal 10 karakter (PBKDF2-SHA256), di `/admin#daftar` |
+| Masa aktif akun | 7 hari sejak daftar. Setelahnya login ditolak, bot berhenti menjawab, dan cron harian (`triggers.crons`) menghapus akun, bot, dokumen, vektor, riwayat, dan pengaturannya |
+| Sesi | Token acak 256-bit yang disimpan sebagai hash; berlaku maksimal 7 hari dan tidak melebihi masa aktif akun |
+| Bot per akun | Maksimal 3; setiap bot punya dokumen, pengaturan, kunci API, kuota, dan riwayat sendiri |
+| Isolasi data | Filter `bot` di Vectorize, `bot_id` di D1/FTS, dan setiap kandidat dicek ulang di D1 |
+| Kunci API | Secret Worker milik platform hanya dipakai bot platform. Bot pengguna memakai kunci yang disimpan pemiliknya, atau Workers AI gratis |
+| Kuota bersama | Dokumen bot pengguna maksimal 400 potongan; embedding Workers AI untuk semua bot pengguna maksimal `PLATFORM_DAILY_EMBEDS` (4.000) potongan per hari; pertanyaan semua bot pengguna maksimal `PLATFORM_DAILY_TOTAL` (5.000) per hari; pendaftaran 5 per IP dan `MAX_SIGNUPS_PER_DAY` (200) per hari |
+| Admin platform | Klik "Masuk sebagai admin platform" lalu isi `ADMIN_PASSWORD`; hanya bisa mengelola bot platform |
+
+Widget bot pengguna memakai atribut `bot`, dan kodenya sudah disiapkan di menu Pasang widget:
+```html
+<script src="https://<worker>/widget.js" defer></script>
+<tanyasaya-chat api-base="https://<worker>" bot="<id-bot>"></tanyasaya-chat>
+```
+
+### Penyedia model
+Gemini, DeepSeek (`deepseek-chat`), Kimi/Moonshot (`kimi-k2-turbo-preview`), GLM/Z.ai (`glm-4.6`), Groq, OpenRouter, Cerebras, SambaNova, Hugging Face, dan Workers AI. Semuanya memakai endpoint yang kompatibel dengan OpenAI. Untuk bot platform, simpan kuncinya sebagai secret (`DEEPSEEK_API_KEY`, `MOONSHOT_API_KEY`, `ZAI_API_KEY`); untuk bot pengguna, tempel di dashboard.
 
 ## Pasang di website
 

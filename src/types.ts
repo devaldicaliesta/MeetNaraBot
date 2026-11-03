@@ -1,3 +1,5 @@
+import type { User } from './auth';
+
 export type Bindings = {
   DB: D1Database;
   VECTORIZE: VectorizeIndex;
@@ -7,12 +9,19 @@ export type Bindings = {
   /** Random token minted by the deploy workflow on every run (never shown to anyone). It can only
    *  index the reference document and connect Telegram, so a fresh install works without ADMIN_PASSWORD. */
   DEPLOY_TOKEN?: string;
+  /** Optional caps for the multi-user platform (wrangler vars). */
+  PLATFORM_DAILY_TOTAL?: string | number;
+  MAX_SIGNUPS_PER_DAY?: string | number;
+  PLATFORM_DAILY_EMBEDS?: string | number;
   GEMINI_API_KEY?: string;
   GROQ_API_KEY?: string;
   OPENROUTER_API_KEY?: string;
   CEREBRAS_API_KEY?: string;
   SAMBANOVA_API_KEY?: string;
   HF_TOKEN?: string;
+  DEEPSEEK_API_KEY?: string;
+  MOONSHOT_API_KEY?: string;
+  ZAI_API_KEY?: string;
   /** Telegram bot token from @BotFather. Enables the /api/channels/telegram webhook. */
   TELEGRAM_BOT_TOKEN?: string;
   /** WhatsApp Cloud API (Meta): permanent access token, phone number ID, webhook verify token and app secret. */
@@ -46,3 +55,8 @@ export type ChatEvent =
   | { type: 'done'; refused: boolean; provider?: string; model?: string; ms: number }
   | { type: 'error'; message: string }
   | { type: 'debug'; data: unknown };
+
+/** Who is calling the admin API: a signed-in user, the platform admin or the deploy token. */
+export type Principal = { kind: 'platform' | 'deploy' } | { kind: 'user'; user: User };
+/** Hono environment shared by every route module. */
+export type AppEnv = { Bindings: Bindings; Variables: { bot: string; principal: Principal } };

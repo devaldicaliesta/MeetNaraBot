@@ -12,6 +12,10 @@ export const PROVIDERS = {
   cerebras: { name: 'Cerebras', baseUrl: 'https://api.cerebras.ai/v1', secret: 'CEREBRAS_API_KEY' },
   sambanova: { name: 'SambaNova', baseUrl: 'https://api.sambanova.ai/v1', secret: 'SAMBANOVA_API_KEY' },
   huggingface: { name: 'Hugging Face Router', baseUrl: 'https://router.huggingface.co/v1', secret: 'HF_TOKEN' },
+  // VERIFY: base URLs and model ids of the providers below against each provider's current docs.
+  deepseek: { name: 'DeepSeek', baseUrl: 'https://api.deepseek.com/v1', secret: 'DEEPSEEK_API_KEY' },
+  moonshot: { name: 'Kimi (Moonshot AI)', baseUrl: 'https://api.moonshot.ai/v1', secret: 'MOONSHOT_API_KEY' },
+  zai: { name: 'GLM (Z.ai / Zhipu)', baseUrl: 'https://api.z.ai/api/paas/v4', secret: 'ZAI_API_KEY' },
 } as const;
 
 export type ProviderId = keyof typeof PROVIDERS;
@@ -255,6 +259,25 @@ export async function writeSetting(db: D1Database, key: string, value: unknown) 
     .run();
 }
 
+/** Settings rows are namespaced per bot; the platform bot keeps the original un-suffixed keys. */
+export function settingKey(name: 'bot' | 'keys' | 'auto_suggestions', bot: string): string {
+  return bot === 'default' ? name : `${name}:${bot}`;
+}
+
+const PROVIDER_SECRETS = ['GEMINI_API_KEY', 'GROQ_API_KEY', 'OPENROUTER_API_KEY', 'CEREBRAS_API_KEY', 'SAMBANOVA_API_KEY', 'HF_TOKEN', 'DEEPSEEK_API_KEY', 'MOONSHOT_API_KEY', 'ZAI_API_KEY', 'LLM_CHAIN', 'SYSTEM_PROMPT', 'MIN_SCORE'] as const;
+
+/**
+ * The environment a bot may use. The platform's own provider secrets (and env-level defaults)
+ * are only for the platform bot 'default'; user bots see them stripped, so they can only spend
+ * keys their owner saved in the dashboard (or the free Workers AI fallback).
+ */
+export function tenantEnv(env: Bindings, bot: string): Bindings {
+  if (bot === 'default') return env;
+  const copy = { ...env } as Record<string, unknown>;
+  for (const k of PROVIDER_SECRETS) delete copy[k];
+  return copy as Bindings;
+}
+
 export async function deleteSetting(db: D1Database, key: string) {
   await db.prepare('DELETE FROM settings WHERE key = ?').bind(key).run();
 }
@@ -300,9 +323,10 @@ function fromLegacy(name: string, cfg: any): { settings: BotSettings; keys: KeyS
   return { settings, keys };
 }
 
-export async function getSettings(env: Bindings): Promise<BotSettings> {
-  const saved = await readSetting<BotSettings>(env.DB, 'bot');
+export async function getSettings(env: Bindings, bot = 'default'): Promise<BotSettings> {
+  const saved = await readSetting<BotSettings>(env.DB, settingKey('bot', bot));
   if (saved) return normalizeSettings(saved);
+  if (bot !== 'default') return normalizeSettings(structuredClone(DEFAULT_SETTINGS));
 
   // Migrasi sekali jalan dari tabel lama `bot_config`
   try {
@@ -320,8 +344,8 @@ export async function getSettings(env: Bindings): Promise<BotSettings> {
   return envDefaults(env);
 }
 
-export async function getKeys(env: Bindings): Promise<KeyStore> {
-  return (await readSetting<KeyStore>(env.DB, 'keys')) || {};
+export async function getKeys(env: Bindings, bot = 'default'): Promise<KeyStore> {
+  return (await readSetting<KeyStore>(env.DB, settingKey('keys', bot))) || {};
 }
 
 export function resolveKey(env: Bindings, keys: KeyStore, provider: ProviderId): string {
@@ -343,8 +367,8 @@ export function keyStatus(env: Bindings, keys: KeyStore) {
 }
 
 export type Suggestions = { id: string[]; en: string[] };
-export async function getSuggestions(env: Bindings): Promise<Suggestions> {
-  const v = await readSetting<Suggestions | string[]>(env.DB, 'auto_suggestions');
+export async function getSuggestions(env: Bindings, bot = 'default'): Promise<Suggestions> {
+  const v = await readSetting<Suggestions | string[]>(env.DB, settingKey('auto_suggestions', bot));
   if (Array.isArray(v)) return { id: v, en: [] }; // v2.0 stored a single list
   return { id: v?.id || [], en: v?.en || [] };
 }

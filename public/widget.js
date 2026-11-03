@@ -104,7 +104,10 @@
       if (this._ready) return;
       this._ready = true;
       this.base = (this.getAttribute("api-base") || SCRIPT_ORIGIN || "").replace(/\/$/, "");
-      this.storeKey = "tanyasaya:" + this.base;
+      // Which bot to talk to (multi-user platform). Without the attribute: the platform's own bot.
+      this.bot = String(this.getAttribute("bot") || "").toLowerCase().replace(/[^a-z0-9]/g, "").slice(0, 32);
+      this.q = this.bot ? "bot=" + this.bot + "&" : "";
+      this.storeKey = "tanyasaya:" + this.base + (this.bot ? ":" + this.bot : "");
       this.lang = this.pickLang();
       this.info = null;
       this.busy = false;
@@ -247,7 +250,7 @@
 
     fetchInfo(resetChat) {
       var self = this;
-      fetch(this.base + "/api/public/info?lang=" + this.lang, { credentials: "omit" })
+      fetch(this.base + "/api/public/info?" + this.q + "lang=" + this.lang, { credentials: "omit" })
         .then(function (r) { return r.ok ? r.json() : Promise.reject(r.status); })
         .then(function (info) {
           self.info = info;
@@ -406,7 +409,7 @@
       }
 
       try {
-        var res = await fetch(this.base + "/api/public/chat", {
+        var res = await fetch(this.base + "/api/public/chat?" + this.q + "lang=" + this.lang, {
           method: "POST",
           credentials: "omit",
           headers: { "Content-Type": "application/json", Accept: "application/x-ndjson" },
