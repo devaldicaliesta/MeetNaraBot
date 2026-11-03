@@ -290,7 +290,7 @@ app.get('/api/health', async (c) => {
 
 app.use('/api/admin/*', async (c, next) => {
   if (!c.env.ADMIN_PASSWORD) {
-    return c.json({ error: tr(c, "ADMIN_PASSWORD belum diset. Jalankan: npx wrangler secret put ADMIN_PASSWORD", "ADMIN_PASSWORD is not set. Run: npx wrangler secret put ADMIN_PASSWORD") }, 503);
+    return c.json({ error: tr(c, "ADMIN_PASSWORD belum diset. Tambahkan repository secret ADMIN_PASSWORD di GitHub lalu jalankan ulang workflow deploy, atau jalankan: npx wrangler secret put ADMIN_PASSWORD", "ADMIN_PASSWORD is not set. Add the ADMIN_PASSWORD repository secret on GitHub and re-run the deploy workflow, or run: npx wrangler secret put ADMIN_PASSWORD") }, 503);
   }
   const auth = c.req.header('Authorization') || '';
   const token = auth.startsWith('Bearer ') ? auth.slice(7) : '';
