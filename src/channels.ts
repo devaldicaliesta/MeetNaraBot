@@ -5,6 +5,7 @@
 // WhatsApp: Meta WhatsApp Cloud API webhook, authenticated with the X-Hub-Signature-256 HMAC of the
 // raw body (app secret); GET verification uses WHATSAPP_VERIFY_TOKEN.
 
+import { redactPii } from './guard';
 import type { Context, Hono } from 'hono';
 import type { AppEnv, Bindings, ChatMessage } from './types';
 import { channelCommand, toTelegram, toWhatsApp, type FormatSource } from './channel-format';
@@ -13,8 +14,8 @@ import { getSalt, getSettings, type BotSettings, type Embedder, type Lang } from
 
 type Env = AppEnv;
 type Channel = 'telegram' | 'whatsapp';
-type FileRow = { id: string; name: string; status: string; embedder: Embedder | null };
-type AnswerResult = { refused: boolean; text: string; bestScore: number; provider: string | null; error?: boolean };
+type FileRow = { id: string; name: string; status: string; embedder: Embedder | null; lang?: string | null };
+type AnswerResult = { refused: boolean; text: string; bestScore: number; provider: string | null; error?: boolean; ungrounded?: boolean };
 
 export type ChannelDeps = {
   activeFile: (db: D1Database) => Promise<FileRow | null>;
@@ -82,7 +83,8 @@ async function loadHistory(env: Bindings, key: string, max: number): Promise<Cha
 
 async function saveHistory(env: Bindings, key: string, history: ChatMessage[]) {
   await env.DB.prepare('INSERT INTO channel_history (id, history, updated_at) VALUES (?, ?, CURRENT_TIMESTAMP) ON CONFLICT(id) DO UPDATE SET history = excluded.history, updated_at = CURRENT_TIMESTAMP')
-    .bind(key, JSON.stringify(history.slice(-12)))
+    // Stored history never keeps personal data in clear text.
+    .bind(key, JSON.stringify(history.slice(-12).map((m) => ({ ...m, content: redactPii(m.content).text }))))
     .run()
     .catch((e) => console.error('history not saved', e));
 }
@@ -155,13 +157,14 @@ async function converse(env: Bindings, deps: ChannelDeps, channel: Channel, user
     settings,
     question,
     history,
-    file: { id: file!.id, name: file!.name, embedder: file!.embedder || 'workers-ai' },
+    file: { id: file!.id, name: file!.name, embedder: file!.embedder || 'workers-ai', lang: file!.lang },
     lang,
     debug: false,
     examples,
     bot: 'default',
     emit: async (e) => {
       if (e.type === 'delta') out += e.text;
+      else if (e.type === 'done' && e.text) out = e.text;
       else if (e.type === 'sources') sources = e.items.map((s) => ({ number: s.number, label: s.label }));
       else if (e.type === 'error') failedMessage = e.message;
     },

@@ -108,15 +108,20 @@ Parsing dilakukan di browser supaya Worker tidak menghabiskan CPU. Bot pengguna 
 widget → POST /api/public/chat?bot=<id>
   1. honeypot, User-Agent, status bot (aktif / kedaluwarsa), batas per menit, kuota harian
   2. basa-basi ("halo", "makasih", "kamu siapa?") → balasan tetap, tanpa AI
+  2a. guardrail input: pola prompt injection → balasan tetap, tanpa AI; riwayat "assistant" tanpa tanda tangan HMAC dibuang
   2b. cache jawaban (pola GPTCache, hanya pertanyaan tanpa riwayat): sama persis → jawab dari cache tanpa AI;
       kalau tidak, embedding pertanyaan dibandingkan dengan pertanyaan lama (cosine ≥ ambang, angka harus sama)
       → jawab dari cache; meleset → embedding yang sama dipakai ulang untuk pencarian di bawah
   3. pertanyaan lanjutan ditulis ulang menjadi pertanyaan mandiri
   4. pencarian vektor (filter bot) ∥ pencarian kata kunci FTS5 (bot_id) → Reciprocal Rank Fusion
   5. gerbang skor: tidak ada yang cukup mirip → pesan penolakan, tanpa AI
-  6. rerank (opsional) → top-K → gabung potongan tetangga → cek ulang bot_id di D1
+  6. rerank (opsional; otomatis menyala untuk dokumen berbahasa Inggris) → top-K → gabung potongan tetangga → cek ulang bot_id di D1
   7. prompt 7 layer (dokumen hanya di giliran user, sebagai data) → rantai model dengan failover
   8. jawaban di-stream (NDJSON); [n] menjadi tombol sumber; semua penyedia gagal → potongan dokumen + pesan ramah
+  9. cek sitasi tanpa AI: [n] yang tidak merujuk potongan yang dikirim dibuang (teks final dikirim di event `done`);
+     jawaban tanpa satu pun sitasi valid ditandai "Tanpa sitasi" di Riwayat dan tidak disimpan ke cache
+  10. guardrail output: data pribadi (NIK, kartu, NPWP, rekening, email, HP) yang tidak ada di dokumen disamarkan;
+      jawaban yang disamarkan tidak di-cache, dan log/riwayat disimpan dalam bentuk tersamarkan
 ```
 
 ### 4. Alur akun dan masa aktif
@@ -376,6 +381,8 @@ Tes tidak memakai kunci sungguhan dan tidak menghubungi layanan luar. Di GitHub,
 | v3 | Desain baru, sapaan ramah, Telegram dan WhatsApp, Playwright QA, audit keamanan, deploy otomatis |
 | v4 (Nara) | Multi-pengguna: akun 7 hari, maksimal 3 bot per akun, isolasi data per bot, kuota bersama, DeepSeek/Kimi/GLM, audit ke-2 dan ke-3 |
 | v5 | Cache jawaban semantik (pola GPTCache): pertanyaan sama/mirip dijawab tanpa memanggil AI; atur di menu Pencarian |
+| v5.2 | Guardrail tanpa AI: deteksi dan penyamaran data pribadi (unggah, jawaban, log), deteksi prompt injection, riwayat bertanda tangan HMAC |
+| v5.1 | Cek sitasi setelah jawaban dibuat, deteksi bahasa dokumen, reranker otomatis untuk dokumen berbahasa Inggris |
 
 `PROMPT.md` berisi prompt 7 layer untuk membangun ulang proyek ini dengan Gemini (tanpa bagian Telegram/WhatsApp).
 

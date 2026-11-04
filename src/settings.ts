@@ -74,6 +74,7 @@ export type RagSettings = {
   minScore: number; // ambang skor kemiripan vektor (0-1)
   hybrid: boolean; // gabungkan pencarian kata kunci (FTS5)
   rerank: boolean; // urutkan ulang dengan cross-encoder
+  rerankAuto: boolean; // nyalakan reranker otomatis bila dokumen berbahasa Inggris
   neighborWindow: number; // ambil potongan tetangga ±N
   maxContextChars: number; // batas total konteks
   queryRewrite: boolean; // tulis ulang pertanyaan lanjutan jadi mandiri
@@ -137,6 +138,7 @@ export const DEFAULT_SETTINGS: BotSettings = {
     minScore: 0.4,
     hybrid: true,
     rerank: false,
+    rerankAuto: true,
     neighborWindow: 1,
     maxContextChars: 9000,
     queryRewrite: true,
@@ -208,6 +210,7 @@ export function normalizeSettings(input: any): BotSettings {
       minScore: clamp(r.minScore, 0, 0.95, d.rag.minScore),
       hybrid: bool(r.hybrid, d.rag.hybrid),
       rerank: bool(r.rerank, d.rag.rerank),
+      rerankAuto: bool(r.rerankAuto, d.rag.rerankAuto),
       neighborWindow: Math.round(clamp(r.neighborWindow, 0, 2, d.rag.neighborWindow)),
       maxContextChars: Math.round(clamp(r.maxContextChars, 2000, 24000, d.rag.maxContextChars)),
       queryRewrite: bool(r.queryRewrite, d.rag.queryRewrite),

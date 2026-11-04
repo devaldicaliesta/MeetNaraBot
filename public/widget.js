@@ -385,7 +385,7 @@
       var prior = this.history
         .filter(function (h) { return h.role === "user" || h.role === "bot"; })
         .slice(-keep)
-        .map(function (h) { return { role: h.role === "bot" ? "assistant" : "user", content: h.text }; });
+        .map(function (h) { return h.role === "bot" ? { role: "assistant", content: h.text, sig: h.sig || "" } : { role: "user", content: h.text }; });
 
       var sug = el.log.querySelector(".suggest");
       if (sug) sug.remove();
@@ -400,7 +400,7 @@
       view.bubble.innerHTML = '<span class="typing" aria-label="' + this.t("typing") + '"><i></i><i></i><i></i></span>';
       this.scroll();
 
-      var answer = "", sources = [], refused = false, failure = null, frame = 0;
+      var answer = "", sources = [], refused = false, failure = null, frame = 0, sig = "";
       function paint() {
         frame = 0;
         var log = el.log, stick = log.scrollHeight - log.scrollTop - log.clientHeight < 80;
@@ -425,7 +425,7 @@
             var ev; try { ev = JSON.parse(line); } catch (e) { return; }
             if (ev.type === "sources") sources = ev.items || [];
             else if (ev.type === "delta") { answer += ev.text || ""; if (!frame) frame = requestAnimationFrame(paint); }
-            else if (ev.type === "done") refused = !!ev.refused;
+            else if (ev.type === "done") { refused = !!ev.refused; sig = ev.sig || ""; if (typeof ev.text === "string") { answer = ev.text; if (!frame) frame = requestAnimationFrame(paint); } }
             else if (ev.type === "error") failure = ev.message;
           };
           while (true) {
@@ -447,7 +447,7 @@
         this.paintBot(view, answer, sources, true, refused);
         var cited = {};
         answer.replace(/\[(\d{1,2})\]/g, function (_, n) { cited[n] = true; });
-        this.history.push({ role: "bot", text: answer, refused: refused, sources: sources.filter(function (s) { return cited[s.number]; }) });
+        this.history.push({ role: "bot", text: answer, sig: sig, refused: refused, sources: sources.filter(function (s) { return cited[s.number]; }) });
       } else {
         view.msg.remove();
       }

@@ -26,7 +26,7 @@ const DEFAULTS = {
   launcherLabel: '', launcherLabelEn: '', themeColor: '#5B3FE0', prompt: { ...LAYERS },
   chain: [{ provider: 'gemini', model: 'gemini-3.5-flash' }, { provider: 'gemini', model: 'gemini-3.5-flash-lite' }, { provider: 'huggingface', model: 'openai/gpt-oss-120b' }],
   workersAiFallback: true, embeddingProvider: 'auto', temperature: 0.2, maxTokens: 1024, reasoningEffort: 'low',
-  rag: { chunkSize: 1000, chunkOverlap: 150, candidateK: 20, topK: 5, minScore: 0.4, hybrid: true, rerank: false, neighborWindow: 1, maxContextChars: 9000, queryRewrite: true, cache: true, cacheThreshold: 0.93 },
+  rag: { chunkSize: 1000, chunkOverlap: 150, candidateK: 20, topK: 5, minScore: 0.4, hybrid: true, rerank: false, rerankAuto: true, neighborWindow: 1, maxContextChars: 9000, queryRewrite: true, cache: true, cacheThreshold: 0.93 },
   limits: { maxQuestionLength: 500, maxHistory: 6, requestsPerMinute: 10, dailyPerIp: 100, dailyTotal: 3000 },
   allowedOrigins: [], logQuestions: true,
 };

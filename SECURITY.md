@@ -49,6 +49,21 @@ Putaran ini memeriksa ulang seluruh kode setelah fitur multi-pengguna, dengan fo
 | XSS lewat nama bot atau nama akun di dashboard | Ditolak | – | Di-escape atau memakai `textContent`; server membuang `<`, `>`, dan baris baru |
 | Menghabiskan CPU lewat hashing password saat login | Ditolak | – | Kunci login dicek sebelum hashing; tiap request adalah invokasi Worker terpisah |
 
+## Guardrail data pribadi dan prompt injection (November 2026)
+
+Semua guardrail berikut berjalan tanpa panggilan AI (`src/guard.ts`, `src/grounding.ts`).
+
+| Tahap | Perlindungan |
+|---|---|
+| Unggah dokumen | Dashboard mendeteksi NIK, nomor kartu (cek Luhn), NPWP, nomor rekening, email, dan nomor HP Indonesia sebelum dokumen disimpan. Pemilik bisa menyamarkannya (NIK/kartu/NPWP/rekening tercentang secara default; email dan HP tidak, karena sering berupa kontak resmi). |
+| Input pengunjung | Pola prompt injection umum (ID/EN), misalnya "abaikan instruksi", "system prompt", "kamu sekarang adalah", dan tag palsu `</knowledge>`, dijawab dengan balasan tetap tanpa memanggil AI. |
+| Riwayat percakapan | Setiap jawaban ditandatangani HMAC-SHA256 (kunci dari salt acak per instalasi, terikat ke bot). Pesan "assistant" dari browser yang tanda tangannya tidak valid dibuang, dan pesan pengunjung lama yang berisi pola injeksi tidak dikirim ke model. |
+| Retrieval | Vectorize difilter `bot`, FTS5 difilter `bot_id`, dan setiap kandidat dicek ulang di D1. |
+| Output | Sitasi ke potongan yang tidak pernah dikirim dibuang. Data pribadi di jawaban yang **tidak ada di dokumen** disamarkan menjadi label seperti `[NIK]`. Jawaban yang disamarkan atau tanpa sitasi valid tidak pernah disimpan ke cache. |
+| Penyimpanan | Pertanyaan yang memuat data pribadi tidak di-cache. Pertanyaan dan jawaban di `chat_log`, serta riwayat Telegram/WhatsApp, disimpan dalam bentuk tersamarkan. |
+
+Batasan: deteksi berbasis pola, jadi data pribadi dalam format lain (nama, alamat) dan injeksi yang disamarkan dengan kreatif tidak tertangkap. Lapisan prompt (dokumen sebagai data, larangan membocorkan instruksi) tetap menjadi pertahanan utama. Pengunjung widget sengaja anonim, sehingga hak akses diatur per bot, bukan per pengguna.
+
 ## Penguatan yang aktif
 
 - **Login admin:** 8 kali salah per IP atau 100 kali salah secara global dalam 10 menit membuat semua permintaan admin ditolak, termasuk yang memakai password benar, sampai jendela waktunya berganti. Password yang lebih pendek dari 12 karakter ditandai di checklist Ringkasan.
