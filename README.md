@@ -54,6 +54,8 @@ tests/          unit, ui, worker
 docs/           dokumen referensi bot demo, rekaman audit, screenshot
 ```
 
+Peta kode lengkap ada di [`graphify-out/`](graphify-out/GRAPH_REPORT.md), dibuat dengan [Graphify](https://github.com/Graphify-Labs/graphify) dan diperbarui otomatis setiap ada perubahan di `main`. Buka `graph.html` di browser untuk versi interaktifnya.
+
 ## Menjalankan di lokal
 
 Butuh Node.js 22.18+.
