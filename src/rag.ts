@@ -2,6 +2,7 @@ import type { Bindings, ChatEvent, ChatMessage, Source } from './types';
 import { detectSmallTalk, smallTalkReply } from './smalltalk';
 import { RERANK_MODEL, getKeys, refusalFor, tenantEnv, type BotSettings, type Embedder, type KeyStore, type Lang, type Suggestions } from './settings';
 import { AllProvidersFailed, completeChat, embed, streamChat } from './llm';
+import { cacheScope, lookupExact, lookupSemantic, storeAnswer } from './cache';
 
 /* ------------------------------------------------------------------ */
 /*  7-layer system prompt                                               */
@@ -107,7 +108,9 @@ export async function retrieve(
   settings: BotSettings,
   embedder: Embedder,
   query: string,
-  bot: string
+  bot: string,
+  /** Precomputed embedding of `query` (shared with the answer cache), so it is not embedded twice. */
+  queryVector?: number[] | null
 ): Promise<{ passages: Passage[]; debug: Omit<RetrievalDebug, 'query' | 'rewritten'> }> {
   const r = settings.rag;
   const t0 = Date.now();
@@ -125,7 +128,7 @@ export async function retrieve(
   const [vec, kw] = await Promise.all([
     (async () => {
       try {
-        const [v] = await embed(env, keys, embedder, [query], 'query');
+        const v = queryVector || (await embed(env, keys, embedder, [query], 'query'))[0];
         // Tenant isolation, layer 1: only this bot's vectors (needs the 'bot' metadata index).
         const res = await env.VECTORIZE.query(v, { topK: r.candidateK, returnMetadata: 'none', filter: { bot } });
         return res.matches || [];
@@ -327,7 +330,8 @@ export type AnswerInput = {
   settings: BotSettings;
   question: string;
   history: ChatMessage[];
-  file: { name: string; embedder: Embedder };
+  /** `id` identifies the document version for the answer cache. */
+  file: { id?: string; name: string; embedder: Embedder };
   lang: Lang;
   debug: boolean;
   emit: (e: ChatEvent) => Promise<void>;
@@ -335,9 +339,11 @@ export type AnswerInput = {
   examples?: string[];
   /** Which bot is answering; scopes retrieval, keys and the provider secrets it may use. */
   bot: string;
+  /** Set to false to bypass the answer cache (e.g. the playground with unsaved settings). */
+  useCache?: boolean;
 };
 
-export async function answer({ env: rawEnv, settings, question, history, file, lang, debug, emit, examples = [], bot }: AnswerInput) {
+export async function answer({ env: rawEnv, settings, question, history, file, lang, debug, emit, examples = [], bot, useCache = true }: AnswerInput) {
   const started = Date.now();
   const env = tenantEnv(rawEnv, bot);
 
@@ -356,6 +362,40 @@ export async function answer({ env: rawEnv, settings, question, history, file, l
 
   const keys = await getKeys(env, bot);
 
+  // Semantic answer cache (GPTCache pattern, see cache.ts). Only standalone questions: a
+  // follow-up means something different in every conversation.
+  const cacheOn = useCache && settings.rag.cache && !history.length;
+  let scope = '';
+  let queryVector: number[] | null = null;
+  if (cacheOn) {
+    try {
+      scope = await cacheScope(settings, file, lang);
+      let hit = await lookupExact(env.DB, bot, scope, question);
+      if (!hit) {
+        try {
+          // The same embedding is reused by retrieval below, so a cache miss costs nothing extra.
+          [queryVector] = await embed(env, keys, file.embedder, [question], 'query');
+        } catch {
+          queryVector = null;
+        }
+        if (queryVector) hit = await lookupSemantic(env.DB, bot, scope, question, queryVector, settings.rag.cacheThreshold);
+      }
+      if (hit) {
+        if (debug)
+          await emit({
+            type: 'debug',
+            data: { query: question, rewritten: null, gate: 'cache', cache: { kind: hit.kind, similarity: hit.similarity, matched: hit.matchedQuestion, provider: hit.provider }, candidates: [], timings: { total: Date.now() - started } },
+          });
+        await emit({ type: 'sources', items: hit.sources });
+        await emit({ type: 'delta', text: hit.answer });
+        await emit({ type: 'done', refused: hit.refused, provider: 'cache', model: hit.kind, ms: Date.now() - started });
+        return { refused: hit.refused, text: hit.answer, bestScore: hit.similarity, provider: `cache:${hit.kind}` as string | null };
+      }
+    } catch (e) {
+      console.error('cache lookup failed', e);
+    }
+  }
+
   let rewritten: string | null = null;
   if (settings.rag.queryRewrite && history.length) {
     try {
@@ -367,7 +407,7 @@ export async function answer({ env: rawEnv, settings, question, history, file, l
   const lastUser = [...history].reverse().find((m) => m.role === 'user')?.content;
   const query = rewritten || (history.length && lastUser ? `${lastUser.slice(0, 300)}\n${question}` : question);
 
-  const { passages, debug: dbg } = await retrieve(env, keys, settings, file.embedder, query, bot);
+  const { passages, debug: dbg } = await retrieve(env, keys, settings, file.embedder, query, bot, query === question ? queryVector : null);
   const sources: Source[] = passages.map((p, i) => ({
     number: i + 1,
     label: p.label,
@@ -399,6 +439,7 @@ export async function answer({ env: rawEnv, settings, question, history, file, l
     const head = out.text.trim();
     const refused = [settings.refusalMessage, settings.refusalMessageEn].some((m) => head.startsWith(m.slice(0, 30)));
     await emit({ type: 'done', refused, provider: out.provider, model: out.model, ms: Date.now() - started });
+    if (cacheOn && scope) await storeAnswer(env.DB, bot, scope, question, queryVector, { answer: out.text, sources, refused, provider: `${out.provider}:${out.model}` });
     return { refused, text: out.text, bestScore: dbg.bestVectorScore, provider: `${out.provider}:${out.model}` };
   } catch (err) {
     const failed = err instanceof AllProvidersFailed ? err.failed : [];

@@ -77,6 +77,8 @@ export type RagSettings = {
   neighborWindow: number; // ambil potongan tetangga ±N
   maxContextChars: number; // batas total konteks
   queryRewrite: boolean; // tulis ulang pertanyaan lanjutan jadi mandiri
+  cache: boolean; // cache jawaban semantik (pola GPTCache): pertanyaan yang sama/mirip tidak memanggil AI lagi
+  cacheThreshold: number; // kemiripan minimum (cosine) agar jawaban cache dipakai ulang
 };
 
 export type BotSettings = {
@@ -138,6 +140,8 @@ export const DEFAULT_SETTINGS: BotSettings = {
     neighborWindow: 1,
     maxContextChars: 9000,
     queryRewrite: true,
+    cache: true,
+    cacheThreshold: 0.93,
   },
   limits: { maxQuestionLength: 500, maxHistory: 6, requestsPerMinute: 10, dailyPerIp: 100, dailyTotal: 3000 },
   allowedOrigins: [],
@@ -207,6 +211,8 @@ export function normalizeSettings(input: any): BotSettings {
       neighborWindow: Math.round(clamp(r.neighborWindow, 0, 2, d.rag.neighborWindow)),
       maxContextChars: Math.round(clamp(r.maxContextChars, 2000, 24000, d.rag.maxContextChars)),
       queryRewrite: bool(r.queryRewrite, d.rag.queryRewrite),
+      cache: bool(r.cache, d.rag.cache),
+      cacheThreshold: clamp(r.cacheThreshold, 0.85, 0.99, d.rag.cacheThreshold),
     },
     limits: {
       maxQuestionLength: Math.round(clamp(l.maxQuestionLength, 50, 2000, d.limits.maxQuestionLength)),

@@ -2,3 +2,7 @@ Nara
 Copyright 2026 devaldicaliesta
 
 This product is licensed under the Apache License, Version 2.0 (see LICENSE).
+
+The semantic answer cache (src/cache.ts) follows the design of GPTCache
+(https://github.com/zilliztech/GPTCache), MIT License, Copyright (c) Zilliz.
+No GPTCache source code is included.
