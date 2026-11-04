@@ -425,7 +425,7 @@
             var ev; try { ev = JSON.parse(line); } catch (e) { return; }
             if (ev.type === "sources") sources = ev.items || [];
             else if (ev.type === "delta") { answer += ev.text || ""; if (!frame) frame = requestAnimationFrame(paint); }
-            else if (ev.type === "done") refused = !!ev.refused;
+            else if (ev.type === "done") { refused = !!ev.refused; if (typeof ev.text === "string") { answer = ev.text; if (!frame) frame = requestAnimationFrame(paint); } }
             else if (ev.type === "error") failure = ev.message;
           };
           while (true) {

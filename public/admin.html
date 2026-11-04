@@ -458,6 +458,7 @@ input[type=range]{width:100%;accent-color:var(--laut)}
           <label class="switch"><input type="checkbox" data-k="rag.hybrid"><div><b>Pencarian hibrida (vektor + kata kunci)</b><em>Menangkap istilah persis seperti kode, nama, atau angka yang sering lolos dari pencarian makna.</em></div></label>
           <label class="switch"><input type="checkbox" data-k="rag.cache"><div><b>Cache jawaban semantik</b><em>Pertanyaan yang sama atau bermakna mirip dijawab dari cache tanpa memanggil AI lagi, jadi hemat token. Otomatis diperbarui saat dokumen atau pengaturan berubah.</em></div></label>
           <label class="switch"><input type="checkbox" data-k="rag.rerank"><div><b>Urutkan ulang dengan reranker</b><em>Model bge-reranker menilai ulang 20 kandidat teratas. Paling efektif untuk dokumen berbahasa Inggris.</em></div></label>
+          <label class="switch"><input type="checkbox" data-k="rag.rerankAuto"><div><b>Reranker otomatis untuk dokumen berbahasa Inggris</b><em>Bahasa dokumen dideteksi saat diunggah. Bila berbahasa Inggris, reranker dinyalakan walau tombol di atas mati. Tidak memakai token AI.</em></div></label>
         </div>
         <div class="divider"></div>
         <div class="grid2">
@@ -509,6 +510,7 @@ input[type=range]{width:100%;accent-color:var(--laut)}
         <div class="tabs" role="tablist" id="logTabs">
           <button role="tab" data-f="widget" aria-selected="true">Pengunjung</button>
           <button role="tab" data-f="refused" aria-selected="false">Tidak terjawab</button>
+          <button role="tab" data-f="ungrounded" aria-selected="false">Tanpa sitasi</button>
           <button role="tab" data-f="failed" aria-selected="false">Gagal</button>
           <button role="tab" data-f="admin" aria-selected="false">Uji admin</button>
         </div>
@@ -603,6 +605,7 @@ const DICT = {
   'Pencarian hibrida (vektor + kata kunci)': 'Hybrid search (vector + keyword)', 'Menangkap istilah persis seperti kode, nama, atau angka yang sering lolos dari pencarian makna.': 'Catches exact terms such as codes, names or numbers that meaning-based search often misses.',
   'Cache jawaban semantik': 'Semantic answer cache', 'Pertanyaan yang sama atau bermakna mirip dijawab dari cache tanpa memanggil AI lagi, jadi hemat token. Otomatis diperbarui saat dokumen atau pengaturan berubah.': 'Identical or similar-meaning questions are answered from the cache without calling the AI again, saving tokens. Refreshed automatically when the document or settings change.',
   'Kemiripan minimum untuk cache': 'Minimum similarity for the cache', 'Kosongkan cache': 'Clear cache',
+  'Reranker otomatis untuk dokumen berbahasa Inggris': 'Automatic reranker for English documents', 'Bahasa dokumen dideteksi saat diunggah. Bila berbahasa Inggris, reranker dinyalakan walau tombol di atas mati. Tidak memakai token AI.': 'The document language is detected on upload. For English documents the reranker turns on even when the switch above is off. Uses no AI tokens.', 'Tanpa sitasi': 'No citation',
   'Urutkan ulang dengan reranker': 'Rerank with a reranker', 'Model bge-reranker menilai ulang 20 kandidat teratas. Paling efektif untuk dokumen berbahasa Inggris.': 'The bge-reranker model re-scores the top 20 candidates. Most effective for English documents.',
   'Potongan dikirim ke AI': 'Chunks sent to the AI', 'Ambang kemiripan minimum': 'Minimum similarity threshold', 'Kandidat per pencarian': 'Candidates per search', 'Potongan tetangga (±)': 'Neighbour chunks (±)', 'Batas total konteks (karakter)': 'Total context limit (characters)',
   'Ambang terlalu tinggi membuat bot sering bilang "tidak ada di dokumen"; terlalu rendah membuat AI menerima potongan yang tidak relevan. Lihat skor nyata di Uji coba untuk menentukan angka yang pas.': 'A threshold that is too high makes the bot often say "not in the document"; too low lets irrelevant chunks reach the AI. Check real scores in the Playground to pick the right value.',
@@ -1438,7 +1441,7 @@ function renderPipeline() {
   const step = (t, on = true) => `<span class="${on ? '' : 'off'}">${t}</span>`;
   $('#pipeline').innerHTML = [
     step(L('Cek cache', 'Check cache'), r.cache), step('Tulis ulang pertanyaan', r.queryRewrite), step(`Cari vektor (${r.candidateK})`), step(`Cari kata kunci (${r.candidateK})`, r.hybrid),
-    step('Gabung RRF', r.hybrid), step('Rerank', r.rerank), step(`Ambil ${r.topK} teratas`), step(`Tetangga ±${r.neighborWindow}`, r.neighborWindow > 0), step('Jawab + sitasi'),
+    step('Gabung RRF', r.hybrid), step(r.rerank ? 'Rerank' : r.rerankAuto ? L('Rerank (otomatis bila Inggris)', 'Rerank (auto if English)') : 'Rerank', r.rerank || r.rerankAuto), step(`Ambil ${r.topK} teratas`), step(`Tetangga ±${r.neighborWindow}`, r.neighborWindow > 0), step('Jawab + sitasi'), step(L('Cek sitasi', 'Check citations')),
   ].join('<i>→</i>');
 }
 
@@ -1474,10 +1477,10 @@ $('#playForm').addEventListener('submit', async (e) => {
     const reader = res.body.getReader(), dec = new TextDecoder(); let buf = '';
     const handle = (line) => {
       if (!line.trim()) return; const ev = JSON.parse(line);
-      if (ev.type === 'debug') { if (ev.data.failedAttempts) fails = ev.data.failedAttempts; else { debug = ev.data; renderXray(debug); } }
+      if (ev.type === 'debug') { if (ev.data.failedAttempts) fails = ev.data.failedAttempts; else if (ev.data.citations) renderCitations(ev.data.citations); else { debug = ev.data; renderXray(debug); } }
       else if (ev.type === 'sources') sources = ev.items;
       else if (ev.type === 'delta') { text += ev.text; a.innerHTML = md(text, sources.length); thread.scrollTop = thread.scrollHeight; }
-      else if (ev.type === 'done') done = ev;
+      else if (ev.type === 'done') { done = ev; if (typeof ev.text === 'string') { text = ev.text; a.innerHTML = md(text, sources.length); } }
       else if (ev.type === 'error') error = ev.message;
     };
     for (;;) { const { done: d, value } = await reader.read(); if (d) break; buf += dec.decode(value, { stream: true }); const ls = buf.split('\n'); buf = ls.pop(); ls.forEach(handle); }
@@ -1485,7 +1488,7 @@ $('#playForm').addEventListener('submit', async (e) => {
   } catch (err) { error = err.message; }
   if (error) a.innerHTML = `<p style="color:var(--bata)">${esc(error)}</p>`;
   if (done) {
-    a.insertAdjacentHTML('beforeend', `<div class="a-meta">${done.refused ? '<span class="pill wait">Ditolak: tidak ada di dokumen</span>' : '<span class="pill ok">Terjawab</span>'}${done.provider ? `<span class="pill plain">${esc(done.provider)} · ${esc(done.model)}</span>` : ''}<span class="pill plain">${fmt(done.ms)} ms</span></div>`);
+    a.insertAdjacentHTML('beforeend', `<div class="a-meta">${done.refused ? '<span class="pill wait">Ditolak: tidak ada di dokumen</span>' : done.grounded === false ? `<span class="pill no">${L('Tanpa sitasi', 'No citation')}</span>` : '<span class="pill ok">Terjawab</span>'}${done.provider ? `<span class="pill plain">${esc(done.provider)} · ${esc(done.model)}</span>` : ''}<span class="pill plain">${fmt(done.ms)} ms</span></div>`);
     S.history.push({ role: 'user', content: q }, { role: 'assistant', content: text });
     S.history = S.history.slice(-12);
   }
@@ -1493,6 +1496,11 @@ $('#playForm').addEventListener('submit', async (e) => {
   $('#playSend').disabled = false; $('#playQ').focus();
 });
 
+function renderCitations(c) {
+  const removed = c.removed.length ? ` · <span class="pill no">${L('dibuang', 'removed')}: ${c.removed.map((n) => '[' + n + ']').join(' ')}</span>` : '';
+  const status = c.grounded ? `<span class="pill ok">${L('Valid', 'Valid')}: ${c.cited.map((n) => '[' + n + ']').join(' ')}</span>` : `<span class="pill no">${L('Tidak ada sitasi valid: jawaban tidak disimpan ke cache', 'No valid citation: answer not cached')}</span>`;
+  $('#xray').insertAdjacentHTML('beforeend', `<dl><dt>${L('Cek sitasi', 'Citation check')}</dt><dd>${status}${removed}</dd></dl>`);
+}
 function renderXray(d) {
   if (d.gate === 'smalltalk') {
     const kinds = { greeting: L('sapaan', 'greeting'), thanks: L('ucapan terima kasih', 'thanks'), bye: L('salam penutup', 'goodbye'), identity: L('pertanyaan tentang bot', 'question about the bot'), ack: L('tanggapan singkat', 'short acknowledgement') };
@@ -1513,6 +1521,7 @@ function renderXray(d) {
       <dt>Keputusan</dt><dd>${d.gate === 'pass' ? '<span class="pill ok">Lanjut ke AI</span>' : '<span class="pill wait">Ditolak sebelum AI</span>'}</dd>
       <dt>Skor vektor terbaik</dt><dd>${(d.bestVectorScore || 0).toFixed(3)} <span class="muted">(ambang ${Number(S.draft.rag.minScore).toFixed(2)})</span></dd>
       <dt>Cocok kata kunci</dt><dd>${fmt(d.keywordHits || 0)} potongan</dd>
+      <dt>${L('Reranker', 'Reranker')}</dt><dd>${d.rerank === 'auto' ? L('Aktif otomatis (dokumen berbahasa Inggris)', 'On automatically (English document)') : d.rerank === 'on' ? L('Aktif', 'On') : L('Mati', 'Off') + (d.docLang ? ` <span class="muted">(${L('bahasa dokumen', 'document language')}: ${esc(d.docLang)})</span>` : '')}</dd>
       <dt>Embedding</dt><dd>${d.embedder === 'gemini' ? 'Gemini' : 'Workers AI bge-m3'}${d.vectorError ? ` <span class="pill no" title="${esc(d.vectorError)}">gagal, pakai kata kunci saja</span>` : ''}</dd>
       <dt>Waktu</dt><dd>vektor ${t.vector ?? '–'} ms · kata kunci ${t.keyword ?? '–'} ms${t.rerank ? ` · rerank ${t.rerank} ms` : ''} · total ${t.total ?? '–'} ms</dd>
     </dl>
@@ -1535,7 +1544,7 @@ $('#logTabs').addEventListener('click', (e) => {
 async function loadLogs() {
   const { items } = await api('/api/admin/logs?filter=' + S.logFilter);
   $('#logList').innerHTML = items.length ? items.map((l) => `
-    <div class="log-item"><div class="row"><span class="log-q">${esc(l.question)}</span>${l.source === 'telegram' ? '<span class="pill plain">Telegram</span>' : l.source === 'whatsapp' ? '<span class="pill plain">WhatsApp</span>' : ''}<span class="row">${l.failed ? '<span class="pill no">Gagal</span>' : l.refused ? '<span class="pill wait">Tidak terjawab</span>' : '<span class="pill ok">Terjawab</span>'}<span class="small muted">${new Date(l.created_at.replace(' ', 'T') + 'Z').toLocaleString(LOCALE(), { dateStyle: 'short', timeStyle: 'short' })}</span></span></div>
+    <div class="log-item"><div class="row"><span class="log-q">${esc(l.question)}</span>${l.source === 'telegram' ? '<span class="pill plain">Telegram</span>' : l.source === 'whatsapp' ? '<span class="pill plain">WhatsApp</span>' : ''}<span class="row">${l.failed ? '<span class="pill no">Gagal</span>' : l.ungrounded ? `<span class="pill no">${L('Tanpa sitasi', 'No citation')}</span>` : l.refused ? '<span class="pill wait">Tidak terjawab</span>' : '<span class="pill ok">Terjawab</span>'}<span class="small muted">${new Date(l.created_at.replace(' ', 'T') + 'Z').toLocaleString(LOCALE(), { dateStyle: 'short', timeStyle: 'short' })}</span></span></div>
     ${l.answer ? `<div class="log-a">${esc(l.answer)}</div>` : ''}<div class="small muted" style="margin-top:4px">${l.provider ? esc(l.provider) + ' · ' : ''}skor ${Number(l.best_score || 0).toFixed(3)}</div></div>`).join('')
     : '<div class="empty">Belum ada riwayat di kategori ini.</div>';
 }

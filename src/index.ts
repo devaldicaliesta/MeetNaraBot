@@ -25,6 +25,7 @@ import {
   type ProviderId,
 } from './settings';
 import { cacheStats, clearCache, purgeExpiredCache } from './cache';
+import { detectDocLang } from './grounding';
 import { answer, buildSystemPrompt, buildUserTurn, generateSuggestions, normalizeHistory } from './rag';
 import { buildChain, embed, pickEmbedder } from './llm';
 import { channelRoutes } from './channels';
@@ -47,7 +48,7 @@ import {
 } from './auth';
 
 type Env = AppEnv;
-type FileRow = { id: string; name: string; status: string; chunk_count: number; error: string | null; created_at: string; embedder: Embedder | null };
+type FileRow = { id: string; name: string; status: string; chunk_count: number; error: string | null; created_at: string; embedder: Embedder | null; lang: string | null };
 
 const app = new Hono<Env>();
 
@@ -197,7 +198,7 @@ async function dailyQuota(env: Bindings, rawKey: string, perKey: number, total: 
 }
 
 async function activeFile(db: D1Database, bot: string): Promise<FileRow | null> {
-  return db.prepare('SELECT id, name, status, chunk_count, error, created_at, embedder FROM file WHERE bot_id = ? LIMIT 1').bind(bot).first<FileRow>();
+  return db.prepare('SELECT id, name, status, chunk_count, error, created_at, embedder, lang FROM file WHERE bot_id = ? LIMIT 1').bind(bot).first<FileRow>();
 }
 
 function envOrigins(env: Bindings): string[] {
@@ -412,7 +413,7 @@ app.post('/api/public/chat', async (c) => {
   const history = normalizeHistory(body.history, settings.limits.maxHistory);
   const run = async (emit: (e: ChatEvent) => Promise<void>) => {
     const examples = await visitorSuggestions(c.env, settings, lang, bot).catch(() => []);
-    const res = await answer({ env: c.env, settings, question, history, file: { id: file.id, name: file.name, embedder: file.embedder || 'workers-ai' }, lang, debug: false, emit, examples, bot });
+    const res = await answer({ env: c.env, settings, question, history, file: { id: file.id, name: file.name, embedder: file.embedder || 'workers-ai', lang: file.lang }, lang, debug: false, emit, examples, bot });
     if (settings.logQuestions) await logChat(c.env.DB, 'widget', question, res, bot);
   };
 
@@ -426,7 +427,10 @@ app.post('/api/public/chat', async (c) => {
   await run(async (e) => {
     if (e.type === 'delta') text += e.text;
     else if (e.type === 'sources') sources = e.items;
-    else if (e.type === 'done') refused = e.refused;
+    else if (e.type === 'done') {
+      refused = e.refused;
+      if (e.text) text = e.text;
+    }
     else if (e.type === 'error') error = e.message;
   });
   if (error) return c.json({ error }, 503);
@@ -437,11 +441,11 @@ app.post('/api/public/chat', async (c) => {
 app.all('/api/chat', (c) => app.fetch(new Request(new URL('/api/public/chat' + new URL(c.req.url).search, c.req.url), c.req.raw), c.env, c.executionCtx));
 app.get('/api/bot/info', (c) => app.fetch(new Request(new URL('/api/public/info' + new URL(c.req.url).search, c.req.url), c.req.raw), c.env, c.executionCtx));
 
-async function logChat(db: D1Database, source: string, question: string, res: { refused: boolean; text: string; bestScore: number; provider: string | null; error?: boolean }, bot: string) {
+async function logChat(db: D1Database, source: string, question: string, res: { refused: boolean; text: string; bestScore: number; provider: string | null; error?: boolean; ungrounded?: boolean }, bot: string) {
   try {
     await db
-      .prepare('INSERT INTO chat_log (bot_id, source, question, answer, refused, failed, provider, best_score) VALUES (?, ?, ?, ?, ?, ?, ?, ?)')
-      .bind(bot, source, question.slice(0, 1000), res.text.slice(0, 2000), res.refused ? 1 : 0, res.error ? 1 : 0, res.provider, res.bestScore)
+      .prepare('INSERT INTO chat_log (bot_id, source, question, answer, refused, failed, provider, best_score, ungrounded) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)')
+      .bind(bot, source, question.slice(0, 1000), res.text.slice(0, 2000), res.refused ? 1 : 0, res.error ? 1 : 0, res.provider, res.bestScore, res.ungrounded ? 1 : 0)
       .run();
     if (Math.random() < 0.05) {
       await db.prepare('DELETE FROM chat_log WHERE bot_id = ?1 AND id <= (SELECT MAX(id) - 3000 FROM chat_log WHERE bot_id = ?1)').bind(bot).run();
@@ -776,7 +780,9 @@ app.post('/api/admin/file/done', async (c) => {
   if (!file) return c.json({ error: tr(c, 'Tidak ada dokumen.', 'No document.') }, 400);
   const total = (await c.env.DB.prepare('SELECT COUNT(*) AS n FROM chunks WHERE bot_id = ?').bind(bot).first<{ n: number }>())?.n || 0;
   if (!total) return c.json({ error: tr(c, 'Belum ada potongan tersimpan.', 'No chunks have been saved yet.') }, 400);
-  await c.env.DB.prepare('UPDATE file SET status = ?, chunk_count = ?, error = NULL WHERE id = ? AND bot_id = ?').bind('selesai', total, file.id, bot).run();
+  const sample = await c.env.DB.prepare('SELECT text FROM chunks WHERE bot_id = ? ORDER BY idx LIMIT 40').bind(bot).all<{ text: string }>();
+  const docLang = detectDocLang((sample.results || []).map((r) => r.text));
+  await c.env.DB.prepare('UPDATE file SET status = ?, chunk_count = ?, error = NULL, lang = ? WHERE id = ? AND bot_id = ?').bind('selesai', total, docLang, file.id, bot).run();
   const settings = await getSettings(c.env, bot);
   const suggestions = await generateSuggestions(c.env, settings, file.name, bot);
   await writeSetting(c.env.DB, settingKey('auto_suggestions', bot), suggestions);
@@ -843,7 +849,7 @@ app.post('/api/admin/test-chat', async (c) => {
     const history = normalizeHistory(body.history, settings.limits.maxHistory);
     const lang = asLang(body.lang, settings.language);
     const examples = await visitorSuggestions(c.env, settings, lang, bot).catch(() => []);
-    const res = await answer({ env: c.env, settings, question, history, file: { id: file.id, name: file.name, embedder: file.embedder || 'workers-ai' }, lang, debug: true, emit, examples, bot, useCache: !body.settings && body.cache !== false });
+    const res = await answer({ env: c.env, settings, question, history, file: { id: file.id, name: file.name, embedder: file.embedder || 'workers-ai', lang: file.lang }, lang, debug: true, emit, examples, bot, useCache: !body.settings && body.cache !== false });
     if (settings.logQuestions) await logChat(c.env.DB, 'admin', question, res, bot);
   });
 });
@@ -863,8 +869,8 @@ app.get('/api/admin/logs', async (c) => {
   const bot = c.get('bot');
   const filter = c.req.query('filter');
   const where =
-    filter === 'refused' ? 'AND refused = 1' : filter === 'failed' ? 'AND failed = 1' : filter === 'widget' ? "AND source IN ('widget', 'telegram', 'whatsapp')" : filter === 'admin' ? "AND source = 'admin'" : '';
-  const rows = await c.env.DB.prepare(`SELECT id, created_at, source, question, answer, refused, failed, provider, best_score FROM chat_log WHERE bot_id = ? ${where} ORDER BY id DESC LIMIT 100`)
+    filter === 'refused' ? 'AND refused = 1' : filter === 'ungrounded' ? 'AND ungrounded = 1' : filter === 'failed' ? 'AND failed = 1' : filter === 'widget' ? "AND source IN ('widget', 'telegram', 'whatsapp')" : filter === 'admin' ? "AND source = 'admin'" : '';
+  const rows = await c.env.DB.prepare(`SELECT id, created_at, source, question, answer, refused, failed, provider, best_score, ungrounded FROM chat_log WHERE bot_id = ? ${where} ORDER BY id DESC LIMIT 100`)
     .bind(bot)
     .all();
   return c.json({ items: rows.results || [] });

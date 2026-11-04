@@ -54,7 +54,8 @@ export type Source = {
 export type ChatEvent =
   | { type: 'sources'; items: Source[] }
   | { type: 'delta'; text: string }
-  | { type: 'done'; refused: boolean; provider?: string; model?: string; ms: number }
+  /** `text`, when present, is the final answer after the citation check and replaces the streamed text. */
+  | { type: 'done'; refused: boolean; provider?: string; model?: string; ms: number; text?: string; grounded?: boolean }
   | { type: 'error'; message: string }
   | { type: 'debug'; data: unknown };
 

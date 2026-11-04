@@ -3,6 +3,7 @@ import { detectSmallTalk, smallTalkReply } from './smalltalk';
 import { RERANK_MODEL, getKeys, refusalFor, tenantEnv, type BotSettings, type Embedder, type KeyStore, type Lang, type Suggestions } from './settings';
 import { AllProvidersFailed, completeChat, embed, streamChat } from './llm';
 import { cacheScope, lookupExact, lookupSemantic, storeAnswer } from './cache';
+import { checkCitations, detectDocLang } from './grounding';
 
 /* ------------------------------------------------------------------ */
 /*  7-layer system prompt                                               */
@@ -331,7 +332,7 @@ export type AnswerInput = {
   question: string;
   history: ChatMessage[];
   /** `id` identifies the document version for the answer cache. */
-  file: { id?: string; name: string; embedder: Embedder };
+  file: { id?: string; name: string; embedder: Embedder; lang?: string | null };
   lang: Lang;
   debug: boolean;
   emit: (e: ChatEvent) => Promise<void>;
@@ -343,9 +344,13 @@ export type AnswerInput = {
   useCache?: boolean;
 };
 
-export async function answer({ env: rawEnv, settings, question, history, file, lang, debug, emit, examples = [], bot, useCache = true }: AnswerInput) {
+export async function answer({ env: rawEnv, settings: baseSettings, question, history, file, lang, debug, emit, examples = [], bot, useCache = true }: AnswerInput) {
   const started = Date.now();
   const env = tenantEnv(rawEnv, bot);
+  // The bge reranker mostly helps English text, so 'auto' turns it on for English documents only.
+  const docLang = await documentLanguage(env, bot, file);
+  const autoRerank = !baseSettings.rag.rerank && baseSettings.rag.rerankAuto && docLang === 'en';
+  const settings: BotSettings = autoRerank ? { ...baseSettings, rag: { ...baseSettings.rag, rerank: true } } : baseSettings;
 
   // Greetings, thanks and "who are you?" are answered before retrieval; otherwise the gate
   // would treat them as out-of-scope questions and reply with the refusal message.
@@ -416,7 +421,7 @@ export async function answer({ env: rawEnv, settings, question, history, file, l
     score: Number(p.score.toFixed(3)),
   }));
 
-  if (debug) await emit({ type: 'debug', data: { query: question, rewritten, ...dbg } satisfies RetrievalDebug });
+  if (debug) await emit({ type: 'debug', data: { query: question, rewritten, ...dbg, docLang, rerank: settings.rag.rerank ? (autoRerank ? 'auto' : 'on') : 'off' } });
 
   if (!passages.length) {
     const refusal = refusalFor(settings, lang);
@@ -438,9 +443,16 @@ export async function answer({ env: rawEnv, settings, question, history, file, l
     if (debug && out.failed.length) await emit({ type: 'debug', data: { failedAttempts: out.failed } });
     const head = out.text.trim();
     const refused = [settings.refusalMessage, settings.refusalMessageEn].some((m) => head.startsWith(m.slice(0, 30)));
-    await emit({ type: 'done', refused, provider: out.provider, model: out.model, ms: Date.now() - started });
-    if (cacheOn && scope) await storeAnswer(env.DB, bot, scope, question, queryVector, { answer: out.text, sources, refused, provider: `${out.provider}:${out.model}` });
-    return { refused, text: out.text, bestScore: dbg.bestVectorScore, provider: `${out.provider}:${out.model}` };
+    // Grounding check (no AI): drop citations to excerpts that were never sent, and flag
+    // answers that state something without a single valid citation.
+    const check = refused ? null : checkCitations(out.text, passages.length);
+    const text = check ? check.text : out.text;
+    const ungrounded = !!check && !check.grounded;
+    if (debug && check) await emit({ type: 'debug', data: { citations: { cited: check.cited, removed: check.removed, grounded: check.grounded } } });
+    await emit({ type: 'done', refused, provider: out.provider, model: out.model, ms: Date.now() - started, grounded: !ungrounded, ...(text !== out.text ? { text } : {}) });
+    // Ungrounded answers are never cached, so they cannot be repeated to other visitors.
+    if (cacheOn && scope && !ungrounded) await storeAnswer(env.DB, bot, scope, question, queryVector, { answer: text, sources, refused, provider: `${out.provider}:${out.model}` });
+    return { refused, text, bestScore: dbg.bestVectorScore, provider: `${out.provider}:${out.model}`, ungrounded };
   } catch (err) {
     const failed = err instanceof AllProvidersFailed ? err.failed : [];
     if (debug && failed.length) await emit({ type: 'debug', data: { failedAttempts: failed } });
@@ -450,6 +462,21 @@ export async function answer({ env: rawEnv, settings, question, history, file, l
     await emit({ type: 'delta', text });
     await emit({ type: 'done', refused: false, provider: 'fallback', model: 'excerpt', ms: Date.now() - started });
     return { refused: false, text, bestScore: dbg.bestVectorScore, provider: 'fallback:excerpt', error: true };
+  }
+}
+
+/** Language of the active document; detected once from its chunks and stored on the file row. */
+async function documentLanguage(env: Bindings, bot: string, file: AnswerInput['file']): Promise<string | null> {
+  if (file.lang || !file.id) return file.lang ?? null;
+  try {
+    const res = await env.DB.prepare('SELECT text FROM chunks WHERE bot_id = ? ORDER BY idx LIMIT 40').bind(bot).all<{ text: string }>();
+    const rows = res.results || [];
+    if (!rows.length) return null;
+    const lang = detectDocLang(rows.map((r) => r.text));
+    await env.DB.prepare('UPDATE file SET lang = ? WHERE id = ? AND bot_id = ?').bind(lang, file.id, bot).run();
+    return lang;
+  } catch {
+    return null;
   }
 }
 
