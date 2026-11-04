@@ -155,7 +155,7 @@ async function converse(env: Bindings, deps: ChannelDeps, channel: Channel, user
     settings,
     question,
     history,
-    file: { name: file!.name, embedder: file!.embedder || 'workers-ai' },
+    file: { id: file!.id, name: file!.name, embedder: file!.embedder || 'workers-ai' },
     lang,
     debug: false,
     examples,

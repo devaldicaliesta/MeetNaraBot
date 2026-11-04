@@ -24,6 +24,7 @@ import {
   type KeyStore,
   type ProviderId,
 } from './settings';
+import { cacheStats, clearCache, purgeExpiredCache } from './cache';
 import { answer, buildSystemPrompt, buildUserTurn, generateSuggestions, normalizeHistory } from './rag';
 import { buildChain, embed, pickEmbedder } from './llm';
 import { channelRoutes } from './channels';
@@ -253,6 +254,7 @@ async function purgeBot(env: Bindings, bot: string) {
     env.DB.prepare('DELETE FROM chunks_fts WHERE bot_id = ?').bind(bot),
     env.DB.prepare('DELETE FROM file WHERE bot_id = ?').bind(bot),
     env.DB.prepare('DELETE FROM chat_log WHERE bot_id = ?').bind(bot),
+    env.DB.prepare('DELETE FROM answer_cache WHERE bot_id = ?').bind(bot),
     env.DB.prepare('DELETE FROM settings WHERE key IN (?, ?, ?)').bind(settingKey('bot', bot), settingKey('keys', bot), settingKey('auto_suggestions', bot)),
     env.DB.prepare('DELETE FROM bots WHERE id = ?').bind(bot),
   ]);
@@ -267,6 +269,7 @@ async function purgeExpiredAccounts(env: Bindings) {
     await env.DB.batch([env.DB.prepare('DELETE FROM sessions WHERE user_id = ?').bind(u.id), env.DB.prepare('DELETE FROM users WHERE id = ?').bind(u.id)]);
   }
   await env.DB.prepare('DELETE FROM sessions WHERE expires_at <= ?').bind(now).run();
+  await purgeExpiredCache(env.DB).catch((e) => console.error('cache purge failed', e));
   await retryTombstones(env);
   return (users.results || []).length;
 }
@@ -409,7 +412,7 @@ app.post('/api/public/chat', async (c) => {
   const history = normalizeHistory(body.history, settings.limits.maxHistory);
   const run = async (emit: (e: ChatEvent) => Promise<void>) => {
     const examples = await visitorSuggestions(c.env, settings, lang, bot).catch(() => []);
-    const res = await answer({ env: c.env, settings, question, history, file: { name: file.name, embedder: file.embedder || 'workers-ai' }, lang, debug: false, emit, examples, bot });
+    const res = await answer({ env: c.env, settings, question, history, file: { id: file.id, name: file.name, embedder: file.embedder || 'workers-ai' }, lang, debug: false, emit, examples, bot });
     if (settings.logQuestions) await logChat(c.env.DB, 'widget', question, res, bot);
   };
 
@@ -789,6 +792,7 @@ app.delete('/api/admin/file', async (c) => {
     c.env.DB.prepare('DELETE FROM chunks WHERE bot_id = ?').bind(bot),
     c.env.DB.prepare('DELETE FROM chunks_fts WHERE bot_id = ?').bind(bot),
     c.env.DB.prepare('DELETE FROM file WHERE bot_id = ?').bind(bot),
+    c.env.DB.prepare('DELETE FROM answer_cache WHERE bot_id = ?').bind(bot),
   ]);
   await deleteSetting(c.env.DB, settingKey('auto_suggestions', bot));
   return c.json({ success: true, removed: list.length });
@@ -823,7 +827,7 @@ app.post('/api/admin/suggestions/regenerate', async (c) => {
 
 app.post('/api/admin/test-chat', async (c) => {
   const bot = c.get('bot');
-  const body = await c.req.json<{ question?: string; history?: unknown; settings?: unknown; lang?: string }>().catch(() => ({} as any));
+  const body = await c.req.json<{ question?: string; history?: unknown; settings?: unknown; lang?: string; cache?: boolean }>().catch(() => ({} as any));
   const question = String(body.question || '').trim().slice(0, 2000);
   // Lets the owner try unsaved RAG/prompt settings before saving them.
   const settings = body.settings ? normalizeSettings(body.settings) : await getSettings(c.env, bot);
@@ -839,9 +843,18 @@ app.post('/api/admin/test-chat', async (c) => {
     const history = normalizeHistory(body.history, settings.limits.maxHistory);
     const lang = asLang(body.lang, settings.language);
     const examples = await visitorSuggestions(c.env, settings, lang, bot).catch(() => []);
-    const res = await answer({ env: c.env, settings, question, history, file: { name: file.name, embedder: file.embedder || 'workers-ai' }, lang, debug: true, emit, examples, bot });
+    const res = await answer({ env: c.env, settings, question, history, file: { id: file.id, name: file.name, embedder: file.embedder || 'workers-ai' }, lang, debug: true, emit, examples, bot, useCache: !body.settings && body.cache !== false });
     if (settings.logQuestions) await logChat(c.env.DB, 'admin', question, res, bot);
   });
+});
+
+/* ---------- Answer cache ---------- */
+
+app.get('/api/admin/cache', async (c) => c.json(await cacheStats(c.env.DB, c.get('bot'))));
+
+app.delete('/api/admin/cache', async (c) => {
+  await clearCache(c.env.DB, c.get('bot'));
+  return c.json({ success: true });
 });
 
 /* ---------- Question log ---------- */

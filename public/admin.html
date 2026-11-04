@@ -456,6 +456,7 @@ input[type=range]{width:100%;accent-color:var(--laut)}
         <div class="stack">
           <label class="switch"><input type="checkbox" data-k="rag.queryRewrite"><div><b>Tulis ulang pertanyaan lanjutan</b><em>"Kalau yang kedua berapa?" diubah AI menjadi pertanyaan lengkap sebelum dicari. Menambah satu panggilan AI singkat.</em></div></label>
           <label class="switch"><input type="checkbox" data-k="rag.hybrid"><div><b>Pencarian hibrida (vektor + kata kunci)</b><em>Menangkap istilah persis seperti kode, nama, atau angka yang sering lolos dari pencarian makna.</em></div></label>
+          <label class="switch"><input type="checkbox" data-k="rag.cache"><div><b>Cache jawaban semantik</b><em>Pertanyaan yang sama atau bermakna mirip dijawab dari cache tanpa memanggil AI lagi, jadi hemat token. Otomatis diperbarui saat dokumen atau pengaturan berubah.</em></div></label>
           <label class="switch"><input type="checkbox" data-k="rag.rerank"><div><b>Urutkan ulang dengan reranker</b><em>Model bge-reranker menilai ulang 20 kandidat teratas. Paling efektif untuk dokumen berbahasa Inggris.</em></div></label>
         </div>
         <div class="divider"></div>
@@ -464,8 +465,11 @@ input[type=range]{width:100%;accent-color:var(--laut)}
           <div class="knob"><label class="field" for="kMin"><span>Ambang kemiripan minimum</span></label><input type="range" id="kMin" data-k="rag.minScore" min="0" max="0.9" step="0.01"><output></output></div>
           <div class="knob"><label class="field" for="kCand"><span>Kandidat per pencarian</span></label><input type="range" id="kCand" data-k="rag.candidateK" min="5" max="50" step="1"><output></output></div>
           <div class="knob"><label class="field" for="kNb"><span>Potongan tetangga (±)</span></label><input type="range" id="kNb" data-k="rag.neighborWindow" min="0" max="2" step="1"><output></output></div>
+          <div class="knob"><label class="field" for="kCache"><span>Kemiripan minimum untuk cache</span></label><input type="range" id="kCache" data-k="rag.cacheThreshold" min="0.85" max="0.99" step="0.01"><output></output></div>
           <div class="knob"><label class="field" for="kCtx"><span>Batas total konteks (karakter)</span></label><input type="range" id="kCtx" data-k="rag.maxContextChars" min="2000" max="24000" step="500"><output></output></div>
         </div>
+        <div class="divider"></div>
+        <div class="row" style="display:flex;flex-wrap:wrap;gap:12px;align-items:center;justify-content:space-between"><p class="small muted" id="cacheStats" style="margin:0">Cache: –</p><button class="btn" type="button" id="cacheClear">Kosongkan cache</button></div>
         <p class="small muted" style="margin-top:14px">Ambang terlalu tinggi membuat bot sering bilang "tidak ada di dokumen"; terlalu rendah membuat AI menerima potongan yang tidak relevan. Lihat skor nyata di Uji coba untuk menentukan angka yang pas.</p>
       </div>
       <div class="panel">
@@ -597,6 +601,8 @@ const DICT = {
   'Alur pencarian': 'Retrieval pipeline', 'Tulis ulang pertanyaan lanjutan': 'Rewrite follow-up questions',
   '"Kalau yang kedua berapa?" diubah AI menjadi pertanyaan lengkap sebelum dicari. Menambah satu panggilan AI singkat.': '"And how much is the second one?" is rewritten by AI into a complete question before searching. Adds one short AI call.',
   'Pencarian hibrida (vektor + kata kunci)': 'Hybrid search (vector + keyword)', 'Menangkap istilah persis seperti kode, nama, atau angka yang sering lolos dari pencarian makna.': 'Catches exact terms such as codes, names or numbers that meaning-based search often misses.',
+  'Cache jawaban semantik': 'Semantic answer cache', 'Pertanyaan yang sama atau bermakna mirip dijawab dari cache tanpa memanggil AI lagi, jadi hemat token. Otomatis diperbarui saat dokumen atau pengaturan berubah.': 'Identical or similar-meaning questions are answered from the cache without calling the AI again, saving tokens. Refreshed automatically when the document or settings change.',
+  'Kemiripan minimum untuk cache': 'Minimum similarity for the cache', 'Kosongkan cache': 'Clear cache',
   'Urutkan ulang dengan reranker': 'Rerank with a reranker', 'Model bge-reranker menilai ulang 20 kandidat teratas. Paling efektif untuk dokumen berbahasa Inggris.': 'The bge-reranker model re-scores the top 20 candidates. Most effective for English documents.',
   'Potongan dikirim ke AI': 'Chunks sent to the AI', 'Ambang kemiripan minimum': 'Minimum similarity threshold', 'Kandidat per pencarian': 'Candidates per search', 'Potongan tetangga (±)': 'Neighbour chunks (±)', 'Batas total konteks (karakter)': 'Total context limit (characters)',
   'Ambang terlalu tinggi membuat bot sering bilang "tidak ada di dokumen"; terlalu rendah membuat AI menerima potongan yang tidak relevan. Lihat skor nyata di Uji coba untuk menentukan angka yang pas.': 'A threshold that is too high makes the bot often say "not in the document"; too low lets irrelevant chunks reach the AI. Check real scores in the Playground to pick the right value.',
@@ -886,6 +892,7 @@ function route() {
   $$('[data-page]').forEach((p) => p.classList.toggle('hidden', p.dataset.page !== cur));
   $$('.nav a').forEach((a) => { if (a.getAttribute('href') === '#' + cur) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current'); });
   if (cur === 'riwayat') loadLogs();
+  if (cur === 'pencarian') loadCacheStats();
   if (cur === 'pasang') loadChannels();
   if (cur === 'dokumen' && S.status?.file?.status === 'selesai') loadChunks(true);
   window.scrollTo(0, 0);
@@ -960,7 +967,7 @@ function bindForm() {
 }
 function fmtKnob(key, v) {
   v = Number(v);
-  if (key === 'rag.minScore') return v.toFixed(2);
+  if (key === 'rag.minScore' || key === 'rag.cacheThreshold') return v.toFixed(2);
   if (key === 'rag.neighborWindow') return v ? '±' + v : 'mati';
   if (key === 'rag.maxContextChars') return fmt(v);
   return String(v);
@@ -1430,7 +1437,7 @@ function renderPipeline() {
   const r = S.draft.rag;
   const step = (t, on = true) => `<span class="${on ? '' : 'off'}">${t}</span>`;
   $('#pipeline').innerHTML = [
-    step('Tulis ulang pertanyaan', r.queryRewrite), step(`Cari vektor (${r.candidateK})`), step(`Cari kata kunci (${r.candidateK})`, r.hybrid),
+    step(L('Cek cache', 'Check cache'), r.cache), step('Tulis ulang pertanyaan', r.queryRewrite), step(`Cari vektor (${r.candidateK})`), step(`Cari kata kunci (${r.candidateK})`, r.hybrid),
     step('Gabung RRF', r.hybrid), step('Rerank', r.rerank), step(`Ambil ${r.topK} teratas`), step(`Tetangga ±${r.neighborWindow}`, r.neighborWindow > 0), step('Jawab + sitasi'),
   ].join('<i>→</i>');
 }
@@ -1492,6 +1499,11 @@ function renderXray(d) {
     $('#xray').innerHTML = `<dl><dt>${L('Pesan', 'Message')}</dt><dd>${esc(d.query)}</dd><dt>${L('Keputusan', 'Decision')}</dt><dd><span class="pill ok">${L('Basa-basi', 'Small talk')}: ${esc(kinds[d.smallTalk] || d.smallTalk)}</span></dd></dl><p class="muted small">${L('Dijawab dengan balasan tetap tanpa mencari dokumen dan tanpa memanggil AI, jadi tidak memakai kuota.', 'Answered with a fixed reply without searching the document or calling the AI, so it uses no quota.')}</p>`;
     return;
   }
+  if (d.gate === 'cache') {
+    const c = d.cache || {};
+    $('#xray').innerHTML = `<dl><dt>${L('Pesan', 'Message')}</dt><dd>${esc(d.query)}</dd><dt>${L('Keputusan', 'Decision')}</dt><dd><span class="pill ok">${c.kind === 'exact' ? L('Cache: sama persis', 'Cache: exact match') : L('Cache: makna mirip', 'Cache: similar meaning')}</span></dd><dt>${L('Cocok dengan', 'Matched')}</dt><dd>${esc(c.matched)}</dd><dt>${L('Kemiripan', 'Similarity')}</dt><dd>${Number(c.similarity || 0).toFixed(3)}${c.kind === 'semantic' ? ` <span class="muted">(${L('ambang', 'threshold')} ${Number(S.draft.rag.cacheThreshold).toFixed(2)})</span>` : ''}</dd><dt>${L('Jawaban asli dari', 'Original answer by')}</dt><dd>${esc(c.provider || '–')}</dd></dl><p class="muted small">${L('Jawaban diambil dari cache tanpa memanggil AI, jadi tidak memakai token. Cache dilewati otomatis saat menguji pengaturan yang belum disimpan.', 'Served from the cache without calling the AI, so it used no tokens. The cache is skipped automatically when testing unsaved settings.')}</p>`;
+    return;
+  }
   const t = d.timings || {};
   const rows = d.candidates || [];
   const max = Math.max(0.0001, ...rows.map((c) => c.rerank ?? c.vScore ?? 0));
@@ -1527,6 +1539,17 @@ async function loadLogs() {
     ${l.answer ? `<div class="log-a">${esc(l.answer)}</div>` : ''}<div class="small muted" style="margin-top:4px">${l.provider ? esc(l.provider) + ' · ' : ''}skor ${Number(l.best_score || 0).toFixed(3)}</div></div>`).join('')
     : '<div class="empty">Belum ada riwayat di kategori ini.</div>';
 }
+async function loadCacheStats() {
+  try {
+    const d = await api('/api/admin/cache');
+    $('#cacheStats').textContent = L(`Cache: ${fmt(d.entries)} jawaban tersimpan · ${fmt(d.hits)} kali dipakai ulang (tanpa token AI)`, `Cache: ${fmt(d.entries)} stored answers · reused ${fmt(d.hits)} times (no AI tokens)`);
+  } catch { /* stats are optional */ }
+}
+$('#cacheClear').addEventListener('click', async () => {
+  if (!confirm(L('Kosongkan cache jawaban bot ini?', "Clear this bot's answer cache?"))) return;
+  await api('/api/admin/cache', { method: 'DELETE' }); loadCacheStats(); toast(L('Cache dikosongkan.', 'Cache cleared.'));
+});
+
 $('#logClear').addEventListener('click', async () => {
   if (!confirm(L('Hapus semua riwayat pertanyaan?', 'Delete all question history?'))) return;
   await api('/api/admin/logs', { method: 'DELETE' }); loadLogs(); refreshStatus(); toast('Riwayat dihapus.');

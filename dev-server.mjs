@@ -26,7 +26,7 @@ const DEFAULTS = {
   launcherLabel: '', launcherLabelEn: '', themeColor: '#5B3FE0', prompt: { ...LAYERS },
   chain: [{ provider: 'gemini', model: 'gemini-3.5-flash' }, { provider: 'gemini', model: 'gemini-3.5-flash-lite' }, { provider: 'huggingface', model: 'openai/gpt-oss-120b' }],
   workersAiFallback: true, embeddingProvider: 'auto', temperature: 0.2, maxTokens: 1024, reasoningEffort: 'low',
-  rag: { chunkSize: 1000, chunkOverlap: 150, candidateK: 20, topK: 5, minScore: 0.4, hybrid: true, rerank: false, neighborWindow: 1, maxContextChars: 9000, queryRewrite: true },
+  rag: { chunkSize: 1000, chunkOverlap: 150, candidateK: 20, topK: 5, minScore: 0.4, hybrid: true, rerank: false, neighborWindow: 1, maxContextChars: 9000, queryRewrite: true, cache: true, cacheThreshold: 0.93 },
   limits: { maxQuestionLength: 500, maxHistory: 6, requestsPerMinute: 10, dailyPerIp: 100, dailyTotal: 3000 },
   allowedOrigins: [], logQuestions: true,
 };
@@ -253,6 +253,7 @@ http.createServer(async (req, res) => {
     }
     if (p === '/api/admin/suggestions/regenerate') return send(res, { suggestions: st.suggestions });
     if (p === '/api/admin/test-chat') return streamAnswer(res, String(b.question || '').trim(), b.settings || st.settings, true, 'admin', b.lang === 'en' ? 'en' : 'id', st);
+    if (p === '/api/admin/cache') return send(res, req.method === 'GET' ? { entries: 0, hits: 0 } : { success: true });
     if (p === '/api/admin/logs' && req.method === 'GET') {
       const f = url.searchParams.get('filter');
       return send(res, { items: st.logs.filter((l) => (f === 'refused' ? l.refused : f === 'failed' ? l.failed : f === 'admin' ? l.source === 'admin' : f === 'widget' ? l.source === 'widget' : true)) });

@@ -108,6 +108,9 @@ Parsing dilakukan di browser supaya Worker tidak menghabiskan CPU. Bot pengguna 
 widget → POST /api/public/chat?bot=<id>
   1. honeypot, User-Agent, status bot (aktif / kedaluwarsa), batas per menit, kuota harian
   2. basa-basi ("halo", "makasih", "kamu siapa?") → balasan tetap, tanpa AI
+  2b. cache jawaban (pola GPTCache, hanya pertanyaan tanpa riwayat): sama persis → jawab dari cache tanpa AI;
+      kalau tidak, embedding pertanyaan dibandingkan dengan pertanyaan lama (cosine ≥ ambang, angka harus sama)
+      → jawab dari cache; meleset → embedding yang sama dipakai ulang untuk pencarian di bawah
   3. pertanyaan lanjutan ditulis ulang menjadi pertanyaan mandiri
   4. pencarian vektor (filter bot) ∥ pencarian kata kunci FTS5 (bot_id) → Reciprocal Rank Fusion
   5. gerbang skor: tidak ada yang cukup mirip → pesan penolakan, tanpa AI
@@ -175,6 +178,7 @@ git push main → QA (typecheck, unit, Playwright) → deploy:
 | `usage` | penghitung harian: kuota, kunci login, pendaftaran, embedding (IP dan email hanya disimpan sebagai hash bergaram) |
 | `channel_history`, `channel_seen` | riwayat singkat dan pencegah duplikat untuk Telegram/WhatsApp |
 | `vector_tombstones` | id vektor yang masih harus dihapus |
+| `answer_cache` | per `bot_id` + `scope` (hash versi dokumen, embedder, bahasa, prompt, rantai model, pengaturan RAG): pertanyaan ternormalisasi, embedding int8, jawaban, sumber, jumlah dipakai ulang; berlaku 7 hari, maks. 300 entri per bot (LRU) |
 
 Setiap vektor di Vectorize punya metadata `{ bot, idx }`.
 
@@ -371,9 +375,12 @@ Tes tidak memakai kunci sungguhan dan tidak menghubungi layanan luar. Di GitHub,
 | v2 | Pencarian hibrida, prompt 7 layer, streaming + sitasi, dua bahasa, dashboard 7 menu |
 | v3 | Desain baru, sapaan ramah, Telegram dan WhatsApp, Playwright QA, audit keamanan, deploy otomatis |
 | v4 (Nara) | Multi-pengguna: akun 7 hari, maksimal 3 bot per akun, isolasi data per bot, kuota bersama, DeepSeek/Kimi/GLM, audit ke-2 dan ke-3 |
+| v5 | Cache jawaban semantik (pola GPTCache): pertanyaan sama/mirip dijawab tanpa memanggil AI; atur di menu Pencarian |
 
 `PROMPT.md` berisi prompt 7 layer untuk membangun ulang proyek ini dengan Gemini (tanpa bagian Telegram/WhatsApp).
 
 ## Lisensi
 
 Nara dirilis dengan [Apache License 2.0](LICENSE). Anda boleh memakai, mengubah, dan mendistribusikan ulang kode ini, termasuk untuk keperluan komersial, selama menyertakan file `LICENSE` dan `NOTICE` serta mencantumkan perubahan yang Anda buat. Hak cipta © 2026 devaldicaliesta.
+
+Cache jawaban di `src/cache.ts` meniru rancangan [GPTCache](https://github.com/zilliztech/GPTCache) (MIT License, © Zilliz). Kode GPTCache tidak disertakan karena library itu berbasis Python; yang dipakai hanya konsep alurnya, dan atribusinya dicantumkan di `NOTICE`.
