@@ -26,6 +26,7 @@ import {
 } from './settings';
 import { cacheStats, clearCache, purgeExpiredCache } from './cache';
 import { detectDocLang } from './grounding';
+import { redactPii, signingEmitter, verifyHistory } from './guard';
 import { answer, buildSystemPrompt, buildUserTurn, generateSuggestions, normalizeHistory } from './rag';
 import { buildChain, embed, pickEmbedder } from './llm';
 import { channelRoutes } from './channels';
@@ -410,8 +411,11 @@ app.post('/api/public/chat', async (c) => {
 
   if (!(await dailyQuota(c.env, ip(c), settings.limits.dailyPerIp, settings.limits.dailyTotal, bot))) return fail(msg('daily', lang), 429);
 
-  const history = normalizeHistory(body.history, settings.limits.maxHistory);
-  const run = async (emit: (e: ChatEvent) => Promise<void>) => {
+  // Assistant turns only count when this server signed them; forged ones are dropped.
+  const secret = await getSalt(c.env.DB);
+  const history = await verifyHistory(secret, bot, body.history, settings.limits.maxHistory, normalizeHistory);
+  const run = async (rawEmit: (e: ChatEvent) => Promise<void>) => {
+    const emit = signingEmitter(rawEmit, secret, bot);
     const examples = await visitorSuggestions(c.env, settings, lang, bot).catch(() => []);
     const res = await answer({ env: c.env, settings, question, history, file: { id: file.id, name: file.name, embedder: file.embedder || 'workers-ai', lang: file.lang }, lang, debug: false, emit, examples, bot });
     if (settings.logQuestions) await logChat(c.env.DB, 'widget', question, res, bot);
@@ -423,18 +427,20 @@ app.post('/api/public/chat', async (c) => {
   let text = '';
   let sources: unknown[] = [];
   let refused = false;
+  let sig: string | undefined;
   let error: string | null = null;
   await run(async (e) => {
     if (e.type === 'delta') text += e.text;
     else if (e.type === 'sources') sources = e.items;
     else if (e.type === 'done') {
       refused = e.refused;
+      sig = e.sig;
       if (e.text) text = e.text;
     }
     else if (e.type === 'error') error = e.message;
   });
   if (error) return c.json({ error }, 503);
-  return c.json({ answer: text, sources, refused });
+  return c.json({ answer: text, sources, refused, sig });
 });
 
 // Backwards-compatible aliases for widgets installed with v1.
@@ -445,7 +451,7 @@ async function logChat(db: D1Database, source: string, question: string, res: { 
   try {
     await db
       .prepare('INSERT INTO chat_log (bot_id, source, question, answer, refused, failed, provider, best_score, ungrounded) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)')
-      .bind(bot, source, question.slice(0, 1000), res.text.slice(0, 2000), res.refused ? 1 : 0, res.error ? 1 : 0, res.provider, res.bestScore, res.ungrounded ? 1 : 0)
+      .bind(bot, source, redactPii(question).text.slice(0, 1000), redactPii(res.text).text.slice(0, 2000), res.refused ? 1 : 0, res.error ? 1 : 0, res.provider, res.bestScore, res.ungrounded ? 1 : 0)
       .run();
     if (Math.random() < 0.05) {
       await db.prepare('DELETE FROM chat_log WHERE bot_id = ?1 AND id <= (SELECT MAX(id) - 3000 FROM chat_log WHERE bot_id = ?1)').bind(bot).run();
@@ -846,10 +852,11 @@ app.post('/api/admin/test-chat', async (c) => {
     if (bot !== DEFAULT_BOT && !(await dailyQuota(c.env, 'owner-test', 200, settings.limits.dailyTotal, bot))) {
       return emit({ type: 'error', message: tr(c, 'Kuota uji coba hari ini sudah habis. Coba lagi besok.', "Today's test quota is used up. Please try again tomorrow.") });
     }
-    const history = normalizeHistory(body.history, settings.limits.maxHistory);
+    const secret = await getSalt(c.env.DB);
+    const history = await verifyHistory(secret, bot, body.history, settings.limits.maxHistory, normalizeHistory);
     const lang = asLang(body.lang, settings.language);
     const examples = await visitorSuggestions(c.env, settings, lang, bot).catch(() => []);
-    const res = await answer({ env: c.env, settings, question, history, file: { id: file.id, name: file.name, embedder: file.embedder || 'workers-ai', lang: file.lang }, lang, debug: true, emit, examples, bot, useCache: !body.settings && body.cache !== false });
+    const res = await answer({ env: c.env, settings, question, history, file: { id: file.id, name: file.name, embedder: file.embedder || 'workers-ai', lang: file.lang }, lang, debug: true, emit: signingEmitter(emit, secret, bot), examples, bot, useCache: !body.settings && body.cache !== false });
     if (settings.logQuestions) await logChat(c.env.DB, 'admin', question, res, bot);
   });
 });

@@ -55,7 +55,7 @@ export type ChatEvent =
   | { type: 'sources'; items: Source[] }
   | { type: 'delta'; text: string }
   /** `text`, when present, is the final answer after the citation check and replaces the streamed text. */
-  | { type: 'done'; refused: boolean; provider?: string; model?: string; ms: number; text?: string; grounded?: boolean }
+  | { type: 'done'; refused: boolean; provider?: string; model?: string; ms: number; text?: string; grounded?: boolean; sig?: string }
   | { type: 'error'; message: string }
   | { type: 'debug'; data: unknown };
 

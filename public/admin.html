@@ -373,6 +373,13 @@ input[type=range]{width:100%;accent-color:var(--laut)}
           </div>
           <div class="progress hidden" id="prog"><i></i></div>
           <p class="small muted hidden" id="progText"></p>
+          <div class="panel hidden" id="prepPii" style="margin:12px 0;padding:14px">
+            <p style="margin:0 0 8px"><b>Data pribadi terdeteksi</b> <span class="small muted" id="prepPiiStats"></span></p>
+            <div class="stack">
+              <label class="switch"><input type="checkbox" id="piiMaskIds" checked><div><b>Samarkan NIK, nomor kartu, NPWP, dan nomor rekening</b><em>Diganti label seperti [NIK] sebelum disimpan dan di-embed.</em></div></label>
+              <label class="switch"><input type="checkbox" id="piiMaskContacts"><div><b>Samarkan email dan nomor HP</b><em>Biarkan mati bila dokumen memang memuat kontak resmi yang boleh dibagikan ke pengunjung.</em></div></label>
+            </div>
+          </div>
           <h3 style="margin:14px 0 8px">Pratinjau potongan</h3>
           <div class="chunks" id="prepChunks"></div>
         </div>
@@ -605,6 +612,7 @@ const DICT = {
   'Pencarian hibrida (vektor + kata kunci)': 'Hybrid search (vector + keyword)', 'Menangkap istilah persis seperti kode, nama, atau angka yang sering lolos dari pencarian makna.': 'Catches exact terms such as codes, names or numbers that meaning-based search often misses.',
   'Cache jawaban semantik': 'Semantic answer cache', 'Pertanyaan yang sama atau bermakna mirip dijawab dari cache tanpa memanggil AI lagi, jadi hemat token. Otomatis diperbarui saat dokumen atau pengaturan berubah.': 'Identical or similar-meaning questions are answered from the cache without calling the AI again, saving tokens. Refreshed automatically when the document or settings change.',
   'Kemiripan minimum untuk cache': 'Minimum similarity for the cache', 'Kosongkan cache': 'Clear cache',
+  'Data pribadi terdeteksi': 'Personal data detected', 'Samarkan NIK, nomor kartu, NPWP, dan nomor rekening': 'Mask ID numbers, card numbers, tax IDs and bank accounts', 'Diganti label seperti [NIK] sebelum disimpan dan di-embed.': 'Replaced with labels such as [NIK] before saving and embedding.', 'Samarkan email dan nomor HP': 'Mask e-mail addresses and phone numbers', 'Biarkan mati bila dokumen memang memuat kontak resmi yang boleh dibagikan ke pengunjung.': 'Leave off when the document lists official contacts that visitors may see.',
   'Reranker otomatis untuk dokumen berbahasa Inggris': 'Automatic reranker for English documents', 'Bahasa dokumen dideteksi saat diunggah. Bila berbahasa Inggris, reranker dinyalakan walau tombol di atas mati. Tidak memakai token AI.': 'The document language is detected on upload. For English documents the reranker turns on even when the switch above is off. Uses no AI tokens.', 'Tanpa sitasi': 'No citation',
   'Urutkan ulang dengan reranker': 'Rerank with a reranker', 'Model bge-reranker menilai ulang 20 kandidat teratas. Paling efektif untuk dokumen berbahasa Inggris.': 'The bge-reranker model re-scores the top 20 candidates. Most effective for English documents.',
   'Potongan dikirim ke AI': 'Chunks sent to the AI', 'Ambang kemiripan minimum': 'Minimum similarity threshold', 'Kandidat per pencarian': 'Candidates per search', 'Potongan tetangga (±)': 'Neighbour chunks (±)', 'Batas total konteks (karakter)': 'Total context limit (characters)',
@@ -1300,15 +1308,50 @@ function rechunk() {
   $('#prepStats').textContent = L(`${fmt(chunks.length)} potongan · ${fmt(chars)} karakter`, `${fmt(chunks.length)} chunks · ${fmt(chars)} characters`)
     + (parsed.pages ? L(` · ${parsed.pages} halaman`, ` · ${parsed.pages} pages`) : '')
     + (parsed.sections && parsed.kind !== 'pdf' ? (headed ? L(` · ${headed} judul bagian terdeteksi`, ` · ${headed} section headings detected`) : L(' · tanpa judul bagian (tambahkan # Judul agar lebih akurat)', ' · no section headings (add # Heading for better accuracy)')) : '');
+  const pii = countPii(chunks.map((c) => c.text));
+  const piiTotal = Object.values(pii).reduce((a, b) => a + b, 0);
+  $('#prepPii').classList.toggle('hidden', !piiTotal);
+  $('#prepPiiStats').textContent = Object.entries(pii).filter(([, n]) => n).map(([k, n]) => `${PII_NAMES[k]} ${fmt(n)}`).join(' · ');
   $('#prepGo').disabled = !chunks.length || chunks.length > 2000;
   if (chunks.length > 2000) toast('Lebih dari 2.000 potongan. Perbesar ukuran potongan atau pecah dokumennya.', true);
   $('#prepChunks').innerHTML = chunks.slice(0, 12).map((c, i) => chunkHtml(i, c.label, c.text)).join('') + (chunks.length > 12 ? `<p class="small muted">…dan ${fmt(chunks.length - 12)} potongan lainnya.</p>` : '');
+}
+/* ---------- Personal data in documents (same patterns as src/guard.ts) ---------- */
+const PII_NAMES = { email: 'email', phone: L('no. HP', 'phone'), nik: 'NIK', card: L('no. kartu', 'card no.'), npwp: 'NPWP', account: L('no. rekening', 'bank account') };
+const PII_TAG = { email: '[EMAIL]', phone: '[NO. HP]', nik: '[NIK]', card: '[NO. KARTU]', npwp: '[NPWP]', account: '[NO. REKENING]' };
+function luhnOk(d) { let s = 0; for (let i = 0; i < d.length; i++) { let x = +d[d.length - 1 - i]; if (i % 2) { x *= 2; if (x > 9) x -= 9; } s += x; } return s % 10 === 0; }
+const PII_RULES = [
+  ['email', /[\p{L}\p{N}._%+-]+@[\p{L}\p{N}-]+(?:\.[\p{L}\p{N}-]+)*\.\p{L}{2,}/gu],
+  ['npwp', /\b\d{2}\.\d{3}\.\d{3}\.\d-\d{3}\.\d{3}\b/g],
+  ['account', /\b(?:no\.?\s*)?(?:rekening|rek\.?|account|acc\.?|a\/c)\s*(?:\p{L}{2,12}\s+)?(?:no\.?|number|nomor)?\s*[:#]?\s*(\d[\d -]{6,20}\d)/giu, (m) => { const n = m.replace(/\D/g, '').length; return n >= 8 && n <= 18; }, 1],
+  ['nik', /\b\d{16}\b/g, (m) => +m.slice(0, 2) >= 11 && +m.slice(0, 2) <= 94],
+  ['card', /\b\d(?:[ -]?\d){12,18}\b/g, (m) => luhnOk(m.replace(/\D/g, ''))],
+  ['phone', /(?<![\d+])(?:\+?62[ -]?|0)8\d(?:[ -]?\d){6,11}(?!\d)/g],
+];
+function piiSpans(text) {
+  const out = [];
+  for (const [kind, re, ok, group] of PII_RULES) for (const m of text.matchAll(re)) {
+    const v = group ? m[group] : m[0]; if (!v) continue;
+    const start = m.index + (group ? m[0].indexOf(v) : 0), end = start + v.length;
+    if (out.some((o) => start < o.end && end > o.start) || (ok && !ok(v))) continue;
+    out.push({ kind, start, end });
+  }
+  return out.sort((a, b) => a.start - b.start);
+}
+function countPii(texts) { const n = { nik: 0, card: 0, npwp: 0, account: 0, email: 0, phone: 0 }; for (const t of texts) for (const s of piiSpans(t)) n[s.kind]++; return n; }
+function maskPii(text, kinds) {
+  if (!kinds.length || !text) return text;
+  let out = '', pos = 0;
+  for (const s of piiSpans(text)) { if (!kinds.includes(s.kind)) continue; out += text.slice(pos, s.start) + PII_TAG[s.kind]; pos = s.end; }
+  return out + text.slice(pos);
 }
 const chunkHtml = (i, label, text) => `<div class="chunk" tabindex="0"><div class="chunk-head"><span>${esc(label)}</span><small>#${i + 1} · ${fmt(text.length)} kar.</small></div><p>${esc(text)}</p></div>`;
 document.addEventListener('click', (e) => { const c = e.target.closest('.chunk'); if (c) c.classList.toggle('open'); });
 
 $('#prepGo').addEventListener('click', async () => {
-  const { file, chunks } = S.prepared;
+  const { file } = S.prepared;
+  const mask = [...($('#piiMaskIds').checked ? ['nik', 'card', 'npwp', 'account'] : []), ...($('#piiMaskContacts').checked ? ['email', 'phone'] : [])];
+  const chunks = S.prepared.chunks.map((c) => ({ ...c, text: maskPii(c.text, mask), overlap: c.overlap ? maskPii(c.overlap, mask) : c.overlap, label: maskPii(c.label, mask) }));
   const go = $('#prepGo'), bar = $('#prog'), txt = $('#progText');
   go.disabled = true; $('#prepCancel').disabled = true;
   bar.classList.remove('hidden'); txt.classList.remove('hidden');
@@ -1489,7 +1532,7 @@ $('#playForm').addEventListener('submit', async (e) => {
   if (error) a.innerHTML = `<p style="color:var(--bata)">${esc(error)}</p>`;
   if (done) {
     a.insertAdjacentHTML('beforeend', `<div class="a-meta">${done.refused ? '<span class="pill wait">Ditolak: tidak ada di dokumen</span>' : done.grounded === false ? `<span class="pill no">${L('Tanpa sitasi', 'No citation')}</span>` : '<span class="pill ok">Terjawab</span>'}${done.provider ? `<span class="pill plain">${esc(done.provider)} · ${esc(done.model)}</span>` : ''}<span class="pill plain">${fmt(done.ms)} ms</span></div>`);
-    S.history.push({ role: 'user', content: q }, { role: 'assistant', content: text });
+    S.history.push({ role: 'user', content: q }, { role: 'assistant', content: text, sig: done.sig || '' });
     S.history = S.history.slice(-12);
   }
   if (fails.length) $('#xray').insertAdjacentHTML('beforeend', `<div class="fails"><b>Percobaan penyedia yang gagal:</b><br>${fails.map((f) => `${esc(f.provider)} · ${esc(f.model)}: ${esc(f.message)}`).join('<br>')}</div>`);
@@ -1498,13 +1541,18 @@ $('#playForm').addEventListener('submit', async (e) => {
 
 function renderCitations(c) {
   const removed = c.removed.length ? ` · <span class="pill no">${L('dibuang', 'removed')}: ${c.removed.map((n) => '[' + n + ']').join(' ')}</span>` : '';
+  const pii = c.pii && c.pii.length ? `<dt>${L('Data pribadi', 'Personal data')}</dt><dd><span class="pill no">${L('disamarkan', 'masked')}: ${c.pii.map(esc).join(', ')}</span> <span class="muted">${L('jawaban tidak disimpan ke cache', 'answer not cached')}</span></dd>` : '';
   const status = c.grounded ? `<span class="pill ok">${L('Valid', 'Valid')}: ${c.cited.map((n) => '[' + n + ']').join(' ')}</span>` : `<span class="pill no">${L('Tidak ada sitasi valid: jawaban tidak disimpan ke cache', 'No valid citation: answer not cached')}</span>`;
-  $('#xray').insertAdjacentHTML('beforeend', `<dl><dt>${L('Cek sitasi', 'Citation check')}</dt><dd>${status}${removed}</dd></dl>`);
+  $('#xray').insertAdjacentHTML('beforeend', `<dl><dt>${L('Cek sitasi', 'Citation check')}</dt><dd>${status}${removed}</dd>${pii}</dl>`);
 }
 function renderXray(d) {
   if (d.gate === 'smalltalk') {
     const kinds = { greeting: L('sapaan', 'greeting'), thanks: L('ucapan terima kasih', 'thanks'), bye: L('salam penutup', 'goodbye'), identity: L('pertanyaan tentang bot', 'question about the bot'), ack: L('tanggapan singkat', 'short acknowledgement') };
     $('#xray').innerHTML = `<dl><dt>${L('Pesan', 'Message')}</dt><dd>${esc(d.query)}</dd><dt>${L('Keputusan', 'Decision')}</dt><dd><span class="pill ok">${L('Basa-basi', 'Small talk')}: ${esc(kinds[d.smallTalk] || d.smallTalk)}</span></dd></dl><p class="muted small">${L('Dijawab dengan balasan tetap tanpa mencari dokumen dan tanpa memanggil AI, jadi tidak memakai kuota.', 'Answered with a fixed reply without searching the document or calling the AI, so it uses no quota.')}</p>`;
+    return;
+  }
+  if (d.gate === 'guard') {
+    $('#xray').innerHTML = `<dl><dt>${L('Pesan', 'Message')}</dt><dd>${esc(d.query)}</dd><dt>${L('Keputusan', 'Decision')}</dt><dd><span class="pill no">${L('Diblokir: indikasi prompt injection', 'Blocked: likely prompt injection')}</span></dd></dl><p class="muted small">${L('Pesan ini mencoba mengubah instruksi bot, jadi dijawab dengan balasan tetap tanpa memanggil AI.', 'This message tries to change the bot instructions, so it got a fixed reply without calling the AI.')}</p>`;
     return;
   }
   if (d.gate === 'cache') {

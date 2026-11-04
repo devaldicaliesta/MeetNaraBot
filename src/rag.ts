@@ -4,6 +4,7 @@ import { RERANK_MODEL, getKeys, refusalFor, tenantEnv, type BotSettings, type Em
 import { AllProvidersFailed, completeChat, embed, streamChat } from './llm';
 import { cacheScope, lookupExact, lookupSemantic, storeAnswer } from './cache';
 import { checkCitations, detectDocLang } from './grounding';
+import { detectInjection, hasPii, injectionReply, piiKeys, redactPii } from './guard';
 
 /* ------------------------------------------------------------------ */
 /*  7-layer system prompt                                               */
@@ -365,11 +366,22 @@ export async function answer({ env: rawEnv, settings: baseSettings, question, hi
     return { refused: false, text, bestScore: 0, provider: `smalltalk:${small.kind}` as string | null };
   }
 
+  // Input guardrail (no AI): obvious prompt-injection attempts get a fixed reply and never reach the model.
+  if (detectInjection(question)) {
+    const text = injectionReply(lang, file.name);
+    if (debug) await emit({ type: 'debug', data: { query: question, rewritten: null, gate: 'guard', candidates: [], timings: { total: Date.now() - started } } });
+    await emit({ type: 'sources', items: [] });
+    await emit({ type: 'delta', text });
+    await emit({ type: 'done', refused: true, provider: 'guard', model: 'injection', ms: Date.now() - started });
+    return { refused: true, text, bestScore: 0, provider: 'guard:injection' as string | null };
+  }
+
   const keys = await getKeys(env, bot);
 
   // Semantic answer cache (GPTCache pattern, see cache.ts). Only standalone questions: a
   // follow-up means something different in every conversation.
-  const cacheOn = useCache && settings.rag.cache && !history.length;
+  // Questions that contain personal data are never cached: their answers may echo it to someone else.
+  const cacheOn = useCache && settings.rag.cache && !history.length && !hasPii(question);
   let scope = '';
   let queryVector: number[] | null = null;
   if (cacheOn) {
@@ -446,13 +458,15 @@ export async function answer({ env: rawEnv, settings: baseSettings, question, hi
     // Grounding check (no AI): drop citations to excerpts that were never sent, and flag
     // answers that state something without a single valid citation.
     const check = refused ? null : checkCitations(out.text, passages.length);
-    const text = check ? check.text : out.text;
     const ungrounded = !!check && !check.grounded;
-    if (debug && check) await emit({ type: 'debug', data: { citations: { cited: check.cited, removed: check.removed, grounded: check.grounded } } });
+    // Output guardrail (no AI): personal data that the document itself does not publish is masked.
+    const pii = redactPii(check ? check.text : out.text, piiKeys(passages.map((p) => p.text)));
+    const text = pii.text;
+    if (debug && check) await emit({ type: 'debug', data: { citations: { cited: check.cited, removed: check.removed, grounded: check.grounded }, pii: pii.kinds } });
     await emit({ type: 'done', refused, provider: out.provider, model: out.model, ms: Date.now() - started, grounded: !ungrounded, ...(text !== out.text ? { text } : {}) });
     // Ungrounded answers are never cached, so they cannot be repeated to other visitors.
-    if (cacheOn && scope && !ungrounded) await storeAnswer(env.DB, bot, scope, question, queryVector, { answer: text, sources, refused, provider: `${out.provider}:${out.model}` });
-    return { refused, text, bestScore: dbg.bestVectorScore, provider: `${out.provider}:${out.model}`, ungrounded };
+    if (cacheOn && scope && !ungrounded && !pii.kinds.length) await storeAnswer(env.DB, bot, scope, question, queryVector, { answer: text, sources, refused, provider: `${out.provider}:${out.model}` });
+    return { refused, text, bestScore: dbg.bestVectorScore, provider: `${out.provider}:${out.model}`, ungrounded, piiRedacted: pii.kinds.length > 0 };
   } catch (err) {
     const failed = err instanceof AllProvidersFailed ? err.failed : [];
     if (debug && failed.length) await emit({ type: 'debug', data: { failedAttempts: failed } });

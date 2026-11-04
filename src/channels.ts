@@ -5,6 +5,7 @@
 // WhatsApp: Meta WhatsApp Cloud API webhook, authenticated with the X-Hub-Signature-256 HMAC of the
 // raw body (app secret); GET verification uses WHATSAPP_VERIFY_TOKEN.
 
+import { redactPii } from './guard';
 import type { Context, Hono } from 'hono';
 import type { AppEnv, Bindings, ChatMessage } from './types';
 import { channelCommand, toTelegram, toWhatsApp, type FormatSource } from './channel-format';
@@ -82,7 +83,8 @@ async function loadHistory(env: Bindings, key: string, max: number): Promise<Cha
 
 async function saveHistory(env: Bindings, key: string, history: ChatMessage[]) {
   await env.DB.prepare('INSERT INTO channel_history (id, history, updated_at) VALUES (?, ?, CURRENT_TIMESTAMP) ON CONFLICT(id) DO UPDATE SET history = excluded.history, updated_at = CURRENT_TIMESTAMP')
-    .bind(key, JSON.stringify(history.slice(-12)))
+    // Stored history never keeps personal data in clear text.
+    .bind(key, JSON.stringify(history.slice(-12).map((m) => ({ ...m, content: redactPii(m.content).text }))))
     .run()
     .catch((e) => console.error('history not saved', e));
 }
