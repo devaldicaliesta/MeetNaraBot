@@ -14,7 +14,6 @@ export type Bindings = {
   /** Optional caps for the multi-user platform (wrangler vars). */
   PLATFORM_DAILY_TOTAL?: string | number;
   MAX_SIGNUPS_PER_DAY?: string | number;
-  PLATFORM_DAILY_EMBEDS?: string | number;
   GEMINI_API_KEY?: string;
   GROQ_API_KEY?: string;
   OPENROUTER_API_KEY?: string;

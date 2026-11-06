@@ -38,7 +38,11 @@ export const EMBEDDING_MODEL = '@cf/baai/bge-m3'; // 1024 dimensi, multibahasa
 // app writes 1024-dim vectors so one Vectorize index serves Gemini and Workers AI bge-m3 alike.
 export const GEMINI_EMBEDDING_MODEL = 'gemini-embedding-2';
 export const VECTOR_DIM = 1024;
-export type Embedder = 'gemini' | 'workers-ai';
+export type Embedder = 'gemini' | 'workers-ai' | 'openai' | 'mistral';
+export const EMBEDDERS: Embedder[] = ['gemini', 'openai', 'mistral', 'workers-ai'];
+// Every embedder must produce VECTOR_DIM (1024) dimensions: they all share one Vectorize index.
+export const OPENAI_EMBEDDING_MODEL = 'text-embedding-3-small'; // asked for 1024 dimensions
+export const MISTRAL_EMBEDDING_MODEL = 'mistral-embed'; // 1024 dimensions natively
 export type Lang = 'id' | 'en';
 export const asLang = (v: unknown, fallback: Lang = 'id'): Lang => (v === 'en' || v === 'id' ? v : fallback);
 export const RERANK_MODEL = '@cf/baai/bge-reranker-base';
@@ -207,7 +211,7 @@ export function normalizeSettings(input: any): BotSettings {
     },
     chain: chain.length ? chain : d.chain,
     workersAiFallback: bool(s.workersAiFallback, d.workersAiFallback),
-    embeddingProvider: ['auto', 'gemini', 'workers-ai'].includes(s.embeddingProvider) ? s.embeddingProvider : d.embeddingProvider,
+    embeddingProvider: s.embeddingProvider === 'auto' || EMBEDDERS.includes(s.embeddingProvider) ? s.embeddingProvider : d.embeddingProvider,
     temperature: clamp(s.temperature, 0, 1.5, d.temperature),
     maxTokens: Math.round(clamp(s.maxTokens, 128, 4096, d.maxTokens)),
     reasoningEffort: effort,
@@ -295,6 +299,9 @@ export function tenantEnv(env: Bindings, bot: string): Bindings {
   if (bot === 'default') return env;
   const copy = { ...env } as Record<string, unknown>;
   for (const k of PROVIDER_SECRETS) delete copy[k];
+  // The Workers AI binding runs on the platform's Cloudflare account. User bots never get it: they use
+  // Workers AI only through their own account key (provider "cloudflare"), like every other provider.
+  delete copy.AI;
   copy.TENANT_BOT = bot;
   return copy as Bindings;
 }

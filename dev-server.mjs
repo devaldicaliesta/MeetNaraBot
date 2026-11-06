@@ -38,7 +38,8 @@ import crypto from 'node:crypto';
 const bots = new Map(); // id -> { owner, name, settings, keys, files, chunks, suggestions, logs }
 const newState = (name = 'Nara') => ({ settings: { ...structuredClone(DEFAULTS), name }, keys: {}, files: [], chunks: [], suggestions: { id: [], en: [] }, logs: [] });
 const MAX_FILES = 10;
-const docsLabel = (n) => n.length <= 1 ? (n[0] || '') : n.length === 2 ? `${n[0]} dan ${n[1]}` : n.length === 3 ? `${n[0]}, ${n[1]}, dan ${n[2]}` : `${n.length} dokumen`;
+const docTitle = (n) => n.replace(/\.(md|markdown|txt|csv|json|html?|pdf|docx?)$/i, '').trim() || n;
+const docsLabel = (names) => { const n = names.map(docTitle); return n.length <= 1 ? (n[0] || '') : n.length === 2 ? `${n[0]} dan ${n[1]}` : `${n.slice(0, -1).join(', ')}, dan ${n[n.length - 1]}`; };
 /** Same shape as the Worker's activeFile(): all finished documents as one record, else the newest one. */
 function agg(st) {
   const ready = st.files.filter((f) => f.status === 'selesai');

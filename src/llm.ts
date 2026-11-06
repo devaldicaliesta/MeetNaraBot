@@ -1,11 +1,14 @@
 import type { Bindings, ChatMessage } from './types';
-import { adaptBody, endpointFor } from './openai-compat';
+import { adaptBody, endpointFor, parseAccountKey } from './openai-compat';
 import {
   PROVIDERS,
   WORKERS_AI_PRIMARY,
   WORKERS_AI_BACKUP,
   EMBEDDING_MODEL,
+  EMBEDDERS,
   GEMINI_EMBEDDING_MODEL,
+  MISTRAL_EMBEDDING_MODEL,
+  OPENAI_EMBEDDING_MODEL,
   VECTOR_DIM,
   resolveKey,
   type BotSettings,
@@ -93,15 +96,31 @@ async function* readSse(stream: ReadableStream<Uint8Array>): AsyncGenerator<stri
  * User bots run on the platform's shared Workers AI account, so they may only call the two
  * allow-listed chat models (a bot owner could otherwise pick a far more expensive model).
  */
-function assertWorkersAiModel(env: Bindings, model: string) {
-  if (env.TENANT_BOT && model !== WORKERS_AI_PRIMARY && model !== WORKERS_AI_BACKUP) {
-    throw { status: 403, message: `Model Workers AI "${model.slice(0, 80)}" tidak tersedia untuk bot pengguna. Pakai ${WORKERS_AI_PRIMARY} atau ${WORKERS_AI_BACKUP}.` };
-  }
+/**
+ * Workers AI for the platform bot runs on the Worker's own binding. A user bot has no binding (see
+ * tenantEnv), so its "workers-ai" chain entries go through the owner's own Cloudflare account instead.
+ */
+const routed = (env: Bindings, entry: ChainEntry): ChainEntry => (entry.provider === 'workers-ai' && !env.AI ? { ...entry, provider: 'cloudflare' } : entry);
+
+/** Runs a Workers AI model: the binding for the platform bot, the owner's own account (REST) for user bots. */
+export async function runWorkersAi(env: Bindings, keys: KeyStore, model: string, input: Record<string, unknown>): Promise<any> {
+  if (env.AI) return env.AI.run(model as any, input as any);
+  const acc = parseAccountKey(resolveKey(env, keys, 'cloudflare'));
+  if (!acc) throw new Error('Workers AI untuk bot Anda butuh kunci akun Cloudflare sendiri (ACCOUNT_ID:API_TOKEN) di menu Bot & model');
+  const res = await fetch(`https://api.cloudflare.com/client/v4/accounts/${acc.account}/ai/run/${model}`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${acc.token}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify(input),
+    signal: AbortSignal.timeout(30000),
+  });
+  if (!res.ok) throw new Error(`Workers AI (akun Anda): ${httpMessage(res.status)}`);
+  const data: any = await res.json();
+  return data?.result ?? data;
 }
 
-async function openStream(env: Bindings, keys: KeyStore, settings: BotSettings, entry: ChainEntry, messages: ChatMessage[]) {
+async function openStream(env: Bindings, keys: KeyStore, settings: BotSettings, chainEntry: ChainEntry, messages: ChatMessage[]) {
+  const entry = routed(env, chainEntry);
   if (entry.provider === 'workers-ai') {
-    assertWorkersAiModel(env, entry.model);
     const res: any = await env.AI.run(entry.model as any, { messages, stream: true, max_tokens: settings.maxTokens, temperature: settings.temperature } as any);
     if (res instanceof ReadableStream) return res as ReadableStream<Uint8Array>;
     // Some models ignore `stream` → wrap the full answer as one SSE event.
@@ -167,10 +186,10 @@ export async function completeChat(
   maxTokens = 200
 ): Promise<{ text: string; provider: string; model: string }> {
   const failed: FailAttempt[] = [];
-  for (const entry of buildChain(settings)) {
+  for (const chainEntry of buildChain(settings)) {
+    const entry = routed(env, chainEntry);
     try {
       if (entry.provider === 'workers-ai') {
-        assertWorkersAiModel(env, entry.model);
         const res: any = await env.AI.run(entry.model as any, { messages, max_tokens: maxTokens, temperature: 0.1 } as any);
         const text = deltaFrom(res).trim();
         if (text) return { text, provider: entry.provider, model: entry.model };
@@ -210,14 +229,54 @@ function normalize(v: number[]): number[] {
   return v.map((x) => x / n);
 }
 
+/** Whether this bot can embed with `e` right now: its own key (or, for the platform bot, the binding). */
+function canEmbed(env: Bindings, keys: KeyStore, e: Embedder): boolean {
+  if (e === 'workers-ai') return !!env.AI || !!parseAccountKey(resolveKey(env, keys, 'cloudflare'));
+  return !!resolveKey(env, keys, e);
+}
+
+const EMBEDDER_NAME: Record<Embedder, string> = { gemini: 'Gemini', openai: 'OpenAI', mistral: 'Mistral', 'workers-ai': 'Workers AI' };
+
+/**
+ * Embedding model for the next upload. "auto" takes the first one this bot has a key for (Gemini, OpenAI,
+ * Mistral, then Workers AI). User bots have no platform fallback, so without any own key this throws.
+ */
 export function pickEmbedder(env: Bindings, keys: KeyStore, settings: BotSettings): Embedder {
-  if (settings.embeddingProvider === 'workers-ai') return 'workers-ai';
-  const hasGemini = !!resolveKey(env, keys, 'gemini');
-  if (settings.embeddingProvider === 'gemini') {
-    if (!hasGemini) throw new Error('Embedding Gemini dipilih tetapi kunci Gemini belum diatur');
-    return 'gemini';
+  const want = settings.embeddingProvider;
+  if (want !== 'auto') {
+    if (!canEmbed(env, keys, want)) throw new Error(`Embedding ${EMBEDDER_NAME[want]} dipilih tetapi kuncinya belum diatur di menu Bot & model`);
+    return want;
   }
-  return hasGemini ? 'gemini' : 'workers-ai';
+  const found = EMBEDDERS.find((e) => canEmbed(env, keys, e));
+  if (!found) throw new Error('Simpan dulu kunci Gemini, OpenAI, Mistral, atau Workers AI (akun Cloudflare sendiri) di menu Bot & model untuk memproses dokumen');
+  return found;
+}
+
+/**
+ * Embedder for the next upload of a bot that may already have documents: those fix the model (vectors
+ * of different models cannot be compared), and the bot must still hold a key for it.
+ */
+export function nextEmbedder(env: Bindings, keys: KeyStore, settings: BotSettings, existing?: Embedder | null): Embedder {
+  if (!existing) return pickEmbedder(env, keys, settings);
+  if (!canEmbed(env, keys, existing)) {
+    throw new Error(`Dokumen bot ini memakai embedding ${EMBEDDER_NAME[existing]}. Simpan dulu kunci ${EMBEDDER_NAME[existing]} di menu Bot & model, atau hapus semua dokumen untuk ganti model`);
+  }
+  return existing;
+}
+
+/** OpenAI-style /embeddings (OpenAI, Mistral). */
+async function embedOpenAiStyle(url: string, key: string, model: string, texts: string[], extra: Record<string, unknown>, name: string): Promise<number[][]> {
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ model, input: texts, ...extra }),
+    signal: AbortSignal.timeout(30000),
+  });
+  if (!res.ok) throw new Error(`Embedding ${name} gagal: ${httpMessage(res.status)}`);
+  const data: any = await res.json();
+  const vectors = [...(data?.data || [])].sort((a: any, b: any) => (a.index ?? 0) - (b.index ?? 0)).map((d: any) => normalize(d.embedding || []));
+  if (vectors.length !== texts.length || vectors.some((v: number[]) => v.length !== VECTOR_DIM)) throw new Error(`Format respons embedding ${name} tidak sesuai`);
+  return vectors;
 }
 
 export async function embed(
@@ -255,7 +314,15 @@ export async function embed(
     return vectors;
   }
 
-  const res: any = await env.AI.run(EMBEDDING_MODEL as any, { text: texts } as any);
+  if (embedder === 'openai' || embedder === 'mistral') {
+    const key = resolveKey(env, keys, embedder);
+    if (!key) throw new Error(`Kunci ${EMBEDDER_NAME[embedder]} belum diatur untuk embedding`);
+    return embedder === 'openai'
+      ? embedOpenAiStyle('https://api.openai.com/v1/embeddings', key, OPENAI_EMBEDDING_MODEL, texts, { dimensions: VECTOR_DIM }, 'OpenAI')
+      : embedOpenAiStyle('https://api.mistral.ai/v1/embeddings', key, MISTRAL_EMBEDDING_MODEL, texts, {}, 'Mistral');
+  }
+
+  const res: any = await runWorkersAi(env, keys, EMBEDDING_MODEL, { text: texts });
   let vectors: number[][] | null = null;
   if (Array.isArray(res?.data)) vectors = res.data;
   else if (Array.isArray(res) && Array.isArray(res[0])) vectors = res;

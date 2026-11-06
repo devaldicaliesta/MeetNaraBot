@@ -28,7 +28,7 @@ import { cacheStats, clearCache, purgeExpiredCache } from './cache';
 import { detectDocLang } from './grounding';
 import { redactPii, signingEmitter, verifyHistory } from './guard';
 import { answer, buildSystemPrompt, buildUserTurn, generateSuggestions, normalizeHistory } from './rag';
-import { buildChain, embed, pickEmbedder } from './llm';
+import { buildChain, embed, nextEmbedder } from './llm';
 import { channelRoutes } from './channels';
 import {
   ACCOUNT_DAYS,
@@ -89,7 +89,6 @@ const tooLarge = (c: Context<Env>, max: number) => Number(c.req.header('Content-
 const platformDailyTotal = (env: Bindings) => Math.max(100, Number(env.PLATFORM_DAILY_TOTAL) || 5000);
 const signupsPerDay = (env: Bindings) => Math.max(1, Number(env.MAX_SIGNUPS_PER_DAY) || 200);
 /** Chunks user bots may embed with the platform's free Workers AI per day, all users together. */
-const platformDailyEmbeds = (env: Bindings) => Math.max(100, Number(env.PLATFORM_DAILY_EMBEDS) || 4000);
 /** Largest document (in chunks) a user bot may index. */
 const USER_BOT_MAX_CHUNKS = 400; // across all documents of one bot
 const MAX_FILES_PER_BOT = 10;
@@ -206,13 +205,15 @@ async function listFiles(db: D1Database, bot: string): Promise<FileRow[]> {
   return res.results || [];
 }
 
-/** "a.md", "a.md dan b.pdf", "a.md, b.pdf, dan c.docx", or "5 dokumen" for longer lists. */
+/** A document name as visitors see it: without the file extension ("Panduan Pendaftaran.pdf" → "Panduan Pendaftaran"). */
+export const documentTitle = (name: string) => name.replace(/\.(md|markdown|txt|csv|json|html?|pdf|docx?)$/i, '').trim() || name;
+
+/** Every document by name, without extensions: "a", "a dan b", "a, b, dan c". */
 export function documentsLabel(names: string[], lang: 'id' | 'en' = 'id'): string {
+  const t = names.map(documentTitle);
+  if (t.length <= 1) return t[0] || '';
   const and = lang === 'en' ? 'and' : 'dan';
-  if (names.length <= 1) return names[0] || '';
-  if (names.length === 2) return `${names[0]} ${and} ${names[1]}`;
-  if (names.length === 3) return `${names[0]}, ${names[1]}, ${and} ${names[2]}`;
-  return lang === 'en' ? `${names.length} documents` : `${names.length} dokumen`;
+  return t.length === 2 ? `${t[0]} ${and} ${t[1]}` : `${t.slice(0, -1).join(', ')}, ${and} ${t[t.length - 1]}`;
 }
 
 /**
@@ -681,7 +682,7 @@ app.get('/api/admin/status', async (c) => {
     chain: buildChain(settings),
     embedderForNextUpload: (() => {
       try {
-        return pickEmbedder(env, keys, settings);
+        return nextEmbedder(env, keys, settings, file?.files.find((f) => f.embedder)?.embedder);
       } catch (e: any) {
         return `error: ${e.message}`;
       }
@@ -769,7 +770,7 @@ app.post('/api/admin/file', async (c) => {
   // the model of its first document. Delete all documents to switch models.
   const existing = files.find((f) => f.embedder)?.embedder;
   try {
-    embedder = existing || pickEmbedder(benv(c), keys, settings);
+    embedder = nextEmbedder(benv(c), keys, settings, existing);
   } catch (e: any) {
     return c.json({ error: e.message }, 400);
   }
@@ -801,9 +802,7 @@ app.post('/api/admin/file/chunks', async (c) => {
     if (others + body.startIdx + body.chunks.length > USER_BOT_MAX_CHUNKS) {
       return c.json({ error: tr(c, `Dokumen terlalu besar: maksimal ${USER_BOT_MAX_CHUNKS} potongan per bot. Ringkas dokumennya atau perbesar ukuran potongan.`, `The document is too large: at most ${USER_BOT_MAX_CHUNKS} chunks per bot. Shorten it or use a larger chunk size.`) }, 413);
     }
-    if (file.embedder !== 'gemini' && !(await spendPlatform(c.env, 'emb:all-users', body.chunks.length, platformDailyEmbeds(c.env)))) {
-      return c.json({ error: tr(c, 'Kuota pemrosesan dokumen gratis untuk hari ini sudah habis. Coba lagi besok, atau simpan kunci Gemini Anda sendiri di menu Bot & model.', "Today's free document-processing quota is used up. Try again tomorrow, or save your own Gemini key in Bot & model.") }, 429);
-    }
+    // No platform embedding budget here: user bots embed only with their own keys (see tenantEnv).
   }
 
   const keys = await getKeys(c.env, bot);

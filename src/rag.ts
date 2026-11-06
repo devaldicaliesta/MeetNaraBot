@@ -1,7 +1,7 @@
 import type { Bindings, ChatEvent, ChatMessage, Source } from './types';
 import { detectSmallTalk, smallTalkReply } from './smalltalk';
 import { RERANK_MODEL, getKeys, refusalFor, tenantEnv, type BotSettings, type Embedder, type KeyStore, type Lang, type Suggestions } from './settings';
-import { AllProvidersFailed, completeChat, embed, streamChat } from './llm';
+import { AllProvidersFailed, completeChat, embed, runWorkersAi, streamChat } from './llm';
 import { cacheScope, lookupExact, lookupSemantic, storeAnswer } from './cache';
 import { checkCitations, detectDocLang } from './grounding';
 import { visibleLabel } from './channel-format';
@@ -196,7 +196,7 @@ export async function retrieve(
     const t = Date.now();
     try {
       const pool = ranked.slice(0, 20);
-      const out: any = await env.AI.run(RERANK_MODEL as any, {
+      const out: any = await runWorkersAi(env, keys, RERANK_MODEL, {
         query,
         contexts: pool.map((c) => ({ text: `${rows.get(c.id)!.label}\n${rows.get(c.id)!.text}`.slice(0, 1500) })),
       } as any);

@@ -137,6 +137,7 @@ test('a bot uses several documents: list, answer with the right source, delete o
   const chat = page.locator('tanyasaya-chat');
   await chat.locator('textarea').fill('Kapan kelas akhir pekan?');
   await chat.locator('textarea').press('Enter');
+  await expect(chat.locator('.sub')).toHaveText('Menjawab dari panduan-pendaftaran dan jadwal-kelas');
   const label = chat.locator('.source-label').first();
   await expect(label).toHaveText('Jadwal Kelas › Akhir pekan');
   await expect(chat.locator('.sources')).not.toContainText('.md');

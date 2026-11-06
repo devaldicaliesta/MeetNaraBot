@@ -433,15 +433,15 @@ input[type=range]{width:100%;accent-color:var(--laut)}
         <div class="chain-tail" id="chainTail" style="margin-top:8px"></div>
         <div class="divider"></div>
         <div class="stack">
-          <label class="switch"><input type="checkbox" data-k="workersAiFallback"><div><b>Cadangan Workers AI</b><em>Tambahkan model Workers AI (gratis, tanpa kunci) di ujung rantai sebagai jaring pengaman.</em></div></label>
+          <label class="switch"><input type="checkbox" data-k="workersAiFallback"><div><b>Cadangan Workers AI</b><em>Tambahkan model Workers AI di ujung rantai sebagai jaring pengaman. Bot platform memakai akun Cloudflare platform; bot pengguna memakai kunci akun Cloudflare-nya sendiri.</em></div></label>
           <div class="grid3">
-            <label class="field"><span>Temperature</span><input type="number" data-k="temperature" min="0" max="1.5" step="0.05"><small>0–0,3 = konsisten dan faktual.</small></label>
-            <label class="field"><span>Maks. token jawaban</span><input type="number" data-k="maxTokens" min="128" max="4096" step="32"></label>
-            <label class="field"><span>Tingkat berpikir Gemini</span><select data-k="reasoningEffort"><option value="">Bawaan model</option><option value="none">none (tercepat)</option><option value="low">low (disarankan)</option><option value="medium">medium</option><option value="high">high (terlambat)</option></select></label>
+            <label class="field"><span>Temperature</span><input type="number" data-k="temperature" min="0" max="1.5" step="0.05"><small>0–0,3 = konsisten dan faktual. Berlaku untuk semua penyedia, kecuali model reasoning OpenAI yang selalu memakai nilai bawaan.</small></label>
+            <label class="field"><span>Maks. token jawaban</span><input type="number" data-k="maxTokens" min="128" max="4096" step="32"><small>Batas panjang jawaban, untuk semua penyedia.</small></label>
+            <label class="field"><span>Tingkat berpikir (model reasoning)</span><select data-k="reasoningEffort"><option value="">Bawaan model</option><option value="none">none (tercepat)</option><option value="low">low (disarankan)</option><option value="medium">medium</option><option value="high">high (terlambat)</option></select><small>Dipakai Gemini, OpenAI gpt-5/o-series, model gpt-oss, dan Grok 3 Mini. Model lain mengabaikannya.</small></label>
           </div>
           <label class="field" style="max-width:420px"><span>Model embedding untuk unggahan berikutnya</span>
-            <select data-k="embeddingProvider"><option value="auto">Otomatis: Gemini jika ada kunci, selain itu Workers AI</option><option value="gemini">Gemini · gemini-embedding-001 (1024 dim)</option><option value="workers-ai">Workers AI · bge-m3 (1024 dim)</option></select>
-            <small>Dokumen yang sudah diunggah tetap memakai model saat unggah. Ganti model = unggah ulang dokumen.</small></label>
+            <select data-k="embeddingProvider"><option value="auto">Otomatis: kunci pertama yang tersedia (Gemini, OpenAI, Mistral, Workers AI)</option><option value="gemini">Gemini · gemini-embedding-2</option><option value="openai">OpenAI · text-embedding-3-small</option><option value="mistral">Mistral · mistral-embed</option><option value="workers-ai">Workers AI · bge-m3</option></select>
+            <small>Semua dokumen satu bot memakai model embedding yang sama (1024 dimensi). Untuk ganti model, hapus semua dokumen lalu unggah ulang.</small></label>
         </div>
       </div>
 
@@ -597,11 +597,11 @@ const DICT = {
   'Label tombol (English)': 'Button label (English)', 'Pesan penolakan (English)': 'Refusal message (English)', 'Sapaan pembuka (English)': 'Opening greeting (English)', 'Saran pertanyaan (English)': 'Suggested questions (English)',
   'Urutan model': 'Model order', 'Dicoba dari atas ke bawah. Gunakan tombol Tes untuk memastikan kunci dan nama model benar.': 'Tried from top to bottom. Use Test to make sure the key and model name are correct.',
   'Tambah model': 'Add model', 'Tes': 'Test', 'Naikkan': 'Move up', 'Turunkan': 'Move down', 'Hapus': 'Delete', 'Cadangan Workers AI': 'Workers AI fallback',
-  'Tambahkan model Workers AI (gratis, tanpa kunci) di ujung rantai sebagai jaring pengaman.': 'Add Workers AI models (free, no key) at the end of the chain as a safety net.',
-  '0–0,3 = konsisten dan faktual.': '0–0.3 = consistent and factual.', 'Maks. token jawaban': 'Max answer tokens', 'Tingkat berpikir Gemini': 'Gemini thinking level',
+  'Tambahkan model Workers AI di ujung rantai sebagai jaring pengaman. Bot platform memakai akun Cloudflare platform; bot pengguna memakai kunci akun Cloudflare-nya sendiri.': 'Add Workers AI models at the end of the chain as a safety net. The platform bot uses the platform Cloudflare account; user bots use their own Cloudflare account key.',
+  '0–0,3 = konsisten dan faktual. Berlaku untuk semua penyedia, kecuali model reasoning OpenAI yang selalu memakai nilai bawaan.': '0–0.3 = consistent and factual. Applies to every provider, except OpenAI reasoning models, which always use their default.', 'Maks. token jawaban': 'Max answer tokens', 'Batas panjang jawaban, untuk semua penyedia.': 'Answer length limit, for every provider.', 'Tingkat berpikir (model reasoning)': 'Thinking level (reasoning models)', 'Dipakai Gemini, OpenAI gpt-5/o-series, model gpt-oss, dan Grok 3 Mini. Model lain mengabaikannya.': 'Used by Gemini, OpenAI gpt-5/o-series, gpt-oss models and Grok 3 Mini. Other models ignore it.',
   'Bawaan model': 'Model default', 'none (tercepat)': 'none (fastest)', 'low (disarankan)': 'low (recommended)', 'high (terlambat)': 'high (slowest)',
-  'Model embedding untuk unggahan berikutnya': 'Embedding model for the next upload', 'Otomatis: Gemini jika ada kunci, selain itu Workers AI': 'Automatic: Gemini if a key is set, otherwise Workers AI',
-  'Dokumen yang sudah diunggah tetap memakai model saat unggah. Ganti model = unggah ulang dokumen.': 'An uploaded document keeps the model it was uploaded with. Changing models means re-uploading the document.',
+  'Model embedding untuk unggahan berikutnya': 'Embedding model for the next upload', 'Otomatis: kunci pertama yang tersedia (Gemini, OpenAI, Mistral, Workers AI)': 'Automatic: the first key available (Gemini, OpenAI, Mistral, Workers AI)',
+  'Semua dokumen satu bot memakai model embedding yang sama (1024 dimensi). Untuk ganti model, hapus semua dokumen lalu unggah ulang.': 'Every document of a bot uses the same embedding model (1024 dimensions). To switch models, delete all documents and upload them again.',
   'Kunci API': 'API keys', 'Kunci disimpan di server dan': 'Keys are stored on the server and', 'tidak pernah ditampilkan lagi': 'are never shown again',
   '. Untuk keamanan maksimal, simpan sebagai secret Cloudflare (': '. For maximum security, store them as Cloudflare secrets (', '); kunci yang ditempel di sini mengalahkan secret.': '); a key pasted here overrides the secret.',
   'Tempel kunci baru untuk mengganti': 'Paste a new key to replace it', 'Tempel kunci API': 'Paste an API key', 'Tersimpan': 'Saved', 'Dari secret': 'From secret', 'Belum ada': 'Not set', 'Akan disimpan': 'Will be saved', 'Akan dihapus': 'Will be removed',
@@ -1039,11 +1039,14 @@ function renderOverview() {
   $('#stFailed').parentElement.classList.toggle('warn', (st.stats?.failed || 0) > 0);
 
   const hasKey = st.keys.some((k) => k.configured);
-  const geminiKey = st.keys.find((k) => k.id === 'gemini')?.configured;
   const doc = st.file?.status === 'selesai';
+  // User bots have no platform AI at all: a key of their own is required, not optional.
+  const keyStep = st.platform === false
+    ? { done: hasKey, title: L('Kunci AI Anda tersimpan', 'Your AI key is saved'), text: hasKey ? L('Bot memakai kunci Anda sendiri.', 'The bot uses your own key.') : L('Wajib: simpan minimal satu kunci penyedia AI di Bot & model. Bot pengguna tidak memakai kuota AI platform.', 'Required: save at least one AI provider key in Bot & model. User bots do not use the platform AI quota.'), link: '#model' }
+    : { done: hasKey, title: L('Kunci penyedia AI tersimpan', 'AI provider key saved'), text: hasKey ? L('Rantai penyedia memakai kunci yang tersimpan.', 'The provider chain uses the saved keys.') : L('Tanpa kunci, chatbot memakai cadangan Workers AI.', 'Without a key, the chatbot uses the Workers AI fallback.'), link: '#model' };
   const steps = [
     { done: st.bindings.db && st.bindings.vectorize && st.bindings.ai, title: 'Binding Cloudflare aktif', text: 'D1, Vectorize, dan Workers AI terhubung.', link: null },
-    { done: geminiKey, title: 'Kunci Gemini tersimpan', text: geminiKey ? 'Gemini menjadi model utama.' : hasKey ? 'Penyedia lain sudah ada, tetapi Gemini belum.' : 'Tanpa kunci, chatbot memakai cadangan Workers AI.', link: '#model' },
+    keyStep,
     { done: doc, title: 'Dokumen terindeks', text: doc ? `${st.file.name} · ${fmt(st.file.chunk_count)} potongan` : st.file ? 'Unggahan belum selesai. Hapus lalu unggah ulang.' : 'Unggah satu atau beberapa dokumen sebagai sumber jawaban.', link: '#dokumen' },
     { done: (S.cfg.settings.allowedOrigins || []).length > 0, title: 'Domain website dibatasi', text: 'Disarankan agar widget hanya bisa dipakai di website Anda.', link: '#pasang' },
     ...(st.platform === false ? [] : [{ done: !st.weakPassword, title: 'Kata sandi admin kuat', text: st.weakPassword ? 'Kata sandi kurang dari 12 karakter. Ganti secret ADMIN_PASSWORD dengan kalimat sandi yang lebih panjang.' : 'Kata sandi admin minimal 12 karakter.', link: null }]),
@@ -1053,10 +1056,11 @@ function renderOverview() {
   const pname = (id) => S.providers.find((p) => p.id === id)?.name || id;
   $('#chainView').innerHTML = st.chain.map((c, i) => {
     const k = st.keys.find((x) => x.id === c.provider);
-    const missing = c.provider !== 'workers-ai' && !k?.configured;
+    // Workers AI needs no key on the platform bot; user bots reach it only through their own Cloudflare key.
+    const missing = c.provider === 'workers-ai' ? st.platform === false && !st.keys.find((x) => x.id === 'cloudflare')?.configured : !k?.configured;
     return (i ? '<span class="chain-arrow">→</span>' : '') + `<span class="chain-step" ${missing ? 'style="opacity:.5" title="Kunci belum diatur, akan dilewati"' : ''}>${esc(pname(c.provider))} <small>${esc(c.model)}</small></span>`;
   }).join('');
-  $('#embNext').textContent = String(st.embedderForNextUpload).startsWith('error') ? st.embedderForNextUpload : st.embedderForNextUpload === 'gemini' ? 'Gemini · gemini-embedding-001' : 'Workers AI · bge-m3';
+  $('#embNext').textContent = String(st.embedderForNextUpload).startsWith('error') ? st.embedderForNextUpload.replace(/^error: /, '') : embName(st.embedderForNextUpload);
   const navDoc = $('.nav a[href="#dokumen"]');
   navDoc.querySelector('.dot')?.remove();
   if (!doc) navDoc.insertAdjacentHTML('beforeend', '<span class="dot" title="Perlu tindakan"></span>');
@@ -1247,6 +1251,8 @@ function chunkSections(parsed, size, overlap) {
 /* =================================================================== */
 /*  Document UI                                                         */
 /* =================================================================== */
+function embName(e) { return ({ gemini: 'Gemini', openai: 'OpenAI text-embedding-3-small', mistral: 'Mistral mistral-embed', 'workers-ai': 'Workers AI bge-m3' })[e] || e; }
+
 function renderDoc() {
   const files = S.status.files || (S.status.file ? [S.status.file] : []);
   const max = S.status.maxFiles || 10;
@@ -1261,7 +1267,7 @@ function renderDoc() {
   $('#docCount').textContent = L(`Dokumen aktif (${files.length} dari ${max})`, `Active documents (${files.length} of ${max})`);
   const emb = files.find((f) => f.embedder)?.embedder;
   $('#docEmbedNote').textContent = emb
-    ? L(`Semua dokumen bot ini memakai embedding ${emb === 'gemini' ? 'Gemini' : 'Workers AI bge-m3'}, termasuk dokumen berikutnya. Untuk ganti model embedding, hapus semua dokumen dulu.`, `Every document of this bot uses ${emb === 'gemini' ? 'Gemini' : 'Workers AI bge-m3'} embeddings, including the next one. To switch embedding models, delete all documents first.`)
+    ? L(`Semua dokumen bot ini memakai embedding ${embName(emb)}, termasuk dokumen berikutnya. Untuk ganti model embedding, hapus semua dokumen dulu.`, `Every document of this bot uses ${embName(emb)} embeddings, including the next one. To switch embedding models, delete all documents first.`)
     : '';
   const when = (f) => new Date(f.created_at.replace(' ', 'T') + 'Z').toLocaleString(LOCALE(), { dateStyle: 'medium', timeStyle: 'short' });
   $('#docList').innerHTML = files.map((f) => {
@@ -1374,7 +1380,7 @@ $('#prepGo').addEventListener('click', async () => {
     reg = await api('/api/admin/file', { method: 'POST', body: JSON.stringify({ name: file.name }) });
     const B = 20;
     for (let i = 0; i < chunks.length; i += B) {
-      const range = `${fmt(i + 1)}–${fmt(Math.min(i + B, chunks.length))}`, emb = reg.embedder === 'gemini' ? 'Gemini' : 'Workers AI';
+      const range = `${fmt(i + 1)}–${fmt(Math.min(i + B, chunks.length))}`, emb = embName(reg.embedder);
       set(Math.round((i / chunks.length) * 90) + 3, L(`Membuat embedding ${range} dari ${fmt(chunks.length)} potongan (${emb})…`, `Embedding ${range} of ${fmt(chunks.length)} chunks (${emb})…`));
       const body = JSON.stringify({ fileId: reg.id, startIdx: i, chunks: chunks.slice(i, i + B) });
       try { await api('/api/admin/file/chunks', { method: 'POST', body }); }
@@ -1443,7 +1449,9 @@ function renderChain() {
       </div>
       <div class="test-out muted"></div>
     </div>`).join('');
-  $('#chainTail').textContent = S.draft.workersAiFallback ? `Lalu cadangan Workers AI: ${S.wai.join(' → ')}` : 'Cadangan Workers AI dimatikan.';
+  $('#chainTail').textContent = !S.draft.workersAiFallback ? L('Cadangan Workers AI dimatikan.', 'Workers AI fallback is off.')
+    : S.status?.platform ? L(`Lalu cadangan Workers AI: ${S.wai.join(' → ')}`, `Then the Workers AI fallback: ${S.wai.join(' → ')}`)
+    : L(`Lalu cadangan Workers AI lewat akun Cloudflare Anda sendiri (perlu kunci "Workers AI (akun Cloudflare sendiri)"): ${S.wai.join(' → ')}`, `Then the Workers AI fallback through your own Cloudflare account (needs the "Workers AI (own Cloudflare account)" key): ${S.wai.join(' → ')}`);
 }
 $('#chainEdit').addEventListener('input', (e) => {
   const row = e.target.closest('.chain-row'); if (!row) return;
@@ -1588,7 +1596,7 @@ function renderXray(d) {
       <dt>Skor vektor terbaik</dt><dd>${(d.bestVectorScore || 0).toFixed(3)} <span class="muted">(ambang ${Number(S.draft.rag.minScore).toFixed(2)})</span></dd>
       <dt>Cocok kata kunci</dt><dd>${fmt(d.keywordHits || 0)} potongan</dd>
       <dt>${L('Reranker', 'Reranker')}</dt><dd>${d.rerank === 'auto' ? L('Aktif otomatis (dokumen berbahasa Inggris)', 'On automatically (English document)') : d.rerank === 'on' ? L('Aktif', 'On') : L('Mati', 'Off') + (d.docLang ? ` <span class="muted">(${L('bahasa dokumen', 'document language')}: ${esc(d.docLang)})</span>` : '')}</dd>
-      <dt>Embedding</dt><dd>${d.embedder === 'gemini' ? 'Gemini' : 'Workers AI bge-m3'}${d.vectorError ? ` <span class="pill no" title="${esc(d.vectorError)}">gagal, pakai kata kunci saja</span>` : ''}</dd>
+      <dt>Embedding</dt><dd>${embName(d.embedder)}${d.vectorError ? ` <span class="pill no" title="${esc(d.vectorError)}">gagal, pakai kata kunci saja</span>` : ''}</dd>
       <dt>Waktu</dt><dd>vektor ${t.vector ?? '–'} ms · kata kunci ${t.keyword ?? '–'} ms${t.rerank ? ` · rerank ${t.rerank} ms` : ''} · total ${t.total ?? '–'} ms</dd>
     </dl>
     <div class="cand">${rows.length ? rows.map((c, i) => {

@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { KEYED_PROVIDERS, PROVIDERS, tenantEnv } from '../../src/settings.ts';
-import { adaptBody, endpointFor } from '../../src/openai-compat.ts';
+import { adaptBody, endpointFor, reasoningEffortFor } from '../../src/openai-compat.ts';
 import type { Bindings } from '../../src/types.ts';
 
 test('user bots never see any platform provider key, including OpenAI', () => {
@@ -9,6 +9,23 @@ test('user bots never see any platform provider key, including OpenAI', () => {
   const user = tenantEnv(env, 'abc123') as unknown as Record<string, unknown>;
   for (const p of KEYED_PROVIDERS) assert.equal(user[PROVIDERS[p].secret], undefined, PROVIDERS[p].secret);
   assert.equal((tenantEnv(env, 'default') as any).OPENAI_API_KEY, 'platform-key');
+});
+
+test('user bots never get the Workers AI binding (it runs on the platform account)', () => {
+  const env = { AI: { run: () => 'platform' } } as unknown as Bindings;
+  assert.equal((tenantEnv(env, 'abc123') as any).AI, undefined);
+  assert.ok((tenantEnv(env, 'default') as any).AI);
+});
+
+test('thinking level goes only to models that accept it', () => {
+  assert.equal(reasoningEffortFor('gemini', 'gemini-3.5-flash', 'none'), 'none');
+  assert.equal(reasoningEffortFor('openai', 'gpt-5-mini', 'low'), 'low');
+  assert.equal(reasoningEffortFor('openai', 'gpt-4.1-mini', 'low'), undefined);
+  assert.equal(reasoningEffortFor('groq', 'openai/gpt-oss-120b', 'high'), 'high');
+  assert.equal(reasoningEffortFor('groq', 'llama-3.3-70b-versatile', 'high'), undefined);
+  assert.equal(reasoningEffortFor('xai', 'grok-3-mini', 'medium'), 'low');
+  assert.equal(reasoningEffortFor('mistral', 'mistral-small-latest', 'low'), undefined);
+  assert.equal(reasoningEffortFor('openai', 'o4-mini', ''), undefined);
 });
 
 test('OpenAI requests use max_completion_tokens and drop temperature for reasoning models', () => {

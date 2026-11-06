@@ -78,5 +78,5 @@ test('names the problem and offers a retry when the API is unreachable', async (
   down = false;
   await retry.click();
   await expect(retry).toBeHidden();
-  await expect(chat.locator('.msg.bot').first()).toContainText('panduan-pendaftaran.md');
+  await expect(chat.locator('.msg.bot').first()).toContainText('panduan-pendaftaran');
 });

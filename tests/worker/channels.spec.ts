@@ -31,7 +31,7 @@ test.describe('Telegram webhook', () => {
   test('greets on /start with example questions', async ({ request }) => {
     const res = await request.post('/api/channels/telegram', { data: tgUpdate('/start', 701), headers: { 'X-Telegram-Bot-Api-Secret-Token': TG_SECRET } });
     expect(res.status()).toBe(200);
-    const call = await fake.waitFor(sentTo(701, 'panduan-pendaftaran.md'));
+    const call = await fake.waitFor(sentTo(701, 'panduan-pendaftaran'));
     expect(call.body.parse_mode).toBe('HTML');
     expect(call.body.text).toContain('<b>Nara</b>');
     expect(call.body.text).toContain('/reset');

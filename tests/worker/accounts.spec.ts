@@ -84,13 +84,20 @@ test("a user bot never sees the platform's provider secrets", async ({ request }
   expect(hf(await user.json())).toMatchObject({ configured: false, source: null });
 });
 
-test('user bots cannot pick expensive Workers AI models', async ({ request }) => {
+test("user bots never run on the platform's AI: Workers AI and embeddings need their own keys", async ({ request }) => {
   const a = await login(request, 'owner-a@qa.test', 'owner-a-password');
   const headers = { Authorization: `Bearer ${a.body.token}`, 'X-Bot-Id': 'qabotaaaa1' };
+  // Workers AI goes through the owner's own Cloudflare account, which is not set here.
   const res = await request.post('/api/admin/test-provider', { headers, data: { provider: 'workers-ai', model: '@cf/meta/llama-3.3-70b-instruct-fp8-fast' } });
   const body = await res.json();
   expect(body.ok).toBe(false);
-  expect(body.error).toContain('tidak tersedia untuk bot pengguna');
+  expect(body.error).toContain('akun Cloudflare sendiri');
+  // Without any key of its own, a user bot cannot embed a new document.
+  const status = await (await request.get('/api/admin/status', { headers })).json();
+  expect(status.embedderForNextUpload).toContain('Simpan dulu kunci Workers AI');
+  const reg = await request.post('/api/admin/file', { headers, data: { name: 'tanpa-kunci.md' } });
+  expect(reg.status()).toBe(400);
+  expect((await reg.json()).error).toContain('Simpan dulu kunci Workers AI');
 });
 
 test('unknown bots are 404 and expired accounts stop answering', async ({ request }) => {
@@ -133,11 +140,13 @@ test('bots can be created up to the limit and deleted with their data', async ({
   expect(me.bots.map((x: any) => x.id).sort()).toEqual(created.sort());
 });
 
-test('user bots cannot index oversized documents (shared AI budget)', async ({ request }) => {
+test('user bots cannot index oversized documents', async ({ request }) => {
   const b = await login(request, 'owner-b@qa.test', 'owner-b-password');
   const auth = { Authorization: `Bearer ${b.body.token}` };
   const bot = (await (await request.get('/api/auth/me', { headers: auth })).json()).bots[0].id;
   const headers = { ...auth, 'X-Bot-Id': bot };
+  // A key of the bot's own (a dummy here: the size check runs before any embedding call).
+  expect((await request.post('/api/admin/config', { headers, data: { keys: { mistral: 'qa-dummy-mistral-key' } } })).status()).toBe(200);
   expect((await request.post('/api/admin/file', { headers, data: { name: 'besar.md' } })).status()).toBe(200);
   const chunks = Array.from({ length: 10 }, (_, i) => ({ label: `Bagian ${i}`, text: 'isi '.repeat(20) }));
   const res = await request.post('/api/admin/file/chunks', { headers, data: { startIdx: 395, chunks } });
@@ -152,6 +161,10 @@ test('a bot answers from several documents and names the source of each excerpt'
   const status = await (await request.get('/api/admin/status', { headers })).json();
   expect(status.files.map((f: any) => f.name).sort()).toEqual(['jam-buka-a.md', 'katalog-a.md']);
   expect(status.file.status).toBe('selesai');
+  // Visitors see every document by name, without file extensions.
+  const info = await (await request.get('/api/public/info?bot=qabotaaaa1&lang=id')).json();
+  expect(info.subtitle).toBe('Menjawab dari katalog-a dan jam-buka-a');
+  expect(JSON.stringify(info)).not.toContain('.md');
 
   const hours = await chat(request, 'qabotaaaa1', 'Jam berapa toko buka?');
   expect(hours.status).toBe(200);
