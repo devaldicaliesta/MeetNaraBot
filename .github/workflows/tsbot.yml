@@ -1,5 +1,5 @@
 # Deploys TSbot (full-page Nara chat for embedding in IMTS via iframe) to Cloudflare Pages: https://tsbot.pages.dev
-# (or https://imtsbot.pages.dev when tsbot.pages.dev is already taken)
+# (or https://tsbot-nara.pages.dev when tsbot.pages.dev is already taken; imtsbot.pages.dev is IMTS itself)
 #
 # Secrets (already used by deploy.yml): CLOUDFLARE_API_TOKEN (also needs "Cloudflare Pages: Edit"), CLOUDFLARE_ACCOUNT_ID
 # Repository variables (Settings > Secrets and variables > Actions > Variables):
@@ -57,7 +57,7 @@ jobs:
           fi
       - run: node scripts/build-tsbot.mjs
       # Use "tsbot" (tsbot.pages.dev). If that subdomain is already taken by someone else, Cloudflare would hand out
-      # tsbot-xxx.pages.dev instead; in that case the project is removed again and "imtsbot" (imtsbot.pages.dev) is used.
+      # tsbot-xxx.pages.dev instead; in that case the project is removed again and "tsbot-nara" (tsbot-nara.pages.dev) is used.
       - name: Pick the Pages project
         id: project
         run: |
@@ -80,7 +80,7 @@ jobs:
             echo "name=$1" >> "$GITHUB_OUTPUT"
             echo "url=https://$sub" >> "$GITHUB_OUTPUT"
           }
-          ensure tsbot || ensure imtsbot || { echo "::error::tsbot.pages.dev and imtsbot.pages.dev are both taken."; exit 1; }
+          ensure tsbot || ensure tsbot-nara || { echo "::error::tsbot.pages.dev and tsbot-nara.pages.dev are both taken."; exit 1; }
       - run: npx wrangler pages deploy tsbot/dist --project-name="${{ steps.project.outputs.name }}" --branch=main --commit-dirty=true
       - name: Summary
         run: |

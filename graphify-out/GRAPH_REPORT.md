@@ -1,7 +1,7 @@
 # Graph Report - MeetNaraBot  (2026-11-06)
 
 ## Corpus Check
-- 52 files · ~64,033 words
+- 52 files · ~64,051 words
 - Verdict: corpus is large enough that graph structure adds value.
 - Unclassified: 9 file(s) not represented in the graph (top: (none) 5, .css 2, .example 1)
 
@@ -11,7 +11,7 @@
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `0f662001`
+- Built from commit: `3c7a7431`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -47,10 +47,10 @@
 1. `answer()` - 29 edges
 2. `TanyaSayaChat` - 21 edges
 3. `env` - 15 edges
-4. `getSettings()` - 12 edges
-5. `converse()` - 12 edges
-6. `completeChat()` - 11 edges
-7. `lookupSemantic()` - 11 edges
+4. `converse()` - 12 edges
+5. `getSettings()` - 12 edges
+6. `lookupSemantic()` - 11 edges
+7. `completeChat()` - 11 edges
 8. `redactPii()` - 10 edges
 9. `streamChat()` - 9 edges
 10. `channelRoutes()` - 9 edges
@@ -60,12 +60,12 @@
   README.md → src/rag.ts
 - `Batas yang diperiksa` --references--> `inline()`  [INFERRED]
   docs/security/tsbot-audit-2026-11.md → public/widget.js
-- `Rantai penyedia LLM + failover` --implements--> `buildChain()`  [EXTRACTED]
-  README.md → src/llm.ts
-- `Rantai penyedia LLM + failover` --implements--> `streamChat()`  [EXTRACTED]
-  README.md → src/llm.ts
-- `paint()` --indirect_call--> `answer()`  [INFERRED]
-  public/widget.js → src/rag.ts
+- `Cek sitasi pasca-generasi` --implements--> `checkCitations()`  [EXTRACTED]
+  README.md → src/grounding.ts
+- `Reranker otomatis dokumen Inggris` --implements--> `detectDocLang()`  [EXTRACTED]
+  README.md → src/grounding.ts
+- `Guardrail prompt injection` --implements--> `detectInjection()`  [EXTRACTED]
+  SECURITY.md → src/guard.ts
 
 ## Import Cycles
 - None detected.
@@ -170,14 +170,14 @@ Nodes (9): retrieve(), streamAnswer(), words(), Lang, detectSmallTalk(), normali
 
 ### Community 25 - "TSbot"
 Cohesion: 0.40
-Nodes (4): Build dan uji lokal, Pasang di IMTS, Pengaturan sekali, TSbot
+Nodes (4): Build dan uji lokal, Pasang di IMTS (https://imtsbot.pages.dev), Pengaturan sekali, TSbot
 
 ### Community 27 - "serve-tsbot.mjs"
 Cohesion: 0.25
 Nodes (4): DIST, headers, [tsPort, apiPort, imtsPort, otherPort], TYPES
 
 ## Knowledge Gaps
-- **10 isolated node(s):** `Dashboard pemilik bot`, `Peringatan PII saat unggah`, `Uji coba + panel X-ray`, `Guardrail prompt injection`, `Paket gratis Cloudflare Workers/D1/Vectorize` (+5 more)
+- **10 isolated node(s):** `Dashboard pemilik bot`, `Uji coba + panel X-ray`, `Peringatan PII saat unggah`, `Guardrail prompt injection`, `Paket gratis Cloudflare Workers/D1/Vectorize` (+5 more)
   These have ≤1 connection - possible missing edges or undocumented components. (Counts symbols only; 248 node(s) total have ≤1 connection when file, concept and rationale nodes are included.)
 - **1 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
 
@@ -188,7 +188,7 @@ _Questions this graph is uniquely positioned to answer:_
   _High betweenness centrality (0.178) - this node is a cross-community bridge._
 - **Are the 2 inferred relationships involving `answer()` (e.g. with `paint()` and `Nara platform (chatbot dokumen)`) actually correct?**
   _`answer()` has 2 INFERRED edges - model-reasoned connections that need verification._
-- **What connects `Dashboard pemilik bot`, `Peringatan PII saat unggah`, `Uji coba + panel X-ray` to the rest of the system?**
+- **What connects `Dashboard pemilik bot`, `Uji coba + panel X-ray`, `Peringatan PII saat unggah` to the rest of the system?**
   _10 weakly-connected nodes found - possible documentation gaps or missing edges._
 - **Should `index.ts` be split into smaller, more focused modules?**
   _Cohesion score 0.09359605911330049 - nodes in this community are weakly interconnected._
