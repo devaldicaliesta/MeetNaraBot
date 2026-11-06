@@ -13,7 +13,7 @@
   --ink:#1f1b2d;--ink-2:#575269;--ink-3:#7f7a8c;
   --canvas:#f7f4ee;--surface:#fffdf9;--line:#e7e0d4;--line-2:#d3c9ba;
   --laut:#5b3fe0;--laut-dark:#4429c4;--laut-soft:#ece6ff;
-  --lilac:#e4dcff;--mint:#cdeedb;--peach:#ffd9c4;--sky:#d4e7ff;--butter:#ffe48f;
+  --lilac:#e4dcff;--mint:#cdeedb;--sky:#d4e7ff;--butter:#ffe48f;
   --kunyit:#ffd25e;--kunyit-soft:#fff1c2;
   --bata:#b42318;--bata-soft:#fdecea;--ok:#15803d;--ok-soft:#e6f4ea;
   --r:24px;--r-sm:14px;--pill:999px;
@@ -95,7 +95,7 @@ input[type=range]{width:100%;accent-color:var(--laut)}
 .brand-mark{display:grid;place-items:center;width:42px;height:42px;border-radius:14px;background:var(--laut);color:#fff;font-weight:800;font-size:20px}
 .brand-name{font-size:20px;font-weight:800;letter-spacing:-.02em}
 .brand-sub{font-size:13px;color:var(--ink-3)}
-.login{background:radial-gradient(circle at 85% 10%,var(--lilac) 0 180px,transparent 181px),radial-gradient(circle at 8% 92%,var(--butter) 0 120px,transparent 121px),var(--canvas)}
+.login{background:var(--canvas)}
 .login form{display:grid;gap:14px;padding:28px;background:var(--surface);border:1.5px solid var(--ink);border-radius:var(--r);box-shadow:6px 6px 0 var(--ink)}
 .err{padding:10px 12px;border-radius:var(--r-sm);background:var(--bata-soft);color:var(--bata);font-size:13.5px}
 
@@ -134,11 +134,10 @@ input[type=range]{width:100%;accent-color:var(--laut)}
 .setup b{display:block;font-size:14px}
 .setup span{font-size:13px;color:var(--ink-2)}
 .figures{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:18px}
-.figure{padding:22px 22px 20px;border-radius:var(--r);background:var(--lilac)}
-.figure:nth-child(2){background:var(--peach)}
-.figure:nth-child(3){background:var(--mint)}
+.figure{padding:22px 22px 20px;border-radius:var(--r);background:var(--surface);border:1px solid var(--line)}
+.figure.warn b{color:var(--bata)}
 .figure b{display:block;font-size:40px;font-weight:800;letter-spacing:-.04em;line-height:1.05;margin-bottom:6px}
-.figure span{font-size:13.5px;font-weight:600;color:#3b3748}
+.figure span{font-size:13.5px;font-weight:600;color:var(--ink-2)}
 .chain-view{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
 .chain-step{padding:5px 12px;border:1px solid var(--line-2);border-radius:var(--pill);font-size:13px;background:var(--canvas)}
 .chain-step small{color:var(--ink-3)}
@@ -632,7 +631,7 @@ const DICT = {
   'Cocok kata kunci': 'Keyword matches', 'Embedding': 'Embedding', 'gagal, pakai kata kunci saja': 'failed, keyword-only', 'Waktu': 'Timing', 'Tidak ada kandidat.': 'No candidates.',
   'dikirim ke AI': 'sent to AI', 'kandidat': 'candidate', 'angka = skor vektor': 'number = vector score', 'angka = skor rerank / skor vektor': 'number = rerank score / vector score',
   'Riwayat pertanyaan': 'Question history', 'Pertanyaan yang tidak terjawab menunjukkan informasi yang perlu ditambahkan ke dokumen.': 'Unanswered questions show which information should be added to the document.',
-  'Hapus semua riwayat': 'Delete all history', 'Pengunjung': 'Visitors', 'Tidak terjawab': 'Unanswered', 'Uji admin': 'Admin tests', 'Belum ada riwayat di kategori ini.': 'No history in this category yet.',
+  'Hapus semua riwayat': 'Delete all history', 'Pengunjung': 'Visitors', 'Tidak terjawab': 'Unanswered', 'Uji admin': 'Admin tests', 'Belum ada pertanyaan di kategori ini. Pertanyaan muncul di sini setelah ada yang bertanya lewat widget, Telegram, WhatsApp, atau halaman Uji coba.': 'No questions in this category yet. Questions appear here once someone asks through the widget, Telegram, WhatsApp or the Playground page.',
   'Tempel kode ini sebelum tag': 'Paste this code before the', 'di website Anda. Widget memakai Shadow DOM, jadi tampilannya tidak bentrok dengan CSS website.': "tag on your website. The widget uses Shadow DOM, so it won't clash with your site's CSS.",
   'Salin kode': 'Copy code', 'Posisi': 'Position', 'Kanan bawah': 'Bottom right', 'Kiri bawah': 'Bottom left', 'Tema': 'Theme', 'Terang': 'Light', 'Gelap': 'Dark', 'Ikuti perangkat pengunjung': "Follow the visitor's device",
   'Bahasa widget': 'Widget language', 'Otomatis (ikuti browser)': 'Automatic (follow browser)',
@@ -1034,7 +1033,10 @@ function renderOverview() {
   $('#stTotal').textContent = fmt(st.stats?.total || 0);
   const pct = st.stats?.total ? Math.round((st.stats.refused / st.stats.total) * 100) + '%' : '–';
   $('#stRefused').textContent = pct;
+  $('#stRefused').title = st.stats?.total ? '' : L('Belum ada pertanyaan dalam 7 hari terakhir.', 'No questions in the last 7 days yet.');
   $('#stFailed').textContent = fmt(st.stats?.failed || 0);
+  // Colour only marks a real problem: AI failures happened.
+  $('#stFailed').parentElement.classList.toggle('warn', (st.stats?.failed || 0) > 0);
 
   const hasKey = st.keys.some((k) => k.configured);
   const geminiKey = st.keys.find((k) => k.id === 'gemini')?.configured;
@@ -1594,7 +1596,7 @@ async function loadLogs() {
   $('#logList').innerHTML = items.length ? items.map((l) => `
     <div class="log-item"><div class="row"><span class="log-q">${esc(l.question)}</span>${l.source === 'telegram' ? '<span class="pill plain">Telegram</span>' : l.source === 'whatsapp' ? '<span class="pill plain">WhatsApp</span>' : ''}<span class="row">${l.failed ? '<span class="pill no">Gagal</span>' : l.ungrounded ? `<span class="pill no">${L('Tanpa sitasi', 'No citation')}</span>` : l.refused ? '<span class="pill wait">Tidak terjawab</span>' : '<span class="pill ok">Terjawab</span>'}<span class="small muted">${new Date(l.created_at.replace(' ', 'T') + 'Z').toLocaleString(LOCALE(), { dateStyle: 'short', timeStyle: 'short' })}</span></span></div>
     ${l.answer ? `<div class="log-a">${esc(l.answer)}</div>` : ''}<div class="small muted" style="margin-top:4px">${l.provider ? esc(l.provider) + ' · ' : ''}skor ${Number(l.best_score || 0).toFixed(3)}</div></div>`).join('')
-    : '<div class="empty">Belum ada riwayat di kategori ini.</div>';
+    : '<div class="empty">Belum ada pertanyaan di kategori ini. Pertanyaan muncul di sini setelah ada yang bertanya lewat widget, Telegram, WhatsApp, atau halaman Uji coba.</div>';
 }
 async function loadCacheStats() {
   try {
