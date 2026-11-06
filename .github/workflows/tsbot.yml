@@ -1,5 +1,6 @@
 # Deploys TSbot (full-page Nara chat for embedding in IMTS via iframe) to Cloudflare Pages: https://tsbot.pages.dev
-# (or https://tsbot-nara.pages.dev when tsbot.pages.dev is already taken; imtsbot.pages.dev is IMTS itself)
+# (or https://tsbot-nara.pages.dev when tsbot.pages.dev is already taken), and the IMTS page that shows it in an
+# iframe to https://imtsbot.pages.dev.
 #
 # Secrets (already used by deploy.yml): CLOUDFLARE_API_TOKEN (also needs "Cloudflare Pages: Edit"), CLOUDFLARE_ACCOUNT_ID
 # Repository variables or secrets (Settings > Secrets and variables > Actions; Variables tab preferred):
@@ -17,6 +18,9 @@ on:
       - public/widget.js
       - public/widget.css
       - scripts/build-tsbot.mjs
+      - scripts/build-imts.mjs
+      - scripts/origin.mjs
+      - imts/**
       - .github/workflows/tsbot.yml
   workflow_dispatch:
 
@@ -58,7 +62,7 @@ jobs:
       - run: node scripts/build-tsbot.mjs
       # Use "tsbot" (tsbot.pages.dev). If that subdomain is already taken by someone else, Cloudflare would hand out
       # tsbot-xxx.pages.dev instead; in that case the project is removed again and "tsbot-nara" (tsbot-nara.pages.dev) is used.
-      - name: Pick the Pages project
+      - name: Pick the Pages projects
         id: project
         run: |
           API="https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/pages/projects"
@@ -81,8 +85,21 @@ jobs:
             echo "url=https://$sub" >> "$GITHUB_OUTPUT"
           }
           ensure tsbot || ensure tsbot-nara || { echo "::error::tsbot.pages.dev and tsbot-nara.pages.dev are both taken."; exit 1; }
+          # IMTS must be exactly imtsbot.pages.dev: that is the origin TSbot allows to frame it.
+          sub=$(subdomain imtsbot)
+          if [ -z "$sub" ]; then
+            npx wrangler pages project create imtsbot --production-branch=main > /dev/null
+            sub=$(subdomain imtsbot)
+            if [ "$sub" != "imtsbot.pages.dev" ]; then curl -fsS -X DELETE -H "$AUTH" "$API/imtsbot" > /dev/null; fi
+          fi
+          if [ "$sub" != "imtsbot.pages.dev" ]; then echo "::error::imtsbot.pages.dev is taken by another account."; exit 1; fi
       - run: npx wrangler pages deploy tsbot/dist --project-name="${{ steps.project.outputs.name }}" --branch=main --commit-dirty=true
+      - run: node scripts/build-imts.mjs
+        env:
+          TSBOT_URL: ${{ steps.project.outputs.url }}
+      - run: npx wrangler pages deploy imts/dist --project-name=imtsbot --branch=main --commit-dirty=true
       - name: Summary
         run: |
           echo "TSbot is live at ${{ steps.project.outputs.url }}" >> "$GITHUB_STEP_SUMMARY"
+          echo "IMTS (showing TSbot) is live at https://imtsbot.pages.dev" >> "$GITHUB_STEP_SUMMARY"
           echo "Add ${{ steps.project.outputs.url }} to the bot's allowed origins in the Nara dashboard (if that list is not empty)." >> "$GITHUB_STEP_SUMMARY"

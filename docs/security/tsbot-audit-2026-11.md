@@ -2,7 +2,7 @@
 
 Metode: [cloudflare/security-audit-skill](https://github.com/cloudflare/security-audit-skill) dalam *guidance mode*, fokus pada batas kepercayaan baru yang ditambahkan TSbot. API publik Nara sendiri sudah diaudit di run 1–3 (`audit-2026-11-run*.json`) dan tidak berubah.
 
-Cakupan: `tsbot/`, `scripts/build-tsbot.mjs`, `.github/workflows/tsbot.yml`, perubahan `public/widget.js` dan `public/widget.css`.
+Cakupan: `tsbot/`, `imts/`, `scripts/build-imts.mjs`, `scripts/origin.mjs`, `scripts/build-tsbot.mjs`, `.github/workflows/tsbot.yml`, perubahan `public/widget.js` dan `public/widget.css`.
 
 ## Batas yang diperiksa
 
@@ -13,6 +13,7 @@ Cakupan: `tsbot/`, `scripts/build-tsbot.mjs`, `.github/workflows/tsbot.yml`, per
 | Isi jawaban LLM dirender ke DOM | Widget meng-escape teks sebelum format markdown; nomor sumber dipaksa `Number()` | `public/widget.js` `inline()`, `paintBot()` |
 | Nilai build masuk ke HTML/CSP (injeksi konfigurasi) | `NARA_API_URL`/`IMTS_ORIGIN` harus origin https murni, `NARA_BOT_ID` `[a-z0-9]{0,32}`; build gagal bila placeholder tersisa | `scripts/build-tsbot.mjs` |
 | Data keluar ke domain lain | `connect-src` hanya origin Nara; `Referrer-Policy: no-referrer`; `credentials: "omit"` | `tsbot/_headers` |
+| Halaman IMTS di-iframe situs lain / memuat frame asing | IMTS: `frame-ancestors 'none'`, `X-Frame-Options: DENY`, `frame-src` hanya origin TSbot, tanpa skrip sama sekali | `tests/tsbot` "the IMTS page shows TSbot in an iframe" |
 | Workflow CI (script injection) | Variabel dibaca lewat `env`, bukan `${{ }}` di dalam `run`; `permissions: contents: read` | `.github/workflows/tsbot.yml` |
 
 ## Hasil

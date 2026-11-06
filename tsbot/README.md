@@ -14,19 +14,24 @@ Isinya hanya widget Nara (`public/widget.js` dalam `mode="inline"`) yang disalin
 3. Di dashboard Nara, bila daftar *allowed origins* bot tidak kosong, tambahkan URL TSbot (`https://tsbot.pages.dev` atau `https://tsbot-nara.pages.dev`; lihat ringkasan run workflow).
 4. Push ke branch `tsbot` atau jalankan workflow **Deploy TSbot** secara manual.
 
-## Pasang di IMTS (https://imtsbot.pages.dev)
+## Halaman IMTS (https://imtsbot.pages.dev)
+
+Halaman IMTS ada di `imts/` dan dideploy oleh workflow yang sama ke project Pages `imtsbot`. Isinya judul IMTS dan TSbot dalam iframe:
 
 ```html
-<!-- ganti dengan https://tsbot-nara.pages.dev/ bila workflow memakai nama cadangan -->
-<iframe src="https://tsbot.pages.dev/" title="TSbot" style="width:100%;max-width:420px;height:640px;border:0"></iframe>
+<iframe src="https://tsbot.pages.dev/" title="Asisten TSbot"></iframe>
 ```
 
-Domain yang tidak ada di `IMTS_ORIGIN` ditolak browser (CSP `frame-ancestors`).
+Halaman IMTS sendiri tidak bisa di-iframe situs lain (`frame-ancestors 'none'`) dan hanya boleh memuat frame dari TSbot (`frame-src`). Domain selain `IMTS_ORIGIN` ditolak browser saat mencoba menampilkan TSbot.
 
 ## Build dan uji lokal
 
 ```bash
 NARA_API_URL=https://nara.example.workers.dev IMTS_ORIGIN=https://imts.example.com node scripts/build-tsbot.mjs
+```
+
+```bash
+TSBOT_URL=https://tsbot.pages.dev node scripts/build-imts.mjs
 ```
 
 ```bash

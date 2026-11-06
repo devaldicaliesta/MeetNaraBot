@@ -1,17 +1,17 @@
 # Graph Report - MeetNaraBot  (2026-11-06)
 
 ## Corpus Check
-- 52 files · ~64,051 words
+- 54 files · ~64,514 words
 - Verdict: corpus is large enough that graph structure adds value.
-- Unclassified: 9 file(s) not represented in the graph (top: (none) 5, .css 2, .example 1)
+- Unclassified: 11 file(s) not represented in the graph (top: (none) 6, .css 3, .example 1)
 
 ## Summary
-- 602 nodes · 1063 edges · 27 communities (26 shown, 1 thin omitted)
+- 607 nodes · 1075 edges · 25 communities (24 shown, 1 thin omitted)
 - Extraction: 99% EXTRACTED · 1% INFERRED · 0% AMBIGUOUS · INFERRED: 15 edges (avg confidence: 0.68)
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `3c7a7431`
+- Built from commit: `93535d1e`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -19,7 +19,7 @@
 - index.ts
 - settings.ts
 - channels.ts
-- tenantEnv
+- 0004_accounts.sql
 - TanyaSayaChat
 - package.json
 - deploy.yml
@@ -35,13 +35,11 @@
 - start-worker.mjs
 - compilerOptions
 - graph.yml
-- completeChat
-- getSettings
+- loginKeys
+- 0002_rag_upgrade.sql
 - Nara: catatan untuk Claude
-- build-tsbot.mjs
-- smalltalk.ts
+- file
 - TSbot
-- serve-tsbot.mjs
 
 ## God Nodes (most connected - your core abstractions)
 1. `answer()` - 29 edges
@@ -58,39 +56,39 @@
 ## Surprising Connections (you probably didn't know these)
 - `Nara platform (chatbot dokumen)` --references--> `answer()`  [INFERRED]
   README.md → src/rag.ts
+- `Kunci login per IP/email` --implements--> `verifyLogin()`  [INFERRED]
+  SECURITY.md → src/auth.ts
 - `Batas yang diperiksa` --references--> `inline()`  [INFERRED]
   docs/security/tsbot-audit-2026-11.md → public/widget.js
 - `Cek sitasi pasca-generasi` --implements--> `checkCitations()`  [EXTRACTED]
   README.md → src/grounding.ts
 - `Reranker otomatis dokumen Inggris` --implements--> `detectDocLang()`  [EXTRACTED]
   README.md → src/grounding.ts
-- `Guardrail prompt injection` --implements--> `detectInjection()`  [EXTRACTED]
-  SECURITY.md → src/guard.ts
 
 ## Import Cycles
 - None detected.
 
-## Communities (27 total, 1 thin omitted)
+## Communities (25 total, 1 thin omitted)
 
 ### Community 0 - "index.ts"
 Cohesion: 0.09
-Nodes (19): usage, Dashboard pemilik bot, app, dailyQuota(), Env, FileRow, hits, ip() (+11 more)
+Nodes (19): Dashboard pemilik bot, Isolasi data per bot, ownedBot(), app, benv(), Env, FileRow, hits (+11 more)
 
 ### Community 1 - "settings.ts"
-Cohesion: 0.12
-Nodes (20): FailAttempt, BotSettings, ChainEntry, DEFAULT_SETTINGS, deleteSetting(), Embedder, EMBEDDING_MODEL, GEMINI_EMBEDDING_MODEL (+12 more)
+Cohesion: 0.08
+Nodes (44): settings, Rantai penyedia LLM + failover, AllProvidersFailed, assertWorkersAiModel(), bodyFor(), buildChain(), completeChat(), deltaFrom() (+36 more)
 
 ### Community 2 - "channels.ts"
 Cohesion: 0.10
 Nodes (39): channel_history, channel_seen, idx_channel_history_updated, channelCommand(), citedSources(), clip(), clipHtml(), escapeHtml() (+31 more)
 
-### Community 3 - "tenantEnv"
-Cohesion: 0.22
-Nodes (9): Isolasi data per bot, ownedBot(), benv(), visitorSuggestions(), generateSuggestions(), getKeys(), getSuggestions(), settingKey() (+1 more)
+### Community 3 - "0004_accounts.sql"
+Cohesion: 0.15
+Nodes (19): chunks, idx_chunks_idx, bots, idx_bots_owner, idx_chunks_bot_idx, idx_sessions_user, idx_users_expires, sessions (+11 more)
 
 ### Community 4 - "TanyaSayaChat"
 Cohesion: 0.13
-Nodes (10): Audit keamanan TSbot (2026-11), Batas yang diperiksa, Hasil, Landing page + widget demo, esc(), inkFor(), inline(), markdown() (+2 more)
+Nodes (9): Audit keamanan TSbot (2026-11), Batas yang diperiksa, Hasil, Landing page + widget demo, esc(), inkFor(), inline(), markdown() (+1 more)
 
 ### Community 5 - "package.json"
 Cohesion: 0.08
@@ -106,19 +104,19 @@ Nodes (25): CI, jobs, qa, name, on, pull_request, push, workflow_call (+17 more)
 
 ### Community 8 - "env"
 Cohesion: 0.06
-Nodes (31): concurrency, cancel-in-progress, group, env, needs, runs-on, steps, CLOUDFLARE_ACCOUNT_ID (+23 more)
+Nodes (33): concurrency, cancel-in-progress, group, env, needs, runs-on, steps, CLOUDFLARE_ACCOUNT_ID (+25 more)
 
 ### Community 9 - "env"
 Cohesion: 0.09
 Nodes (23): steps, ADMIN_PASSWORD, DEEPSEEK_API_KEY, DEPLOY_TOKEN, GEMINI_API_KEY, HF_TOKEN, MOONSHOT_API_KEY, RESEED (+15 more)
 
 ### Community 10 - "cache.ts"
-Cohesion: 0.16
-Nodes (21): answer_cache, idx_answer_cache_exact, idx_answer_cache_recent, Cache jawaban semantik (pola GPTCache), CACHE_TTL_DAYS, CacheHit, cacheScope(), cacheStats() (+13 more)
+Cohesion: 0.13
+Nodes (25): answer_cache, idx_answer_cache_exact, idx_answer_cache_recent, Peringatan PII saat unggah, Cache jawaban semantik (pola GPTCache), Guardrail data pribadi (PII), CACHE_TTL_DAYS, CacheHit (+17 more)
 
 ### Community 11 - "dev-server.mjs"
-Cohesion: 0.11
-Nodes (9): bots, DEFAULTS, LAYERS, PORT, PROVIDERS, ROOT, sessions, STOP (+1 more)
+Cohesion: 0.09
+Nodes (18): bots, DEFAULTS, LAYERS, PORT, PROVIDERS, retrieve(), ROOT, sessions (+10 more)
 
 ### Community 12 - "playwright.config.ts"
 Cohesion: 0.13
@@ -126,19 +124,19 @@ Nodes (12): FAKE_API_PORT, IMTS_PORT, OTHER_PORT, QA_PASSWORD, TSBOT_PORT, @play
 
 ### Community 13 - "rag.ts"
 Cohesion: 0.06
-Nodes (55): Uji coba + panel X-ray, Peringatan PII saat unggah, Reranker otomatis dokumen Inggris, Cek sitasi pasca-generasi, Guardrail prompt injection, Guardrail data pribadi (PII), Riwayat bertanda tangan HMAC, User (+47 more)
+Nodes (52): Uji coba + panel X-ray, paint(), Reranker otomatis dokumen Inggris, Cek sitasi pasca-generasi, Guardrail prompt injection, Riwayat bertanda tangan HMAC, User, checkCitations() (+44 more)
 
 ### Community 14 - "seed-document.mjs"
 Cohesion: 0.09
 Nodes (22): Dokumen referensi bot demo Nara, chunks_fts, Prompt 7 layer untuk membangun ulang proyek, Pemotong dokumen di browser, Paket gratis Cloudflare Workers/D1/Vectorize, Hybrid search (vektor + BM25 + RRF), Nara platform (chatbot dokumen), Prompt 7 layer (strict grounding) (+14 more)
 
 ### Community 15 - "auth.ts"
-Cohesion: 0.06
-Nodes (55): bot_config, chunks, file, chat_log, chunks_fts, idx_chat_log_created, idx_chunks_idx, bots (+47 more)
+Cohesion: 0.14
+Nodes (25): ACCOUNT_DAYS, BotRow, botStatus(), changePassword(), constantTimeEqualHex(), createSession(), createUser(), DEFAULT_BOT (+17 more)
 
 ### Community 16 - "start-worker.mjs"
-Cohesion: 0.15
-Nodes (11): args, child, chunks, doc(), future, past, [port, fakePort, password], q() (+3 more)
+Cohesion: 0.08
+Nodes (23): OUT, SRC, bot, frames, OUT, ROOT, SRC, fail() (+15 more)
 
 ### Community 17 - "compilerOptions"
 Cohesion: 0.18
@@ -148,44 +146,36 @@ Nodes (10): compilerOptions, lib, module, moduleResolution, noEmit, skipLibCheck
 Cohesion: 0.10
 Nodes (19): concurrency, cancel-in-progress, group, runs-on, steps, jobs, graph, name (+11 more)
 
-### Community 19 - "completeChat"
-Cohesion: 0.18
-Nodes (16): Rantai penyedia LLM + failover, AllProvidersFailed, assertWorkersAiModel(), bodyFor(), buildChain(), completeChat(), deltaFrom(), embed() (+8 more)
+### Community 19 - "loginKeys"
+Cohesion: 0.20
+Nodes (11): Audit keamanan 1–3, Kunci login per IP/email, dailyQuota(), ip(), loginKeys(), loginLocked(), loginWindow(), platformDailyTotal() (+3 more)
 
-### Community 20 - "getSettings"
-Cohesion: 0.27
-Nodes (10): settings, asLang(), clamp(), envDefaults(), fromLegacy(), getSettings(), normalizeSettings(), readSetting() (+2 more)
+### Community 20 - "0002_rag_upgrade.sql"
+Cohesion: 0.29
+Nodes (7): chat_log, chunks_fts, idx_chat_log_created, usage, idx_chat_log_bot, logChat(), spendPlatform()
 
 ### Community 22 - "Nara: catatan untuk Claude"
 Cohesion: 0.40
 Nodes (4): Mulai dari graph kode (hemat token), Nara: catatan untuk Claude, Pemeriksaan sebelum push, Wajib: perbarui graph di setiap perubahan
 
-### Community 23 - "build-tsbot.mjs"
-Cohesion: 0.22
-Nodes (8): bot, fail(), frames, LOOPBACK, OUT, ROOT, SRC, toOrigin()
-
-### Community 24 - "smalltalk.ts"
-Cohesion: 0.27
-Nodes (9): retrieve(), streamAnswer(), words(), Lang, detectSmallTalk(), normalise(), PATTERNS, SmallTalkKind (+1 more)
+### Community 23 - "file"
+Cohesion: 0.40
+Nodes (4): bot_config, file, idx_file_bot, activeFile()
 
 ### Community 25 - "TSbot"
 Cohesion: 0.40
-Nodes (4): Build dan uji lokal, Pasang di IMTS (https://imtsbot.pages.dev), Pengaturan sekali, TSbot
-
-### Community 27 - "serve-tsbot.mjs"
-Cohesion: 0.25
-Nodes (4): DIST, headers, [tsPort, apiPort, imtsPort, otherPort], TYPES
+Nodes (4): Build dan uji lokal, Halaman IMTS (https://imtsbot.pages.dev), Pengaturan sekali, TSbot
 
 ## Knowledge Gaps
 - **10 isolated node(s):** `Dashboard pemilik bot`, `Uji coba + panel X-ray`, `Peringatan PII saat unggah`, `Guardrail prompt injection`, `Paket gratis Cloudflare Workers/D1/Vectorize` (+5 more)
-  These have ≤1 connection - possible missing edges or undocumented components. (Counts symbols only; 248 node(s) total have ≤1 connection when file, concept and rationale nodes are included.)
+  These have ≤1 connection - possible missing edges or undocumented components. (Counts symbols only; 250 node(s) total have ≤1 connection when file, concept and rationale nodes are included.)
 - **1 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
 
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
-- **Why does `answer()` connect `rag.ts` to `index.ts`, `channels.ts`, `tenantEnv`, `TanyaSayaChat`, `cache.ts`, `seed-document.mjs`, `completeChat`, `smalltalk.ts`?**
-  _High betweenness centrality (0.178) - this node is a cross-community bridge._
+- **Why does `answer()` connect `rag.ts` to `index.ts`, `settings.ts`, `channels.ts`, `cache.ts`, `dev-server.mjs`, `seed-document.mjs`?**
+  _High betweenness centrality (0.176) - this node is a cross-community bridge._
 - **Are the 2 inferred relationships involving `answer()` (e.g. with `paint()` and `Nara platform (chatbot dokumen)`) actually correct?**
   _`answer()` has 2 INFERRED edges - model-reasoned connections that need verification._
 - **What connects `Dashboard pemilik bot`, `Uji coba + panel X-ray`, `Peringatan PII saat unggah` to the rest of the system?**
@@ -193,8 +183,8 @@ _Questions this graph is uniquely positioned to answer:_
 - **Should `index.ts` be split into smaller, more focused modules?**
   _Cohesion score 0.09359605911330049 - nodes in this community are weakly interconnected._
 - **Why does `Deploy otomatis GitHub Actions` connect `deploy.yml` to `seed-document.mjs`?**
-  _High betweenness centrality (0.123) - this node is a cross-community bridge._
+  _High betweenness centrality (0.122) - this node is a cross-community bridge._
 - **Should `settings.ts` be split into smaller, more focused modules?**
-  _Cohesion score 0.12318840579710146 - nodes in this community are weakly interconnected._
+  _Cohesion score 0.07653061224489796 - nodes in this community are weakly interconnected._
 - **Why does `Nara platform (chatbot dokumen)` connect `seed-document.mjs` to `rag.ts`?**
-  _High betweenness centrality (0.092) - this node is a cross-community bridge._
+  _High betweenness centrality (0.091) - this node is a cross-community bridge._
