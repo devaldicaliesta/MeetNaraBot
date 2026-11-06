@@ -324,3 +324,10 @@ textarea:focus-visible { outline: none; }
 
 /* Language toggle (ID/EN) in the header */
 .icon-btn.lang { width: auto; min-width: 36px; padding: 0 8px; font-size: 12.5px; font-weight: 700; letter-spacing: 0.02em; border: 1px solid rgba(255, 255, 255, 0.4); height: 28px; border-radius: 999px; padding: 0 10px; }
+
+/* mode="inline": the chat fills its container (full page or iframe). No launcher, no close. */
+:host([mode="inline"]) { position: relative; inset: auto; z-index: auto; display: block; width: 100%; height: 100%; }
+:host([mode="inline"]) .launcher, :host([mode="inline"]) .close { display: none; }
+:host([mode="inline"]) .panel, :host([mode="inline"].open) .panel {
+  position: static; width: 100%; height: 100%; border: 0; border-radius: 0; box-shadow: none; transform: none; transition: none;
+}

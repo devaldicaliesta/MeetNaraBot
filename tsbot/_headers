@@ -1,0 +1,9 @@
+# TSbot security headers (Cloudflare Pages). The API origin and frame-ancestors are filled in by scripts/build-tsbot.mjs.
+# No inline script: the page only runs /widget.js from this origin and only talks to the Nara API.
+/*
+  Content-Security-Policy: default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src __NARA_API__; frame-ancestors __FRAME_ANCESTORS__; base-uri 'none'; form-action 'none'; object-src 'none'
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: no-referrer
+  Permissions-Policy: camera=(), microphone=(), geolocation=(), payment=(), usb=()
+  X-Robots-Tag: noindex
+  Cache-Control: public, max-age=300

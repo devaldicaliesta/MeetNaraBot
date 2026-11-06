@@ -1,0 +1,88 @@
+# Deploys TSbot (full-page Nara chat for embedding in IMTS via iframe) to Cloudflare Pages: https://tsbot.pages.dev
+# (or https://tsbot-nara.pages.dev when tsbot.pages.dev is already taken; imtsbot.pages.dev is IMTS itself)
+#
+# Secrets (already used by deploy.yml): CLOUDFLARE_API_TOKEN (also needs "Cloudflare Pages: Edit"), CLOUDFLARE_ACCOUNT_ID
+# Repository variables or secrets (Settings > Secrets and variables > Actions; Variables tab preferred):
+#   NARA_API_URL  origin of the Nara Worker, e.g. https://nara.<subdomain>.workers.dev   (required)
+#   NARA_BOT_ID   bot id TSbot chats with (empty = the platform bot)
+#   IMTS_ORIGIN   origin(s) of IMTS allowed to iframe TSbot, comma-separated, e.g. https://imts.example.com
+# In the Nara dashboard, add the TSbot URL (see the run summary) to the bot's allowed origins if that list is not empty.
+name: Deploy TSbot
+
+on:
+  push:
+    branches: [tsbot]
+    paths:
+      - tsbot/**
+      - public/widget.js
+      - public/widget.css
+      - scripts/build-tsbot.mjs
+      - .github/workflows/tsbot.yml
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-tsbot
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  qa:
+    uses: ./.github/workflows/qa.yml
+
+  deploy:
+    needs: qa
+    runs-on: ubuntu-latest
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      NARA_API_URL: ${{ vars.NARA_API_URL || secrets.NARA_API_URL }}
+      NARA_BOT_ID: ${{ vars.NARA_BOT_ID || secrets.NARA_BOT_ID }}
+      IMTS_ORIGIN: ${{ vars.IMTS_ORIGIN || secrets.IMTS_ORIGIN }}
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Check settings
+        run: |
+          if [ -z "$CLOUDFLARE_API_TOKEN" ] || [ -z "$CLOUDFLARE_ACCOUNT_ID" ]; then
+            echo "::error::Set the CLOUDFLARE_API_TOKEN and CLOUDFLARE_ACCOUNT_ID repository secrets first."; exit 1
+          fi
+          if [ -z "$NARA_API_URL" ]; then
+            echo "::error::Set the NARA_API_URL repository variable (the Nara Worker origin)."; exit 1
+          fi
+      - run: node scripts/build-tsbot.mjs
+      # Use "tsbot" (tsbot.pages.dev). If that subdomain is already taken by someone else, Cloudflare would hand out
+      # tsbot-xxx.pages.dev instead; in that case the project is removed again and "tsbot-nara" (tsbot-nara.pages.dev) is used.
+      - name: Pick the Pages project
+        id: project
+        run: |
+          API="https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/pages/projects"
+          AUTH="Authorization: Bearer $CLOUDFLARE_API_TOKEN"
+          subdomain() { curl -fsS -H "$AUTH" "$API/$1" 2>/dev/null | jq -r '.result.subdomain // empty'; }
+          ensure() {
+            local sub; sub=$(subdomain "$1")
+            if [ -z "$sub" ]; then
+              npx wrangler pages project create "$1" --production-branch=main > /dev/null
+              sub=$(subdomain "$1")
+              if [ "$sub" != "$1.pages.dev" ]; then
+                echo "$1.pages.dev is taken (got $sub)"
+                curl -fsS -X DELETE -H "$AUTH" "$API/$1" > /dev/null
+                return 1
+              fi
+            elif [ "$sub" != "$1.pages.dev" ]; then
+              return 1
+            fi
+            echo "name=$1" >> "$GITHUB_OUTPUT"
+            echo "url=https://$sub" >> "$GITHUB_OUTPUT"
+          }
+          ensure tsbot || ensure tsbot-nara || { echo "::error::tsbot.pages.dev and tsbot-nara.pages.dev are both taken."; exit 1; }
+      - run: npx wrangler pages deploy tsbot/dist --project-name="${{ steps.project.outputs.name }}" --branch=main --commit-dirty=true
+      - name: Summary
+        run: |
+          echo "TSbot is live at ${{ steps.project.outputs.url }}" >> "$GITHUB_STEP_SUMMARY"
+          echo "Add ${{ steps.project.outputs.url }} to the bot's allowed origins in the Nara dashboard (if that list is not empty)." >> "$GITHUB_STEP_SUMMARY"
