@@ -1,6 +1,6 @@
 # TSbot
 
-Halaman chat penuh dari Nara untuk ditampilkan di IMTS lewat iframe. Dipublikasikan ke Cloudflare Pages di `https://tsbot.pages.dev`. Bila subdomain itu sudah dipakai orang lain, workflow otomatis memakai `https://tsbot-nara.pages.dev`.
+Halaman chat penuh dari Nara untuk ditampilkan di IMTS lewat iframe. Dipublikasikan ke Cloudflare Pages di `https://tsbot-nara.pages.dev` (cadangan: `https://nara-tsbot.pages.dev`). Project `tsbot` tidak dipakai karena `tsbot.pages.dev` tidak pernah aktif di Cloudflare (522 / NXDOMAIN).
 
 Isinya hanya widget Nara (`public/widget.js` dalam `mode="inline"`) yang disalin saat build, jadi halaman tidak memuat skrip dari domain lain.
 
@@ -11,7 +11,7 @@ Isinya hanya widget Nara (`public/widget.js` dalam `mode="inline"`) yang disalin
    - `NARA_API_URL`: origin worker Nara, mis. `https://nara.<subdomain>.workers.dev`
    - `NARA_BOT_ID`: id bot yang dipakai (kosong = bot platform)
    - `IMTS_ORIGIN`: origin IMTS yang boleh meng-iframe, mis. `https://imtsbot.pages.dev` (pisahkan dengan koma bila lebih dari satu)
-3. Di dashboard Nara, bila daftar *allowed origins* bot tidak kosong, tambahkan URL TSbot (`https://tsbot.pages.dev` atau `https://tsbot-nara.pages.dev`; lihat ringkasan run workflow).
+3. Di dashboard Nara, bila daftar *allowed origins* bot tidak kosong, tambahkan URL TSbot (`https://tsbot-nara.pages.dev`; lihat ringkasan run workflow).
 4. Push ke branch `tsbot` atau jalankan workflow **Deploy TSbot** secara manual.
 
 ## Halaman IMTS (https://imtsbot.pages.dev)
@@ -19,7 +19,7 @@ Isinya hanya widget Nara (`public/widget.js` dalam `mode="inline"`) yang disalin
 Halaman IMTS ada di `imts/` dan dideploy oleh workflow yang sama ke project Pages `imtsbot`. Isinya judul IMTS dan TSbot dalam iframe:
 
 ```html
-<iframe src="https://tsbot.pages.dev/" title="Asisten TSbot"></iframe>
+<iframe src="https://tsbot-nara.pages.dev/" title="Asisten TSbot"></iframe>
 ```
 
 Halaman IMTS sendiri tidak bisa di-iframe situs lain (`frame-ancestors 'none'`) dan hanya boleh memuat frame dari TSbot (`frame-src`). Domain selain `IMTS_ORIGIN` ditolak browser saat mencoba menampilkan TSbot.
@@ -31,7 +31,7 @@ NARA_API_URL=https://nara.example.workers.dev IMTS_ORIGIN=https://imts.example.c
 ```
 
 ```bash
-TSBOT_URL=https://tsbot.pages.dev node scripts/build-imts.mjs
+TSBOT_URL=https://tsbot-nara.pages.dev node scripts/build-imts.mjs
 ```
 
 ```bash

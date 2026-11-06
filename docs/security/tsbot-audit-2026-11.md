@@ -21,6 +21,6 @@ Cakupan: `tsbot/`, `imts/`, `scripts/build-imts.mjs`, `scripts/origin.mjs`, `scr
 - **Confirmed:** tidak ada.
 - **Hardening yang diterapkan:** `data-num` sumber jawaban kini dipaksa angka (sebelumnya nilai dari server dirangkai langsung ke HTML; tidak terjangkau penyerang tanpa menguasai server Nara, jadi bukan temuan).
 - **Needs validation (konfigurasi deploy, tidak terlihat di repo):**
-  1. *Allowed origins* bot di dashboard Nara. Bila kosong, API publik menerima semua origin (desain bot publik). Disarankan isi URL TSbot (`https://tsbot.pages.dev` atau `https://tsbot-nara.pages.dev`) agar kuota bot tidak dipakai situs lain.
+  1. *Allowed origins* bot di dashboard Nara. Bila kosong, API publik menerima semua origin (desain bot publik). Disarankan isi URL TSbot (`https://tsbot-nara.pages.dev`) agar kuota bot tidak dipakai situs lain.
   2. Izin token Cloudflare: cukup Pages Edit untuk akun ini; jangan pakai Global API Key.
   3. Origin IMTS harus https agar `frame-ancestors` tidak bisa dipenuhi dari jaringan yang disadap.

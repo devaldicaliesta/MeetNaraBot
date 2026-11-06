@@ -1,5 +1,5 @@
-# Deploys TSbot (full-page Nara chat for embedding in IMTS via iframe) to Cloudflare Pages: https://tsbot.pages.dev
-# (or https://tsbot-nara.pages.dev when tsbot.pages.dev is already taken), and the IMTS page that shows it in an
+# Deploys TSbot (full-page Nara chat for embedding in IMTS via iframe) to Cloudflare Pages: https://tsbot-nara.pages.dev
+# (tsbot.pages.dev never started serving: 522 / NXDOMAIN), and the IMTS page that shows it in an
 # iframe to https://imtsbot.pages.dev.
 #
 # Secrets (already used by deploy.yml): CLOUDFLARE_API_TOKEN (also needs "Cloudflare Pages: Edit"), CLOUDFLARE_ACCOUNT_ID
@@ -60,8 +60,9 @@ jobs:
             echo "::error::Set the NARA_API_URL repository variable (the Nara Worker origin)."; exit 1
           fi
       - run: node scripts/build-tsbot.mjs
-      # Use "tsbot" (tsbot.pages.dev). If that subdomain is already taken by someone else, Cloudflare would hand out
-      # tsbot-xxx.pages.dev instead; in that case the project is removed again and "tsbot-nara" (tsbot-nara.pages.dev) is used.
+      # Use "tsbot-nara" (tsbot-nara.pages.dev); "nara-tsbot" if that subdomain is taken by someone else (Cloudflare would
+      # hand out a suffixed name instead, so that just-created project is removed again). The "tsbot" project is not
+      # used: tsbot.pages.dev never started serving (522 / NXDOMAIN).
       - name: Pick the Pages projects
         id: project
         run: |
@@ -84,7 +85,7 @@ jobs:
             echo "name=$1" >> "$GITHUB_OUTPUT"
             echo "url=https://$sub" >> "$GITHUB_OUTPUT"
           }
-          ensure tsbot || ensure tsbot-nara || { echo "::error::tsbot.pages.dev and tsbot-nara.pages.dev are both taken."; exit 1; }
+          ensure tsbot-nara || ensure nara-tsbot || { echo "::error::tsbot-nara.pages.dev and nara-tsbot.pages.dev are both taken."; exit 1; }
           # IMTS must be exactly imtsbot.pages.dev: that is the origin TSbot allows to frame it.
           sub=$(subdomain imtsbot)
           if [ -z "$sub" ]; then
@@ -98,6 +99,19 @@ jobs:
         env:
           TSBOT_URL: ${{ steps.project.outputs.url }}
       - run: npx wrangler pages deploy imts/dist --project-name=imtsbot --branch=main --commit-dirty=true
+      # A new pages.dev subdomain can take a few minutes; fail loudly if a site never answers instead of reporting success.
+      - name: Check both sites answer
+        env:
+          TSBOT_URL: ${{ steps.project.outputs.url }}
+        run: |
+          for url in "$TSBOT_URL/" "https://imtsbot.pages.dev/"; do
+            for i in $(seq 1 30); do
+              code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 10 "$url" || true)
+              [ "$code" = "200" ] && { echo "$url → 200"; break; }
+              [ "$i" = "30" ] && { echo "::error::$url still answers $code after 5 minutes."; exit 1; }
+              sleep 10
+            done
+          done
       - name: Summary
         run: |
           echo "TSbot is live at ${{ steps.project.outputs.url }}" >> "$GITHUB_STEP_SUMMARY"
