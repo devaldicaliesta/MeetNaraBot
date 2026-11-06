@@ -1,6 +1,6 @@
 # Nara — Narasumber Anda
 
-Platform chatbot dokumen. Daftar, unggah **satu dokumen** (panduan, FAQ, katalog, peraturan), lalu pasang bot yang menjawab pengunjung **hanya dari isi dokumen itu**, lengkap dengan nomor sumber yang bisa diklik. Berjalan di paket gratis **Cloudflare Workers** dengan **Gemini** sebagai model utama.
+Platform chatbot dokumen. Daftar, unggah **hingga 10 dokumen per bot** (panduan, FAQ, katalog, peraturan), lalu pasang bot yang menjawab pengunjung **hanya dari isi dokumen-dokumen itu**, lengkap dengan nomor sumber yang bisa diklik. Berjalan di paket gratis **Cloudflare Workers** dengan **Gemini** sebagai model utama.
 
 - **Situs:** https://nara.panduarahid.workers.dev
 - **Dashboard:** https://nara.panduarahid.workers.dev/admin
@@ -23,7 +23,7 @@ Platform chatbot dokumen. Daftar, unggah **satu dokumen** (panduan, FAQ, katalog
 |---|---|
 | Runtime | Cloudflare Workers + [Hono](https://hono.dev) (TypeScript) |
 | Data | D1 (SQLite + FTS5), Vectorize (1024 dimensi) |
-| AI | Gemini, Workers AI (bge-m3, bge-reranker, GLM/Llama cadangan), serta DeepSeek, Kimi, GLM, Groq, OpenRouter, Hugging Face, dan lainnya |
+| AI | Gemini, Workers AI (bge-m3, bge-reranker, GLM/Llama cadangan; atau lewat akun Cloudflare sendiri), serta OpenAI, Mistral, Cohere, NVIDIA NIM, xAI, DeepSeek, Kimi, GLM, Groq, OpenRouter, Together AI, Fireworks AI, Hugging Face, dan lainnya |
 | Frontend | HTML/CSS/JS tanpa framework; widget berupa Web Component |
 | QA & CI/CD | Playwright, `node:test`, GitHub Actions → `wrangler deploy` |
 

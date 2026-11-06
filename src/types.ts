@@ -24,6 +24,14 @@ export type Bindings = {
   DEEPSEEK_API_KEY?: string;
   MOONSHOT_API_KEY?: string;
   ZAI_API_KEY?: string;
+  OPENAI_API_KEY?: string;
+  CF_WORKERS_AI_KEY?: string;
+  COHERE_API_KEY?: string;
+  NVIDIA_API_KEY?: string;
+  MISTRAL_API_KEY?: string;
+  TOGETHER_API_KEY?: string;
+  FIREWORKS_API_KEY?: string;
+  XAI_API_KEY?: string;
   /** Telegram bot token from @BotFather. Enables the /api/channels/telegram webhook. */
   TELEGRAM_BOT_TOKEN?: string;
   /** WhatsApp Cloud API (Meta): permanent access token, phone number ID, webhook verify token and app secret. */

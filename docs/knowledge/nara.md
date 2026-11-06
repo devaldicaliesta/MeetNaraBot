@@ -2,7 +2,7 @@
 
 ## Tentang Nara
 
-Nara adalah chatbot yang menjawab pertanyaan pengunjung website hanya dari satu dokumen milik pemilik website. Dokumen itu bisa berupa panduan, FAQ, katalog produk, peraturan, atau prosedur layanan.
+Nara adalah chatbot yang menjawab pertanyaan pengunjung website hanya dari dokumen milik pemilik website. Dokumennya bisa berupa panduan, FAQ, katalog produk, peraturan, atau prosedur layanan.
 
 Setiap jawaban Nara disertai nomor sumber, misalnya [1] atau [2]. Nomor itu bisa diklik untuk membuka potongan dokumen yang dipakai, jadi pengunjung bisa mengecek sendiri kebenaran jawabannya.
 
@@ -33,7 +33,7 @@ Langkah-langkahnya:
 
 Jawaban disusun oleh Google Gemini 3.5 Flash. Kalau Gemini sedang penuh atau kuotanya habis, Nara otomatis pindah ke Gemini 3.5 Flash-Lite, lalu ke model gpt-oss-120b lewat Hugging Face, lalu ke model Workers AI dari Cloudflare. Pengunjung tidak perlu melakukan apa pun saat perpindahan ini terjadi.
 
-Pemilik bot juga bisa memakai model lain dengan menyimpan kunci API-nya sendiri di menu Bot & model: DeepSeek, Kimi (Moonshot AI), GLM (Z.ai), Groq, OpenRouter, Cerebras, SambaNova, dan Hugging Face.
+Pemilik bot juga bisa memakai model lain dengan menyimpan kunci API-nya sendiri di menu Bot & model: OpenAI, Mistral AI, Cohere, NVIDIA NIM, xAI (Grok), DeepSeek, Kimi (Moonshot AI), GLM (Z.ai), Groq, OpenRouter, Together AI, Fireworks AI, Cerebras, SambaNova, Hugging Face, dan Workers AI lewat akun Cloudflare sendiri (kunci berformat ACCOUNT_ID:API_TOKEN).
 
 ### Tempat Nara berjalan
 
@@ -84,7 +84,7 @@ Buka menu Dokumen, lalu pilih atau seret file ke kotak unggah. Format yang diduk
 
 Dokumen dipecah menjadi potongan langsung di browser pemilik, lalu hanya potongan teksnya yang dikirim ke server. Format paling akurat adalah Markdown dengan judul bagian (#, ##, ###), karena setiap bagian menjadi potongan tersendiri dengan label judul yang jelas.
 
-Nara memakai satu dokumen aktif. Untuk mengganti dokumen, hapus dokumen lama di menu Dokumen, lalu unggah yang baru.
+Satu bot bisa memakai hingga 10 dokumen sekaligus, misalnya panduan pendaftaran, jadwal, dan FAQ. Setiap jawaban menyebut dokumen sumbernya. Dokumen bisa ditambah atau dihapus satu per satu di menu Dokumen. Semua dokumen satu bot memakai model embedding yang sama; untuk menggantinya, hapus semua dokumen dulu.
 
 ### Mengatur bot dan model
 
@@ -112,7 +112,7 @@ Isi dokumen diperlakukan sebagai data, bukan perintah. Kalau ada teks di dokumen
 
 ## Batasan Nara
 
-- Nara hanya tahu isi satu dokumen yang diunggah pemilik. Bot tidak mencari di internet dan tidak memakai pengetahuan umum.
+- Nara hanya tahu isi dokumen yang diunggah pemilik. Bot tidak mencari di internet dan tidak memakai pengetahuan umum.
 - Jawaban bisa keliru kalau dokumennya keliru, kurang lengkap, atau ambigu. Selalu cek nomor sumbernya untuk hal penting.
 - PDF hasil pindaian (gambar tanpa lapisan teks) tidak bisa dibaca.
 - Nara tidak bisa melakukan transaksi, membuat janji temu, atau mengirim berkas. Bot hanya menjawab pertanyaan.

@@ -4,10 +4,10 @@
 //
 //   ADMIN_PASSWORD=... node scripts/seed-document.mjs https://<worker>.workers.dev docs/knowledge/nara.md [--replace]
 //
-// Without --replace it does nothing when a document is already active, so redeploys never wipe
-// a document the owner uploaded through the dashboard. With --replace it only replaces a document
-// that came from this seed script (same file name, or the bot's earlier reference documents); a
-// document the owner uploaded is left alone unless --force is also given.
+// Without --replace it does nothing when the reference document is already indexed. With --replace
+// it replaces only that document (same file name, or the bot's earlier reference documents). Documents
+// the owner uploaded are never deleted; when the bot already has some, the reference document is only
+// added next to them with --force.
 import fs from 'node:fs';
 import path from 'node:path';
 
@@ -102,27 +102,32 @@ const name = path.basename(file);
 console.log(`${name}: ${chunks.length} chunks`);
 
 const status = await api('GET', '/api/admin/status');
-if (status.file) {
-  if (!replace) { console.log(`A document is already active (${status.file.name}); nothing to do. Use --replace to overwrite it.`); process.exit(0); }
-  if (!force && !SEEDED_NAMES.has(status.file.name) && status.file.name !== name) {
-    console.log(`::warning::The active document "${status.file.name}" was uploaded by the owner, so it was kept. Use --force to replace it anyway.`);
+const files = status.files || (status.file ? [status.file] : []);
+// A bot can hold several documents; only the reference document this script manages is ever replaced.
+const seeded = files.find((f) => f.name === name || SEEDED_NAMES.has(f.name));
+if (seeded) {
+  if (!replace) { console.log(`The reference document is already indexed (${seeded.name}); nothing to do. Use --replace to overwrite it.`); process.exit(0); }
+  await api('DELETE', `/api/admin/file?id=${encodeURIComponent(seeded.id)}`);
+  console.log(`Removed ${seeded.name}`);
+} else if (files.length) {
+  if (!force) {
+    console.log(`::warning::The bot already has documents uploaded by the owner (${files.map((f) => f.name).join(', ')}), so the reference document was not added. Use --force to add it anyway.`);
     process.exit(0);
   }
-  await api('DELETE', '/api/admin/file');
-  console.log(`Removed ${status.file.name}`);
 }
 
 const created = await api('POST', '/api/admin/file', { name });
+const fileId = created.id;
 console.log(`Embedder: ${created.embedder}`);
 try {
   for (let i = 0; i < chunks.length; i += 20) {
-    await api('POST', '/api/admin/file/chunks', { startIdx: i, chunks: chunks.slice(i, i + 20) });
+    await api('POST', '/api/admin/file/chunks', { fileId, startIdx: i, chunks: chunks.slice(i, i + 20) });
     console.log(`Indexed ${Math.min(i + 20, chunks.length)}/${chunks.length}`);
   }
-  const done = await api('POST', '/api/admin/file/done');
+  const done = await api('POST', '/api/admin/file/done', { fileId });
   console.log(`Done: ${done.chunkCount} chunks. Starter questions: ${(done.suggestions?.id || []).join(' | ')}`);
 } catch (err) {
-  await api('DELETE', '/api/admin/file').catch(() => {});
+  await api('DELETE', `/api/admin/file?id=${encodeURIComponent(fileId)}`).catch(() => {});
   console.error(`Indexing failed and was rolled back: ${err.message}`);
   process.exit(1);
 }

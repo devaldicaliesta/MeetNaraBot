@@ -31,3 +31,16 @@ Cakupan:
      - *Rencana validasi:* di dashboard › Uji coba, kirim pertanyaan berarahan seperti di atas, lalu kirim versi polosnya. Lihat panel X-ray: apakah keputusan `cache` muncul dengan `matched` = pertanyaan berarahan.
      - *Perbaikan terkecil bila terbukti:* hanya pakai ulang hasil semantik bila panjang pertanyaan tersimpan dan pertanyaan baru tidak jauh berbeda, atau naikkan `cacheThreshold` bot itu. Pemilik bot juga bisa mematikan cache di Pencarian (RAG).
 - **Catatan, bukan temuan:** perbandingan signature HMAC memakai `===` (tidak constant-time). Selisih waktunya tidak bisa diukur lewat jaringan Workers, dan yang bisa didapat hanya riwayat palsu untuk percakapan penyerang sendiri.
+
+## Tambahan: banyak dokumen per bot dan penyedia OpenAI
+
+| Batas | Kontrol | Bukti |
+| --- | --- | --- |
+| Pemilik bot lain menghapus dokumen bot ini dengan menebak `id` | `DELETE /api/admin/file?id=` hanya menerima id dari daftar dokumen bot yang sedang login; selain itu 404 | `tests/worker/accounts.spec.ts` "a bot answers from several documents…" |
+| Upload menulis ke dokumen bot lain lewat `fileId` | `processingFile` hanya mencari di dokumen berstatus diproses milik bot itu | sama |
+| Upload gagal menghapus semua dokumen bot | Rollback di dashboard dan script seed kini menghapus dokumen yang gagal saja (`?id=`) | `public/admin.html`, `scripts/seed-document.mjs` |
+| Kuota AI bersama dihabiskan lewat banyak dokumen | Batas 400 potongan dihitung untuk seluruh dokumen satu bot, maksimal 10 dokumen per bot | `src/index.ts` |
+| Potongan tetangga dari dokumen lain bocor ke konteks | Perluasan tetangga dicari per `(file_id, idx)` | `src/rag.ts` |
+| Bot pengguna memakai kunci OpenAI milik platform | Daftar secret yang disembunyikan dari bot pengguna kini diturunkan dari registry penyedia, jadi penyedia baru tidak bisa terlewat | `tests/unit/providers.test.ts` |
+
+Hasil: tidak ada temuan baru.

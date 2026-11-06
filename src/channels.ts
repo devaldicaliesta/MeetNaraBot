@@ -14,7 +14,7 @@ import { getSalt, getSettings, type BotSettings, type Embedder, type Lang } from
 
 type Env = AppEnv;
 type Channel = 'telegram' | 'whatsapp';
-type FileRow = { id: string; name: string; status: string; embedder: Embedder | null; lang?: string | null };
+type FileRow = { id: string; name: string; status: string; embedder: Embedder | null; lang?: string | null; files?: Array<{ id: string; name: string; status: string }> };
 type AnswerResult = { refused: boolean; text: string; bestScore: number; provider: string | null; error?: boolean; ungrounded?: boolean };
 
 export type ChannelDeps = {
@@ -157,7 +157,7 @@ async function converse(env: Bindings, deps: ChannelDeps, channel: Channel, user
     settings,
     question,
     history,
-    file: { id: file!.id, name: file!.name, embedder: file!.embedder || 'workers-ai', lang: file!.lang },
+    file: { id: file!.id, name: file!.name, embedder: file!.embedder || 'workers-ai', lang: file!.lang, names: Object.fromEntries((file!.files || []).filter((f) => f.status === 'selesai').map((f) => [f.id, f.name])) },
     lang,
     debug: false,
     examples,

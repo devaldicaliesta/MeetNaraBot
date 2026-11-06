@@ -146,6 +146,36 @@ test('user bots cannot index oversized documents (shared AI budget)', async ({ r
   await request.delete('/api/admin/file', { headers });
 });
 
+test('a bot answers from several documents and names the source of each excerpt', async ({ request }) => {
+  const a = await login(request, 'owner-a@qa.test', 'owner-a-password');
+  const headers = { Authorization: `Bearer ${a.body.token}`, 'X-Bot-Id': 'qabotaaaa1' };
+  const status = await (await request.get('/api/admin/status', { headers })).json();
+  expect(status.files.map((f: any) => f.name).sort()).toEqual(['jam-buka-a.md', 'katalog-a.md']);
+  expect(status.file.status).toBe('selesai');
+
+  const hours = await chat(request, 'qabotaaaa1', 'Jam berapa toko buka?');
+  expect(hours.status).toBe(200);
+  expect(hours.body.answer).toContain('08.00');
+  expect(hours.body.sources.map((s: any) => s.document)).toContain('jam-buka-a.md');
+  const promo = await chat(request, 'qabotaaaa1', 'Apa kode promo rahasia toko?');
+  expect(promo.body.answer).toContain('MANGGA-4417');
+  expect(promo.body.sources.map((s: any) => s.document)).toContain('katalog-a.md');
+
+  // Another owner cannot delete this bot's document by guessing its id.
+  const b = await login(request, 'owner-b@qa.test', 'owner-b-password');
+  const authB = { Authorization: `Bearer ${b.body.token}` };
+  const botB = (await (await request.get('/api/auth/me', { headers: authB })).json()).bots[0].id;
+  expect((await request.delete('/api/admin/file?id=qaaaaab2-file', { headers: { ...authB, 'X-Bot-Id': botB } })).status()).toBe(404);
+
+  // Deleting one document keeps the other one answering.
+  expect((await request.delete('/api/admin/file?id=qaaaaab2-file', { headers })).status()).toBe(200);
+  const after = await (await request.get('/api/admin/status', { headers })).json();
+  expect(after.files.map((f: any) => f.name)).toEqual(['katalog-a.md']);
+  expect((await chat(request, 'qabotaaaa1', 'Apa kode promo rahasia toko?')).body.answer).toContain('MANGGA-4417');
+  expect((await chat(request, 'qabotaaaa1', 'Jam berapa toko buka?')).body.answer).not.toContain('08.00');
+});
+
+
 test('failed logins lock one e-mail, not every account', async ({ request }) => {
   const from = (n: number) => ({ 'cf-connecting-ip': `198.51.100.${n}` });
   for (let i = 0; i < 9; i++) {

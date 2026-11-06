@@ -121,3 +121,37 @@ test('every dashboard page fits a phone screen', async ({ page }) => {
   await expect(page.locator('#channels')).toContainText('Telegram');
   await expect(page.locator('#channels')).toContainText('WhatsApp');
 });
+
+test('a bot uses several documents: list, answer with the right source, delete one', async ({ page, request }) => {
+  const h = { Authorization: `Bearer ${QA_PASSWORD}` };
+  const reg = await (await request.post('/api/admin/file', { headers: h, data: { name: 'jadwal-kelas.md' } })).json();
+  await request.post('/api/admin/file/chunks', {
+    headers: h,
+    data: { fileId: reg.id, startIdx: 0, chunks: [{ label: 'Jadwal Kelas › Akhir pekan', text: 'Kelas akhir pekan berlangsung setiap Sabtu pukul 09.00 sampai 12.00.' }] },
+  });
+  await request.post('/api/admin/file/done', { headers: h, data: { fileId: reg.id } });
+
+  // The widget answers from the second document; its source shows the section, never a file name.
+  await page.goto('/');
+  await page.click('#try');
+  const chat = page.locator('tanyasaya-chat');
+  await chat.locator('textarea').fill('Kapan kelas akhir pekan?');
+  await chat.locator('textarea').press('Enter');
+  const label = chat.locator('.source-label').first();
+  await expect(label).toHaveText('Jadwal Kelas › Akhir pekan');
+  await expect(chat.locator('.sources')).not.toContainText('.md');
+
+  // The dashboard lists both documents and deletes only the chosen one.
+  await page.goto('/admin.html');
+  await page.click('#platformToggle');
+  await page.fill('#pass', QA_PASSWORD);
+  await page.press('#pass', 'Enter');
+  await page.goto('/admin.html#dokumen');
+  const cards = page.locator('#docList .doc-card');
+  await expect(cards).toHaveCount(2);
+  await expect(page.locator('#docEmpty')).toBeVisible();
+  page.once('dialog', (d) => d.accept());
+  await cards.filter({ hasText: 'jadwal-kelas.md' }).locator('[data-del]').click();
+  await expect(cards).toHaveCount(1);
+  await expect(cards.first()).toContainText('panduan-pendaftaran.md');
+});

@@ -91,7 +91,8 @@ const signupsPerDay = (env: Bindings) => Math.max(1, Number(env.MAX_SIGNUPS_PER_
 /** Chunks user bots may embed with the platform's free Workers AI per day, all users together. */
 const platformDailyEmbeds = (env: Bindings) => Math.max(100, Number(env.PLATFORM_DAILY_EMBEDS) || 4000);
 /** Largest document (in chunks) a user bot may index. */
-const USER_BOT_MAX_CHUNKS = 400;
+const USER_BOT_MAX_CHUNKS = 400; // across all documents of one bot
+const MAX_FILES_PER_BOT = 10;
 
 /** Counts work that spends the platform's shared Workers AI budget; false when today's budget is used up. */
 async function spendPlatform(env: Bindings, key: string, amount: number, limit: number): Promise<boolean> {
@@ -198,8 +199,42 @@ async function dailyQuota(env: Bindings, rawKey: string, perKey: number, total: 
   }
 }
 
-async function activeFile(db: D1Database, bot: string): Promise<FileRow | null> {
-  return db.prepare('SELECT id, name, status, chunk_count, error, created_at, embedder, lang FROM file WHERE bot_id = ? LIMIT 1').bind(bot).first<FileRow>();
+const docNames = (f: { files?: FileRow[] }) => Object.fromEntries((f.files || []).filter((x) => x.status === 'selesai').map((x) => [x.id, x.name]));
+
+async function listFiles(db: D1Database, bot: string): Promise<FileRow[]> {
+  const res = await db.prepare('SELECT id, name, status, chunk_count, error, created_at, embedder, lang FROM file WHERE bot_id = ? ORDER BY created_at, id').bind(bot).all<FileRow>();
+  return res.results || [];
+}
+
+/** "a.md", "a.md dan b.pdf", "a.md, b.pdf, dan c.docx", or "5 dokumen" for longer lists. */
+export function documentsLabel(names: string[], lang: 'id' | 'en' = 'id'): string {
+  const and = lang === 'en' ? 'and' : 'dan';
+  if (names.length <= 1) return names[0] || '';
+  if (names.length === 2) return `${names[0]} ${and} ${names[1]}`;
+  if (names.length === 3) return `${names[0]}, ${names[1]}, ${and} ${names[2]}`;
+  return lang === 'en' ? `${names.length} documents` : `${names.length} dokumen`;
+}
+
+/**
+ * The bot's knowledge as one record: every finished document together ("selesai"), or, while none is
+ * finished yet, the newest document so its status (processing/failed) still shows. `id` lists the
+ * document ids, so the answer cache scope changes whenever a document is added or removed.
+ */
+async function activeFile(db: D1Database, bot: string): Promise<(FileRow & { files: FileRow[] }) | null> {
+  const files = await listFiles(db, bot);
+  const ready = files.filter((f) => f.status === 'selesai');
+  if (!ready.length) return files.length ? { ...files[files.length - 1], files } : null;
+  return {
+    id: ready.map((f) => f.id).join(','),
+    name: documentsLabel(ready.map((f) => f.name)),
+    status: 'selesai',
+    chunk_count: ready.reduce((n, f) => n + (f.chunk_count || 0), 0),
+    error: null,
+    created_at: ready[ready.length - 1].created_at,
+    embedder: ready[0].embedder,
+    lang: ready[0].lang,
+    files,
+  };
 }
 
 function envOrigins(env: Bindings): string[] {
@@ -345,6 +380,8 @@ app.get('/api/public/info', async (c) => {
   const ready = file?.status === 'selesai';
   const lang = asLang(c.req.query('lang'), settings.language);
   const en = lang === 'en';
+  // Several documents read as "a.md and b.md" (or "5 documents") in the visitor's language.
+  if (file && ready) file.name = documentsLabel(file.files.filter((f) => f.status === 'selesai').map((f) => f.name), lang);
   const suggestions = ready ? await visitorSuggestions(c.env, settings, lang, bot) : [];
   const name = settings.name;
   const greeting = expired
@@ -417,7 +454,7 @@ app.post('/api/public/chat', async (c) => {
   const run = async (rawEmit: (e: ChatEvent) => Promise<void>) => {
     const emit = signingEmitter(rawEmit, secret, bot);
     const examples = await visitorSuggestions(c.env, settings, lang, bot).catch(() => []);
-    const res = await answer({ env: c.env, settings, question, history, file: { id: file.id, name: file.name, embedder: file.embedder || 'workers-ai', lang: file.lang }, lang, debug: false, emit, examples, bot });
+    const res = await answer({ env: c.env, settings, question, history, file: { id: file.id, name: file.name, embedder: file.embedder || 'workers-ai', lang: file.lang, names: docNames(file) }, lang, debug: false, emit, examples, bot });
     if (settings.logQuestions) await logChat(c.env.DB, 'widget', question, res, bot);
   };
 
@@ -635,7 +672,9 @@ app.get('/api/admin/status', async (c) => {
     platform: bot === DEFAULT_BOT,
     account: principal.kind === 'user' ? { email: principal.user.email, name: principal.user.name, expiresAt: principal.user.expires_at } : null,
     bindings: { db: !!c.env.DB, vectorize: !!c.env.VECTORIZE, ai: !!c.env.AI },
-    file,
+    file: file ? { ...file, files: undefined } : null,
+    files: file?.files || [],
+    maxFiles: MAX_FILES_PER_BOT,
     botName: settings.name,
     weakPassword: principal.kind === 'platform' ? (c.env.ADMIN_PASSWORD || '').length < 12 : false,
     keys: keyStatus(env, keys),
@@ -721,11 +760,16 @@ app.post('/api/admin/test-provider', async (c) => {
 app.post('/api/admin/file', async (c) => {
   const bot = c.get('bot');
   const body = await c.req.json<{ name?: string }>().catch(() => ({} as any));
-  if (await activeFile(c.env.DB, bot)) return c.json({ error: tr(c, 'Sudah ada dokumen aktif. Hapus dulu sebelum mengunggah yang baru.', 'A document is already active. Delete it before uploading a new one.') }, 409);
+  const files = await listFiles(c.env.DB, bot);
+  if (files.some((f) => f.status === 'diproses')) return c.json({ error: tr(c, 'Masih ada dokumen yang sedang diproses. Tunggu sampai selesai atau hapus dokumen itu dulu.', 'Another document is still being processed. Wait for it to finish or delete it first.') }, 409);
+  if (files.length >= MAX_FILES_PER_BOT) return c.json({ error: tr(c, `Maksimal ${MAX_FILES_PER_BOT} dokumen per bot. Hapus salah satu dokumen dulu.`, `At most ${MAX_FILES_PER_BOT} documents per bot. Delete one first.`) }, 409);
   const [settings, keys] = await Promise.all([getSettings(c.env, bot), getKeys(c.env, bot)]);
   let embedder: Embedder;
+  // Vectors from different embedding models cannot be compared, so every document of a bot uses
+  // the model of its first document. Delete all documents to switch models.
+  const existing = files.find((f) => f.embedder)?.embedder;
   try {
-    embedder = pickEmbedder(benv(c), keys, settings);
+    embedder = existing || pickEmbedder(benv(c), keys, settings);
   } catch (e: any) {
     return c.json({ error: e.message }, 400);
   }
@@ -735,19 +779,26 @@ app.post('/api/admin/file', async (c) => {
   return c.json({ success: true, id, name, embedder });
 });
 
+/** The document an upload is writing to: the given id, or (older clients) the bot's one document in progress. */
+async function processingFile(db: D1Database, bot: string, fileId?: unknown): Promise<FileRow | null> {
+  const rows = (await listFiles(db, bot)).filter((f) => f.status === 'diproses');
+  return typeof fileId === 'string' && fileId ? rows.find((f) => f.id === fileId) || null : rows[0] || null;
+}
+
 app.post('/api/admin/file/chunks', async (c) => {
   const bot = c.get('bot');
-  const body = await c.req.json<{ startIdx: number; chunks: Array<{ text: string; label: string; overlap?: string }> }>().catch(() => null);
+  const body = await c.req.json<{ fileId?: string; startIdx: number; chunks: Array<{ text: string; label: string; overlap?: string }> }>().catch(() => null);
   if (!body || !Array.isArray(body.chunks) || body.chunks.length < 1 || body.chunks.length > 20) return c.json({ error: tr(c, 'Satu batch harus berisi 1–20 potongan.', 'A batch must contain 1–20 chunks.') }, 400);
   if (!Number.isInteger(body.startIdx) || body.startIdx < 0 || body.startIdx > 2000) return c.json({ error: tr(c, 'startIdx tidak valid.', 'Invalid startIdx.') }, 400);
   for (const ch of body.chunks) {
     if (typeof ch.text !== 'string' || !ch.text.trim() || ch.text.length > 4000) return c.json({ error: tr(c, 'Tiap potongan harus berisi 1–4.000 karakter.', 'Each chunk must be 1–4,000 characters.') }, 400);
     if (typeof ch.label !== 'string') ch.label = 'Bagian';
   }
-  const file = await activeFile(c.env.DB, bot);
-  if (!file || file.status !== 'diproses') return c.json({ error: tr(c, 'Tidak ada dokumen yang sedang diproses.', 'No document is being processed.') }, 400);
+  const file = await processingFile(c.env.DB, bot, body.fileId);
+  if (!file) return c.json({ error: tr(c, 'Tidak ada dokumen yang sedang diproses.', 'No document is being processed.') }, 400);
   if (bot !== DEFAULT_BOT) {
-    if (body.startIdx + body.chunks.length > USER_BOT_MAX_CHUNKS) {
+    const others = (await c.env.DB.prepare('SELECT COUNT(*) AS n FROM chunks WHERE bot_id = ? AND file_id IS NOT ?').bind(bot, file.id).first<{ n: number }>())?.n || 0;
+    if (others + body.startIdx + body.chunks.length > USER_BOT_MAX_CHUNKS) {
       return c.json({ error: tr(c, `Dokumen terlalu besar: maksimal ${USER_BOT_MAX_CHUNKS} potongan per bot. Ringkas dokumennya atau perbesar ukuran potongan.`, `The document is too large: at most ${USER_BOT_MAX_CHUNKS} chunks per bot. Shorten it or use a larger chunk size.`) }, 413);
     }
     if (file.embedder !== 'gemini' && !(await spendPlatform(c.env, 'emb:all-users', body.chunks.length, platformDailyEmbeds(c.env)))) {
@@ -768,7 +819,7 @@ app.post('/api/admin/file/chunks', async (c) => {
     body.chunks.forEach((ch, i) => {
       const id = entries[i].id;
       const label = ch.label.slice(0, 200);
-      stmts.push(c.env.DB.prepare('INSERT OR REPLACE INTO chunks (id, bot_id, idx, label, text) VALUES (?, ?, ?, ?, ?)').bind(id, bot, body.startIdx + i, label, ch.text));
+      stmts.push(c.env.DB.prepare('INSERT OR REPLACE INTO chunks (id, bot_id, file_id, idx, label, text) VALUES (?, ?, ?, ?, ?, ?)').bind(id, bot, file.id, body.startIdx + i, label, ch.text));
       stmts.push(c.env.DB.prepare('DELETE FROM chunks_fts WHERE chunk_id = ? AND bot_id = ?').bind(id, bot));
       stmts.push(c.env.DB.prepare('INSERT INTO chunks_fts (chunk_id, bot_id, label, text) VALUES (?, ?, ?, ?)').bind(id, bot, label, ch.text));
     });
@@ -782,31 +833,52 @@ app.post('/api/admin/file/chunks', async (c) => {
 
 app.post('/api/admin/file/done', async (c) => {
   const bot = c.get('bot');
-  const file = await activeFile(c.env.DB, bot);
-  if (!file) return c.json({ error: tr(c, 'Tidak ada dokumen.', 'No document.') }, 400);
-  const total = (await c.env.DB.prepare('SELECT COUNT(*) AS n FROM chunks WHERE bot_id = ?').bind(bot).first<{ n: number }>())?.n || 0;
+  const body = await c.req.json<{ fileId?: string }>().catch(() => ({} as { fileId?: string }));
+  const file = await processingFile(c.env.DB, bot, body.fileId);
+  if (!file) return c.json({ error: tr(c, 'Tidak ada dokumen yang sedang diproses.', 'No document is being processed.') }, 400);
+  const total = (await c.env.DB.prepare('SELECT COUNT(*) AS n FROM chunks WHERE bot_id = ? AND file_id = ?').bind(bot, file.id).first<{ n: number }>())?.n || 0;
   if (!total) return c.json({ error: tr(c, 'Belum ada potongan tersimpan.', 'No chunks have been saved yet.') }, 400);
-  const sample = await c.env.DB.prepare('SELECT text FROM chunks WHERE bot_id = ? ORDER BY idx LIMIT 40').bind(bot).all<{ text: string }>();
+  const sample = await c.env.DB.prepare('SELECT text FROM chunks WHERE bot_id = ? AND file_id = ? ORDER BY idx LIMIT 40').bind(bot, file.id).all<{ text: string }>();
   const docLang = detectDocLang((sample.results || []).map((r) => r.text));
-  await c.env.DB.prepare('UPDATE file SET status = ?, chunk_count = ?, error = NULL, lang = ? WHERE id = ? AND bot_id = ?').bind('selesai', total, docLang, file.id, bot).run();
+  await c.env.DB.batch([
+    c.env.DB.prepare('UPDATE file SET status = ?, chunk_count = ?, error = NULL, lang = ? WHERE id = ? AND bot_id = ?').bind('selesai', total, docLang, file.id, bot),
+    // The set of documents changed, so earlier cached answers no longer apply.
+    c.env.DB.prepare('DELETE FROM answer_cache WHERE bot_id = ?').bind(bot),
+  ]);
   const settings = await getSettings(c.env, bot);
-  const suggestions = await generateSuggestions(c.env, settings, file.name, bot);
+  const suggestions = await generateSuggestions(c.env, settings, (await activeFile(c.env.DB, bot))?.name || file.name, bot);
   await writeSetting(c.env.DB, settingKey('auto_suggestions', bot), suggestions);
   return c.json({ success: true, chunkCount: total, suggestions });
 });
 
+/** DELETE /api/admin/file?id=<file id> removes one document; without `id` every document of the bot. */
 app.delete('/api/admin/file', async (c) => {
   const bot = c.get('bot');
-  const ids = await c.env.DB.prepare('SELECT id FROM chunks WHERE bot_id = ?').bind(bot).all<{ id: string }>();
+  const fileId = c.req.query('id');
+  if (fileId !== undefined && !(await listFiles(c.env.DB, bot)).some((f) => f.id === fileId)) {
+    return c.json({ error: tr(c, 'Dokumen tidak ditemukan.', 'Document not found.') }, 404);
+  }
+  const ids = fileId
+    ? await c.env.DB.prepare('SELECT id FROM chunks WHERE bot_id = ? AND file_id = ?').bind(bot, fileId).all<{ id: string }>()
+    : await c.env.DB.prepare('SELECT id FROM chunks WHERE bot_id = ?').bind(bot).all<{ id: string }>();
   const list = (ids.results || []).map((r) => r.id);
   await deleteVectors(c.env, list);
-  await c.env.DB.batch([
-    c.env.DB.prepare('DELETE FROM chunks WHERE bot_id = ?').bind(bot),
-    c.env.DB.prepare('DELETE FROM chunks_fts WHERE bot_id = ?').bind(bot),
-    c.env.DB.prepare('DELETE FROM file WHERE bot_id = ?').bind(bot),
-    c.env.DB.prepare('DELETE FROM answer_cache WHERE bot_id = ?').bind(bot),
-  ]);
-  await deleteSetting(c.env.DB, settingKey('auto_suggestions', bot));
+  const stmts: D1PreparedStatement[] = [];
+  if (fileId) {
+    for (let i = 0; i < list.length; i += 50) {
+      const part = list.slice(i, i + 50);
+      stmts.push(c.env.DB.prepare(`DELETE FROM chunks_fts WHERE bot_id = ? AND chunk_id IN (${part.map(() => '?').join(',')})`).bind(bot, ...part));
+    }
+    stmts.push(c.env.DB.prepare('DELETE FROM chunks WHERE bot_id = ? AND file_id = ?').bind(bot, fileId));
+    stmts.push(c.env.DB.prepare('DELETE FROM file WHERE bot_id = ? AND id = ?').bind(bot, fileId));
+  } else {
+    stmts.push(c.env.DB.prepare('DELETE FROM chunks WHERE bot_id = ?').bind(bot));
+    stmts.push(c.env.DB.prepare('DELETE FROM chunks_fts WHERE bot_id = ?').bind(bot));
+    stmts.push(c.env.DB.prepare('DELETE FROM file WHERE bot_id = ?').bind(bot));
+  }
+  stmts.push(c.env.DB.prepare('DELETE FROM answer_cache WHERE bot_id = ?').bind(bot));
+  await c.env.DB.batch(stmts);
+  if (!fileId || !(await activeFile(c.env.DB, bot))) await deleteSetting(c.env.DB, settingKey('auto_suggestions', bot));
   return c.json({ success: true, removed: list.length });
 });
 
@@ -815,8 +887,8 @@ app.get('/api/admin/chunks', async (c) => {
   const offset = Math.max(0, Math.min(100_000, Number(c.req.query('offset') || 0) || 0));
   const q = (c.req.query('q') || '').trim().slice(0, 200);
   const rows = q
-    ? await c.env.DB.prepare('SELECT idx, label, text FROM chunks WHERE bot_id = ? AND (text LIKE ? OR label LIKE ?) ORDER BY idx LIMIT 30').bind(bot, `%${q}%`, `%${q}%`).all()
-    : await c.env.DB.prepare('SELECT idx, label, text FROM chunks WHERE bot_id = ? ORDER BY idx LIMIT 30 OFFSET ?').bind(bot, offset).all();
+    ? await c.env.DB.prepare('SELECT c.idx, c.label, c.text, f.name AS document FROM chunks c LEFT JOIN file f ON f.id = c.file_id WHERE c.bot_id = ? AND (c.text LIKE ? OR c.label LIKE ?) ORDER BY f.created_at, c.idx LIMIT 30').bind(bot, `%${q}%`, `%${q}%`).all()
+    : await c.env.DB.prepare('SELECT c.idx, c.label, c.text, f.name AS document FROM chunks c LEFT JOIN file f ON f.id = c.file_id WHERE c.bot_id = ? ORDER BY f.created_at, c.idx LIMIT 30 OFFSET ?').bind(bot, offset).all();
   return c.json({ items: rows.results || [] });
 });
 
@@ -856,7 +928,7 @@ app.post('/api/admin/test-chat', async (c) => {
     const history = await verifyHistory(secret, bot, body.history, settings.limits.maxHistory, normalizeHistory);
     const lang = asLang(body.lang, settings.language);
     const examples = await visitorSuggestions(c.env, settings, lang, bot).catch(() => []);
-    const res = await answer({ env: c.env, settings, question, history, file: { id: file.id, name: file.name, embedder: file.embedder || 'workers-ai', lang: file.lang }, lang, debug: true, emit: signingEmitter(emit, secret, bot), examples, bot, useCache: !body.settings && body.cache !== false });
+    const res = await answer({ env: c.env, settings, question, history, file: { id: file.id, name: file.name, embedder: file.embedder || 'workers-ai', lang: file.lang, names: docNames(file) }, lang, debug: true, emit: signingEmitter(emit, secret, bot), examples, bot, useCache: !body.settings && body.cache !== false });
     if (settings.logQuestions) await logChat(c.env.DB, 'admin', question, res, bot);
   });
 });

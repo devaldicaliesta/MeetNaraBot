@@ -65,8 +65,8 @@ export function smallTalkReply(kind: SmallTalkKind, lang: Lang, name: string, do
         : `Halo, aku **${name}**. Aku menjawab pertanyaan seputar ${doc}, hanya dari isi dokumennya dan lengkap dengan sumbernya. Ada yang ingin kamu tanyakan?${tryList}`;
     case 'identity':
       return en
-        ? `I'm **${name}**, an assistant that answers from one document: ${doc}. Every answer comes with numbered sources so you can check it. If something isn't in the document, I'll tell you plainly.${tryList}`
-        : `Aku **${name}**, asisten yang menjawab dari satu dokumen: ${doc}. Setiap jawaban disertai nomor sumber supaya bisa kamu cek. Kalau informasinya tidak ada di dokumen, aku akan bilang terus terang.${tryList}`;
+        ? `I'm **${name}**, an assistant that answers from ${doc}. Every answer comes with numbered sources so you can check it. If something isn't in the document, I'll tell you plainly.${tryList}`
+        : `Aku **${name}**, asisten yang menjawab dari ${doc}. Setiap jawaban disertai nomor sumber supaya bisa kamu cek. Kalau informasinya tidak ada di dokumen, aku akan bilang terus terang.${tryList}`;
     case 'thanks':
       return en
         ? 'You\'re welcome. Ask me anything else about the document whenever you need to.'
