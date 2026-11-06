@@ -50,3 +50,11 @@ test('small talk is caught, real questions are not', () => {
   assert.equal(detectSmallTalk('kamu siapa?')?.kind, 'identity');
   assert.equal(detectSmallTalk('halo, berapa biaya daftarnya?'), null);
 });
+
+test('visitor-facing source labels never show file names', async () => {
+  const { visibleLabel } = await import('../../src/channel-format.ts');
+  assert.equal(visibleLabel('Kebutuhan Fungsional.md › Login › Lupa sandi'), 'Login › Lupa sandi');
+  assert.equal(visibleLabel('panduan.pdf › Biaya'), 'Biaya');
+  assert.equal(visibleLabel('Panduan › Bab 2 › Biaya'), 'Bab 2 › Biaya');
+  assert.equal(visibleLabel('Kebutuhan Fungsional.md'), '');
+});

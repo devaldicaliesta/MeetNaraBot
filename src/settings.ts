@@ -16,6 +16,7 @@ export const PROVIDERS = {
   deepseek: { name: 'DeepSeek', baseUrl: 'https://api.deepseek.com/v1', secret: 'DEEPSEEK_API_KEY' },
   moonshot: { name: 'Kimi (Moonshot AI)', baseUrl: 'https://api.moonshot.ai/v1', secret: 'MOONSHOT_API_KEY' },
   zai: { name: 'GLM (Z.ai / Zhipu)', baseUrl: 'https://api.z.ai/api/paas/v4', secret: 'ZAI_API_KEY' },
+  openai: { name: 'OpenAI', baseUrl: 'https://api.openai.com/v1', secret: 'OPENAI_API_KEY' },
 } as const;
 
 export type ProviderId = keyof typeof PROVIDERS;
@@ -273,7 +274,9 @@ export function settingKey(name: 'bot' | 'keys' | 'auto_suggestions', bot: strin
   return bot === 'default' ? name : `${name}:${bot}`;
 }
 
-const PROVIDER_SECRETS = ['GEMINI_API_KEY', 'GROQ_API_KEY', 'OPENROUTER_API_KEY', 'CEREBRAS_API_KEY', 'SAMBANOVA_API_KEY', 'HF_TOKEN', 'DEEPSEEK_API_KEY', 'MOONSHOT_API_KEY', 'ZAI_API_KEY', 'LLM_CHAIN', 'SYSTEM_PROMPT', 'MIN_SCORE'] as const;
+// Every provider key in the registry, plus platform-only tuning vars. Derived from PROVIDERS so a new
+// provider can never be forgotten here (which would let user bots spend the platform's key).
+const PROVIDER_SECRETS = [...KEYED_PROVIDERS.map((p) => PROVIDERS[p].secret), 'LLM_CHAIN', 'SYSTEM_PROMPT', 'MIN_SCORE'];
 
 /**
  * The environment a bot may use. The platform's own provider secrets (and env-level defaults)

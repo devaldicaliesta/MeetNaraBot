@@ -21,7 +21,7 @@ const q = (s) => `'${s.replace(/'/g, "''")}'`;
 const doc = (bot, prefix, name, rows) => [
   `INSERT INTO file (id, bot_id, name, status, chunk_count, embedder) VALUES ('${prefix}-file', '${bot}', '${name}', 'selesai', ${rows.length}, 'workers-ai');`,
   ...rows.flatMap(([label, text], i) => [
-    `INSERT INTO chunks (id, bot_id, idx, label, text) VALUES ('${prefix}-${i}', '${bot}', ${i}, ${q(label)}, ${q(text)});`,
+    `INSERT INTO chunks (id, bot_id, file_id, idx, label, text) VALUES ('${prefix}-${i}', '${bot}', '${prefix}-file', ${i}, ${q(label)}, ${q(text)});`,
     `INSERT INTO chunks_fts (chunk_id, bot_id, label, text) VALUES ('${prefix}-${i}', '${bot}', ${q(label)}, ${q(text)});`,
   ]),
 ];
@@ -41,6 +41,8 @@ const sql = [
   account('qausertwo0000002', 'owner-b@qa.test', 'owner-b-password', future),
   `INSERT INTO bots (id, owner_id, name) VALUES ('qabotaaaa1', 'qauserone0000001', 'Bot A'), ('qabotbbbb2', 'qausertwo0000002', 'Bot B');`,
   ...doc('qabotaaaa1', 'qaaaaaaa', 'katalog-a.md', [['Katalog A › Kode', 'Kode promo rahasia toko A adalah MANGGA-4417 dan berlaku sampai akhir bulan.']]),
+  // Bot A has a second document: answers must name the document each excerpt came from.
+  ...doc('qabotaaaa1', 'qaaaaab2', 'jam-buka-a.md', [['Jam Buka › Toko', 'Toko A buka setiap hari pukul 08.00 sampai 21.00, kecuali hari Minggu.']]),
   ...doc('qabotbbbb2', 'qabbbbbb', 'katalog-b.md', [['Katalog B › Kode', 'Kode promo rahasia toko B adalah DURIAN-9083 untuk pelanggan setia.']]),
   // An account whose 7-day period is over, with a bot
   account('qauserexpired003', 'expired@qa.test', 'expired-password', past),

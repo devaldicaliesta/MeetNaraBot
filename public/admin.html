@@ -147,7 +147,9 @@ input[type=range]{width:100%;accent-color:var(--laut)}
 .drop{display:grid;place-items:center;text-align:center;gap:8px;padding:44px 20px;border:2px dashed var(--ink-3);border-radius:var(--r);background:var(--canvas);cursor:pointer;transition:border-color .15s,background .15s}
 .drop:hover,.drop.over{border-color:var(--laut);background:var(--laut-soft)}
 .drop b{font-size:16px}
-.doc-card{display:grid;grid-template-columns:auto 1fr auto;gap:16px;align-items:center}
+.doc-card{display:grid;grid-template-columns:auto 1fr auto;gap:16px;align-items:center;padding:14px 0;border-bottom:1px solid var(--line)}
+.doc-card:last-child{border-bottom:0}
+.doc-card h3{margin:0 0 4px;font-size:16px;overflow-wrap:anywhere}
 .doc-icon{display:grid;place-items:center;width:52px;height:60px;border-radius:12px;border:1.5px solid var(--ink);background:var(--lilac);color:var(--ink);font-weight:800;font-size:12px;letter-spacing:.02em}
 .doc-meta{display:flex;flex-wrap:wrap;gap:6px 16px;font-size:13px;color:var(--ink-2);margin-top:4px}
 .progress{height:8px;border-radius:99px;background:var(--canvas);overflow:hidden;margin:14px 0 8px}
@@ -352,10 +354,22 @@ input[type=range]{width:100%;accent-color:var(--laut)}
 
     <!-- ===== Dokumen ===== -->
     <section class="page hidden" data-page="dokumen">
-      <div class="page-head"><div><h1>Dokumen</h1><p>Chatbot hanya menjawab dari satu dokumen ini. Dokumen dipotong di browser, lalu tiap potongan diubah menjadi vektor dan diindeks untuk pencarian kata kunci.</p></div></div>
+      <div class="page-head"><div><h1>Dokumen</h1><p>Chatbot menjawab dari semua dokumen di halaman ini sekaligus, dan tiap jawaban menyebut dokumen sumbernya. Dokumen dipotong di browser, lalu tiap potongan diubah menjadi vektor dan diindeks untuk pencarian kata kunci.</p></div></div>
+
+      <div class="panel hidden" id="docActive">
+        <div class="panel-head" style="margin-bottom:6px"><div><h2 id="docCount">Dokumen aktif</h2><p id="docEmbedNote" class="small muted"></p></div></div>
+        <div id="docList"></div>
+        <div class="divider"></div>
+        <div class="panel-head" style="margin-bottom:10px"><div><h3>Saran pertanyaan otomatis</h3><p>Dibuat AI dari isi dokumen. Tampil di widget jika Anda belum mengisi saran manual di menu Bot &amp; model.</p></div><button class="btn ghost sm" id="regenSug" type="button">Buat ulang</button></div>
+        <div class="sug-list" id="sugList"></div>
+        <div class="divider"></div>
+        <div class="panel-head" style="margin-bottom:10px"><div><h3>Isi potongan tersimpan</h3><p>Periksa apakah potongan dan label bagiannya masuk akal. Klik potongan untuk membuka teks lengkap.</p></div></div>
+        <div class="row" style="margin-bottom:10px"><input type="text" id="chunkQ" placeholder="Cari teks di potongan…" style="max-width:320px"><button class="btn ghost sm" id="chunkMore" type="button">Muat 30 berikutnya</button></div>
+        <div class="chunks" id="chunkList"></div>
+      </div>
 
       <div class="panel" id="docEmpty">
-        <div class="panel-head"><div><h2>Unggah dokumen</h2><p>Paling akurat: <b>.md</b> dengan judul bagian (#, ##). Juga didukung .txt, .csv, .json, .html, .pdf (berbasis teks), dan .docx. Maksimal 10 MB.</p></div></div>
+        <div class="panel-head"><div><h2 id="uploadTitle">Unggah dokumen</h2><p>Paling akurat: <b>.md</b> dengan judul bagian (#, ##). Juga didukung .txt, .csv, .json, .html, .pdf (berbasis teks), dan .docx. Maksimal 10 MB.</p></div></div>
         <label class="drop" id="drop">
           <input type="file" id="fileInput" accept=".md,.markdown,.txt,.csv,.json,.html,.htm,.pdf,.docx" hidden>
           <b>Pilih file atau seret ke sini</b>
@@ -384,21 +398,7 @@ input[type=range]{width:100%;accent-color:var(--laut)}
         </div>
       </div>
 
-      <div class="panel hidden" id="docActive">
-        <div class="doc-card">
-          <div class="doc-icon" id="docExt">MD</div>
-          <div><h2 id="docName">–</h2><div class="doc-meta" id="docMeta"></div></div>
-          <div class="row"><button class="btn danger" type="button" id="docDelete">Hapus dokumen</button></div>
-        </div>
-        <div class="err hidden" id="docErr" style="margin-top:14px"></div>
-        <div class="divider"></div>
-        <div class="panel-head" style="margin-bottom:10px"><div><h3>Saran pertanyaan otomatis</h3><p>Dibuat AI dari isi dokumen. Tampil di widget jika Anda belum mengisi saran manual di menu Bot &amp; model.</p></div><button class="btn ghost sm" id="regenSug" type="button">Buat ulang</button></div>
-        <div class="sug-list" id="sugList"></div>
-        <div class="divider"></div>
-        <div class="panel-head" style="margin-bottom:10px"><div><h3>Isi potongan tersimpan</h3><p>Periksa apakah potongan dan label bagiannya masuk akal. Klik potongan untuk membuka teks lengkap.</p></div></div>
-        <div class="row" style="margin-bottom:10px"><input type="text" id="chunkQ" placeholder="Cari teks di potongan…" style="max-width:320px"><button class="btn ghost sm" id="chunkMore" type="button">Muat 30 berikutnya</button></div>
-        <div class="chunks" id="chunkList"></div>
-      </div>
+
     </section>
 
     <!-- ===== Model ===== -->
@@ -572,10 +572,10 @@ const DICT = {
   'Binding Cloudflare aktif': 'Cloudflare bindings active', 'D1, Vectorize, dan Workers AI terhubung.': 'D1, Vectorize and Workers AI are connected.',
   'Kunci Gemini tersimpan': 'Gemini key saved', 'Gemini menjadi model utama.': 'Gemini is the primary model.', 'Penyedia lain sudah ada, tetapi Gemini belum.': 'Other providers are set, but Gemini is not.',
   'Tanpa kunci, chatbot memakai cadangan Workers AI.': 'Without a key, the chatbot uses the Workers AI fallback.', 'Dokumen terindeks': 'Document indexed',
-  'Unggahan belum selesai. Hapus lalu unggah ulang.': 'The upload did not finish. Delete it and upload again.', 'Unggah satu dokumen sebagai sumber jawaban.': 'Upload one document as the source of answers.',
+  'Unggahan belum selesai. Hapus lalu unggah ulang.': 'The upload did not finish. Delete it and upload again.', 'Unggah satu atau beberapa dokumen sebagai sumber jawaban.': 'Upload one or more documents as the answer source.',
   'Kata sandi admin kuat': 'Strong admin password', 'Kata sandi kurang dari 12 karakter. Ganti secret ADMIN_PASSWORD dengan kalimat sandi yang lebih panjang.': 'The password is shorter than 12 characters. Replace the ADMIN_PASSWORD secret with a longer passphrase.', 'Kata sandi admin minimal 12 karakter.': 'The admin password is at least 12 characters long.', 'Bot yang sama bisa menjawab lewat chat Telegram dan WhatsApp, memakai dokumen, pengaturan, dan kuota yang sama dengan widget.': 'The same bot can answer in Telegram and WhatsApp chats, using the same document, settings and quotas as the widget.', 'Muat ulang': 'Reload', 'Memuat status saluran…': 'Loading channel status…', 'Kembali ke beranda': 'Back to home', '← Kembali ke beranda': '← Back to home', 'Daftar': 'Sign up', 'Masuk ke akun Anda': 'Sign in to your account', 'Nama': 'Name', 'Email': 'E-mail', 'Kata sandi': 'Password', 'Minimal 10 karakter. Akun aktif selama 7 hari sejak mendaftar; setelah itu akun dan semua datanya dihapus otomatis.': 'At least 10 characters. Accounts are active for 7 days from sign-up; after that the account and all of its data are deleted automatically.', 'Masuk sebagai admin platform': 'Sign in as the platform admin', 'Bot aktif': 'Active bot', '+ Bot baru': '+ New bot', 'Hapus bot': 'Delete bot', 'Domain website dibatasi': 'Website domain restricted', 'Disarankan agar widget hanya bisa dipakai di website Anda.': 'Recommended so the widget only works on your website.',
   'Kunci belum diatur, akan dilewati': 'Key not set, will be skipped', 'Perlu tindakan': 'Needs attention',
-  'Chatbot hanya menjawab dari satu dokumen ini. Dokumen dipotong di browser, lalu tiap potongan diubah menjadi vektor dan diindeks untuk pencarian kata kunci.': 'The chatbot answers only from this one document. It is split into chunks in your browser, then each chunk is turned into a vector and indexed for keyword search.',
+  'Chatbot menjawab dari semua dokumen di halaman ini sekaligus, dan tiap jawaban menyebut dokumen sumbernya. Dokumen dipotong di browser, lalu tiap potongan diubah menjadi vektor dan diindeks untuk pencarian kata kunci.': 'The chatbot answers from every document on this page at once, and each answer names its source document. Documents are split in the browser, then each chunk is turned into a vector and indexed for keyword search.',
   'Unggah dokumen': 'Upload a document', 'Paling akurat:': 'Most accurate:',
   'dengan judul bagian (#, ##). Juga didukung .txt, .csv, .json, .html, .pdf (berbasis teks), dan .docx. Maksimal 10 MB.': 'with section headings (#, ##). Also supported: .txt, .csv, .json, .html, .pdf (text-based) and .docx. Maximum 10 MB.',
   'Pilih file atau seret ke sini': 'Choose a file or drop it here', 'Dokumen dibaca di browser Anda; yang dikirim ke server hanya potongan teksnya.': 'The document is read in your browser; only its text chunks are sent to the server.',
@@ -676,7 +676,7 @@ function trText(id) {
   for (const [re, rep] of RULES) if (re.test(id)) return id.replace(re, rep);
   return null;
 }
-const SKIP = 'script,style,textarea,pre,code,[data-noi18n],.chunk p,.chunk-head span,.log-q,.log-a,.q,.a p,.a li,#docName,#sugList,#xray dd:first-of-type,.chain-step small,.test-out';
+const SKIP = 'script,style,textarea,pre,code,[data-noi18n],.chunk p,.chunk-head span,.log-q,.log-a,.q,.a p,.a li,#docList h3,#sugList,#xray dd:first-of-type,.chain-step small,.test-out';
 function i18nNode(root) {
   const el = root.nodeType === 1 ? root : root.parentElement;
   if (!el) return;
@@ -1044,7 +1044,7 @@ function renderOverview() {
   const steps = [
     { done: st.bindings.db && st.bindings.vectorize && st.bindings.ai, title: 'Binding Cloudflare aktif', text: 'D1, Vectorize, dan Workers AI terhubung.', link: null },
     { done: geminiKey, title: 'Kunci Gemini tersimpan', text: geminiKey ? 'Gemini menjadi model utama.' : hasKey ? 'Penyedia lain sudah ada, tetapi Gemini belum.' : 'Tanpa kunci, chatbot memakai cadangan Workers AI.', link: '#model' },
-    { done: doc, title: 'Dokumen terindeks', text: doc ? `${st.file.name} · ${fmt(st.file.chunk_count)} potongan` : st.file ? 'Unggahan belum selesai. Hapus lalu unggah ulang.' : 'Unggah satu dokumen sebagai sumber jawaban.', link: '#dokumen' },
+    { done: doc, title: 'Dokumen terindeks', text: doc ? `${st.file.name} · ${fmt(st.file.chunk_count)} potongan` : st.file ? 'Unggahan belum selesai. Hapus lalu unggah ulang.' : 'Unggah satu atau beberapa dokumen sebagai sumber jawaban.', link: '#dokumen' },
     { done: (S.cfg.settings.allowedOrigins || []).length > 0, title: 'Domain website dibatasi', text: 'Disarankan agar widget hanya bisa dipakai di website Anda.', link: '#pasang' },
     ...(st.platform === false ? [] : [{ done: !st.weakPassword, title: 'Kata sandi admin kuat', text: st.weakPassword ? 'Kata sandi kurang dari 12 karakter. Ganti secret ADMIN_PASSWORD dengan kalimat sandi yang lebih panjang.' : 'Kata sandi admin minimal 12 karakter.', link: null }]),
   ];
@@ -1248,21 +1248,29 @@ function chunkSections(parsed, size, overlap) {
 /*  Document UI                                                         */
 /* =================================================================== */
 function renderDoc() {
-  const f = S.status.file;
-  const active = !!f;
-  $('#docEmpty').classList.toggle('hidden', active);
-  $('#docActive').classList.toggle('hidden', !active);
+  const files = S.status.files || (S.status.file ? [S.status.file] : []);
+  const max = S.status.maxFiles || 10;
+  const busy = files.some((f) => f.status === 'diproses');
+  $('#docActive').classList.toggle('hidden', !files.length);
+  // Uploading stays available next to the list until the bot reaches its document limit.
+  $('#docEmpty').classList.toggle('hidden', files.length >= max && !S.prepared);
+  $('#uploadTitle').textContent = files.length ? L('Tambah dokumen', 'Add a document') : L('Unggah dokumen', 'Upload a document');
   $('#cSize').value = S.draft.rag.chunkSize;
   $('#cOverlap').value = S.draft.rag.chunkOverlap;
-  if (!active) return;
-  $('#docName').textContent = f.name;
-  $('#docExt').textContent = (f.name.split('.').pop() || 'DOC').slice(0, 4).toUpperCase();
-  const statusPill = f.status === 'selesai' ? '<span class="pill ok">Aktif</span>' : f.status === 'diproses' ? '<span class="pill wait">Belum selesai</span>' : '<span class="pill no">Gagal</span>';
-  $('#docMeta').innerHTML = `${statusPill}<span>${fmt(f.chunk_count)} potongan</span><span>Embedding: ${f.embedder === 'gemini' ? 'Gemini' : 'Workers AI bge-m3'}</span><span>Diunggah ${new Date(f.created_at.replace(' ', 'T') + 'Z').toLocaleString(LOCALE(), { dateStyle: 'medium', timeStyle: 'short' })}</span>`;
-  const err = $('#docErr');
-  err.classList.toggle('hidden', f.status === 'selesai');
-  err.textContent = f.status === 'selesai' ? '' : 'Unggahan sebelumnya terhenti sebelum selesai, jadi chatbot belum bisa menjawab. Hapus dokumen ini lalu unggah ulang.';
-  if (f.status === 'selesai') loadSuggestions();
+  if (!files.length) return;
+  $('#docCount').textContent = L(`Dokumen aktif (${files.length} dari ${max})`, `Active documents (${files.length} of ${max})`);
+  const emb = files.find((f) => f.embedder)?.embedder;
+  $('#docEmbedNote').textContent = emb
+    ? L(`Semua dokumen bot ini memakai embedding ${emb === 'gemini' ? 'Gemini' : 'Workers AI bge-m3'}, termasuk dokumen berikutnya. Untuk ganti model embedding, hapus semua dokumen dulu.`, `Every document of this bot uses ${emb === 'gemini' ? 'Gemini' : 'Workers AI bge-m3'} embeddings, including the next one. To switch embedding models, delete all documents first.`)
+    : '';
+  const when = (f) => new Date(f.created_at.replace(' ', 'T') + 'Z').toLocaleString(LOCALE(), { dateStyle: 'medium', timeStyle: 'short' });
+  $('#docList').innerHTML = files.map((f) => {
+    const pill = f.status === 'selesai' ? `<span class="pill ok">${L('Aktif', 'Active')}</span>` : f.status === 'diproses' ? `<span class="pill wait">${L('Belum selesai', 'Not finished')}</span>` : `<span class="pill no">${L('Gagal', 'Failed')}</span>`;
+    const note = f.status === 'selesai' ? '' : `<p class="small" style="margin:6px 0 0;color:var(--bata)">${L('Unggahan ini terhenti sebelum selesai, jadi belum dipakai chatbot. Hapus lalu unggah ulang.', 'This upload stopped before it finished, so the chatbot does not use it yet. Delete it and upload again.')}</p>`;
+    return `<div class="doc-card"><div class="doc-icon">${esc((f.name.split('.').pop() || 'DOC').slice(0, 4).toUpperCase())}</div><div><h3>${esc(f.name)}</h3><div class="doc-meta">${pill}<span>${fmt(f.chunk_count)} ${L('potongan', 'chunks')}</span><span>${L('Diunggah', 'Uploaded')} ${when(f)}</span></div>${note}</div><div class="row"><button class="btn danger sm" type="button" data-del="${esc(f.id)}" data-name="${esc(f.name)}">${L('Hapus', 'Delete')}</button></div></div>`;
+  }).join('');
+  if (busy && !S.prepared) $('#docEmpty').classList.add('hidden');
+  if (files.some((f) => f.status === 'selesai')) loadSuggestions();
 }
 
 async function loadSuggestions() {
@@ -1347,7 +1355,7 @@ function maskPii(text, kinds) {
   for (const s of piiSpans(text)) { if (!kinds.includes(s.kind)) continue; out += text.slice(pos, s.start) + PII_TAG[s.kind]; pos = s.end; }
   return out + text.slice(pos);
 }
-const chunkHtml = (i, label, text) => `<div class="chunk" tabindex="0"><div class="chunk-head"><span>${esc(label)}</span><small>#${i + 1} · ${fmt(text.length)} kar.</small></div><p>${esc(text)}</p></div>`;
+const chunkHtml = (i, label, text, doc) => `<div class="chunk" tabindex="0"><div class="chunk-head"><span>${doc ? esc(doc) + ' › ' : ''}${esc(label)}</span><small>#${i + 1} · ${fmt(text.length)} kar.</small></div><p>${esc(text)}</p></div>`;
 document.addEventListener('click', (e) => { const c = e.target.closest('.chunk'); if (c) c.classList.toggle('open'); });
 
 $('#prepGo').addEventListener('click', async () => {
@@ -1360,36 +1368,44 @@ $('#prepGo').addEventListener('click', async () => {
   const set = (p, t) => { bar.firstElementChild.style.width = p + '%'; txt.textContent = t; };
   // Remember the chunking choice for next time.
   S.draft.rag.chunkSize = Number($('#cSize').value); S.draft.rag.chunkOverlap = Number($('#cOverlap').value);
+  let reg = null;
   try {
     set(2, 'Mendaftarkan dokumen…');
-    const reg = await api('/api/admin/file', { method: 'POST', body: JSON.stringify({ name: file.name }) });
+    reg = await api('/api/admin/file', { method: 'POST', body: JSON.stringify({ name: file.name }) });
     const B = 20;
     for (let i = 0; i < chunks.length; i += B) {
       const range = `${fmt(i + 1)}–${fmt(Math.min(i + B, chunks.length))}`, emb = reg.embedder === 'gemini' ? 'Gemini' : 'Workers AI';
       set(Math.round((i / chunks.length) * 90) + 3, L(`Membuat embedding ${range} dari ${fmt(chunks.length)} potongan (${emb})…`, `Embedding ${range} of ${fmt(chunks.length)} chunks (${emb})…`));
-      const body = JSON.stringify({ startIdx: i, chunks: chunks.slice(i, i + B) });
+      const body = JSON.stringify({ fileId: reg.id, startIdx: i, chunks: chunks.slice(i, i + B) });
       try { await api('/api/admin/file/chunks', { method: 'POST', body }); }
       catch (e) { await new Promise((r) => setTimeout(r, 1500)); await api('/api/admin/file/chunks', { method: 'POST', body }); }
     }
     set(95, 'Menyusun saran pertanyaan dari isi dokumen…');
-    await api('/api/admin/file/done', { method: 'POST' });
+    await api('/api/admin/file/done', { method: 'POST', body: JSON.stringify({ fileId: reg.id }) });
     set(100, 'Selesai. Indeks vektor butuh beberapa detik sebelum bisa dicari.');
     S.prepared = null;
     setTimeout(async () => { $('#prep').classList.add('hidden'); drop.classList.remove('hidden'); bar.classList.add('hidden'); txt.classList.add('hidden'); await refreshStatus(); loadChunks(true); }, 900);
     toast('Dokumen tersimpan dan siap dipakai chatbot.');
   } catch (e) {
     toast(L('Unggahan gagal: ' + e.message + ' Data yang setengah jadi sudah dibersihkan.', 'Upload failed: ' + e.message + ' Partial data has been cleaned up.'), true);
-    await api('/api/admin/file', { method: 'DELETE' }).catch(() => {});
+    // Only the half-finished upload is removed; the bot's other documents stay.
+    if (reg?.id) await api('/api/admin/file?id=' + encodeURIComponent(reg.id), { method: 'DELETE' }).catch(() => {});
     set(0, L('Gagal: ', 'Failed: ') + e.message);
     go.disabled = false;
     await refreshStatus();
   } finally { $('#prepCancel').disabled = false; }
 });
 
-$('#docDelete').addEventListener('click', async () => {
-  if (!confirm(L('Hapus dokumen beserta semua potongan dan vektornya? Chatbot tidak bisa menjawab sampai dokumen baru diunggah.', "Delete the document with all its chunks and vectors? The chatbot can't answer until a new document is uploaded."))) return;
-  try { const r = await api('/api/admin/file', { method: 'DELETE' }); toast(`Dokumen dihapus (${fmt(r.removed)} potongan).`); await refreshStatus(); }
-  catch (e) { toast(e.message, true); }
+$('#docList').addEventListener('click', async (e) => {
+  const b = e.target.closest('[data-del]');
+  if (!b) return;
+  const last = (S.status.files || []).filter((f) => f.status === 'selesai').length <= 1;
+  const msg = L(`Hapus "${b.dataset.name}" beserta semua potongan dan vektornya?`, `Delete "${b.dataset.name}" with all its chunks and vectors?`) +
+    (last ? L(' Ini dokumen terakhir, jadi chatbot tidak bisa menjawab sampai dokumen baru diunggah.', " This is the last document, so the chatbot can't answer until a new one is uploaded.") : '');
+  if (!confirm(msg)) return;
+  b.disabled = true;
+  try { const r = await api('/api/admin/file?id=' + encodeURIComponent(b.dataset.del), { method: 'DELETE' }); toast(L(`Dokumen dihapus (${fmt(r.removed)} potongan).`, `Document deleted (${fmt(r.removed)} chunks).`)); await refreshStatus(); loadChunks(true); }
+  catch (err) { toast(err.message, true); b.disabled = false; }
 });
 $('#regenSug').addEventListener('click', async (e) => {
   e.target.disabled = true;
@@ -1405,14 +1421,14 @@ async function loadChunks(reset) {
   const q = $('#chunkQ').value.trim();
   const { items } = await api(`/api/admin/chunks?offset=${S.chunkOffset}&q=${encodeURIComponent(q)}`);
   S.chunkOffset += items.length;
-  $('#chunkList').insertAdjacentHTML('beforeend', items.map((c) => chunkHtml(c.idx, c.label, c.text)).join('') || (reset ? '<div class="empty">Tidak ada potongan yang cocok.</div>' : ''));
+  $('#chunkList').insertAdjacentHTML('beforeend', items.map((c) => chunkHtml(c.idx, c.label, c.text, (S.status.files || []).length > 1 ? c.document : '')).join('') || (reset ? '<div class="empty">Tidak ada potongan yang cocok.</div>' : ''));
   $('#chunkMore').classList.toggle('hidden', !!q || items.length < 30);
 }
 
 /* =================================================================== */
 /*  Model chain & keys                                                  */
 /* =================================================================== */
-const MODEL_HINTS = { gemini: 'gemini-3.5-flash', groq: 'llama-3.3-70b-versatile', openrouter: 'google/gemini-3.8-flash', cerebras: 'gpt-oss-120b', sambanova: 'Meta-Llama-3.3-70B-Instruct', huggingface: 'openai/gpt-oss-120b', deepseek: 'deepseek-chat', moonshot: 'kimi-k2-turbo-preview', zai: 'glm-4.6', 'workers-ai': '@cf/zai-org/glm-4.7-flash' };
+const MODEL_HINTS = { gemini: 'gemini-3.5-flash', groq: 'llama-3.3-70b-versatile', openrouter: 'google/gemini-3.8-flash', cerebras: 'gpt-oss-120b', sambanova: 'Meta-Llama-3.3-70B-Instruct', huggingface: 'openai/gpt-oss-120b', deepseek: 'deepseek-chat', moonshot: 'kimi-k2-turbo-preview', zai: 'glm-4.6', openai: 'gpt-5-mini', 'workers-ai': '@cf/zai-org/glm-4.7-flash' };
 function renderChain() {
   const box = $('#chainEdit');
   box.innerHTML = S.draft.chain.map((c, i) => `

@@ -1,6 +1,6 @@
 # Nara — Narasumber Anda
 
-Platform chatbot dokumen. Daftar, unggah **satu dokumen** (panduan, FAQ, katalog, peraturan), lalu pasang bot yang menjawab pengunjung **hanya dari isi dokumen itu**, lengkap dengan nomor sumber yang bisa diklik. Berjalan di paket gratis **Cloudflare Workers** dengan **Gemini** sebagai model utama.
+Platform chatbot dokumen. Daftar, unggah **hingga 10 dokumen per bot** (panduan, FAQ, katalog, peraturan), lalu pasang bot yang menjawab pengunjung **hanya dari isi dokumen-dokumen itu**, lengkap dengan nomor sumber yang bisa diklik. Berjalan di paket gratis **Cloudflare Workers** dengan **Gemini** sebagai model utama.
 
 - **Situs:** https://nara.panduarahid.workers.dev
 - **Dashboard:** https://nara.panduarahid.workers.dev/admin

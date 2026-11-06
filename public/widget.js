@@ -45,6 +45,16 @@
     });
   }
 
+  var FILE_NAME = /\.(md|markdown|txt|csv|json|html?|pdf|docx?)$/i;
+  /** "Section › Subsection" for a source. File names (the document, or a heading that is a file name) are never shown. */
+  function shortLabel(s) {
+    var parts = String(s.label || "").split(" › ").filter(function (p) {
+      p = p.trim();
+      return p && p !== s.document && !FILE_NAME.test(p);
+    });
+    return parts.slice(-2).join(" › ");
+  }
+
   /** Picks white or near-black text for a given hex background (WCAG relative luminance). */
   function inkFor(hex) {
     var m = /^#?([0-9a-f]{6})$/i.exec(hex || "");
@@ -333,7 +343,7 @@
         if (!list.length) list = sources.slice(0, 3);
         html += '<div class="sources"><div class="sources-label">' + this.t("sources") + "</div>" + list.map(function (s) {
           return '<button type="button" class="source" data-num="' + (Number(s.number) || 0) + '">' +
-            '<span class="source-head"><span class="source-num">' + (Number(s.number) || 0) + '</span><span class="source-label" title="' + esc(s.label) + '">' + esc(String(s.label).split(" › ").slice(-2).join(" › ")) + "</span></span>" +
+            '<span class="source-head"><span class="source-num">' + (Number(s.number) || 0) + '</span><span class="source-label" title="' + esc(shortLabel(s)) + '">' + esc(shortLabel(s)) + "</span></span>" +
             '<span class="source-snippet">' + esc(s.snippet) + "…</span></button>";
         }).join("") + "</div>";
       }

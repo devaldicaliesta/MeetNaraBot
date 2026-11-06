@@ -6,11 +6,23 @@ export type FormatSource = { number: number; label: string };
 const TELEGRAM_LIMIT = 4096;
 const WHATSAPP_LIMIT = 4096;
 
+const FILE_NAME = /\.(md|markdown|txt|csv|json|html?|pdf|docx?)$/i;
+
+/** "Section › Subsection" shown to visitors: file names (the document, or a heading that is one) are left out. */
+export function visibleLabel(label: string): string {
+  return label
+    .split(' › ')
+    .map((p) => p.trim())
+    .filter((p) => p && !FILE_NAME.test(p))
+    .slice(-2)
+    .join(' › ');
+}
+
 /** Only the sources the answer actually cites, in citation order, with short labels. */
 export function citedSources(text: string, sources: FormatSource[]): FormatSource[] {
   const used = new Set<number>();
   for (const m of text.matchAll(/\[(\d{1,2})\]/g)) used.add(Number(m[1]));
-  return sources.filter((s) => used.has(s.number)).map((s) => ({ number: s.number, label: s.label.split(' › ').slice(-2).join(' › ') }));
+  return sources.filter((s) => used.has(s.number)).map((s) => ({ number: s.number, label: visibleLabel(s.label) }));
 }
 
 /** Drops citation numbers that do not exist and tidies the spacing before kept ones. */

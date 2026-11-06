@@ -1,4 +1,5 @@
 import type { Bindings, ChatMessage } from './types';
+import { adaptBody } from './openai-compat';
 import {
   PROVIDERS,
   WORKERS_AI_PRIMARY,
@@ -16,8 +17,11 @@ import {
 export type FailAttempt = { provider: string; model: string; status: number; message: string };
 
 export class AllProvidersFailed extends Error {
-  constructor(public failed: FailAttempt[]) {
+  failed: FailAttempt[];
+  // A plain field (not a parameter property) so Node's type stripping can load this file in unit tests.
+  constructor(failed: FailAttempt[]) {
     super('Semua penyedia LLM gagal');
+    this.failed = failed;
   }
 }
 
@@ -41,16 +45,15 @@ function httpMessage(status: number): string {
   return `HTTP ${status}`;
 }
 
-function bodyFor(entry: ChainEntry, settings: BotSettings, messages: ChatMessage[], stream: boolean, maxTokens?: number) {
+function bodyFor(entry: ChainEntry, settings: BotSettings, messages: ChatMessage[], stream: boolean, maxTokens?: number, temperature?: number) {
   const body: Record<string, unknown> = {
     model: entry.model,
     messages,
-    temperature: settings.temperature,
+    temperature: temperature ?? settings.temperature,
     max_tokens: maxTokens ?? settings.maxTokens,
     stream,
   };
-  if (entry.provider === 'gemini' && settings.reasoningEffort) body.reasoning_effort = settings.reasoningEffort;
-  return body;
+  return adaptBody(entry.provider, entry.model, body, settings.reasoningEffort);
 }
 
 /** Pulls text out of one SSE `data:` payload, for both OpenAI-style and Workers AI-style chunks. */
@@ -176,7 +179,7 @@ export async function completeChat(
       const res = await fetch(`${PROVIDERS[entry.provider].baseUrl}/chat/completions`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...bodyFor(entry, settings, messages, false, maxTokens), temperature: 0.1 }),
+        body: JSON.stringify(bodyFor(entry, settings, messages, false, maxTokens, 0.1)),
         signal: AbortSignal.timeout(20000),
       });
       if (!res.ok) {

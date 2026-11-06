@@ -30,13 +30,21 @@ const DEFAULTS = {
   limits: { maxQuestionLength: 500, maxHistory: 6, requestsPerMinute: 10, dailyPerIp: 100, dailyTotal: 3000 },
   allowedOrigins: [], logQuestions: true,
 };
-const PROVIDERS = [['workers-ai', 'Workers AI (Cloudflare)', ''], ['gemini', 'Google Gemini', 'GEMINI_API_KEY'], ['groq', 'Groq', 'GROQ_API_KEY'], ['openrouter', 'OpenRouter', 'OPENROUTER_API_KEY'], ['cerebras', 'Cerebras', 'CEREBRAS_API_KEY'], ['sambanova', 'SambaNova', 'SAMBANOVA_API_KEY'], ['huggingface', 'Hugging Face Router', 'HF_TOKEN'], ['deepseek', 'DeepSeek', 'DEEPSEEK_API_KEY'], ['moonshot', 'Kimi (Moonshot AI)', 'MOONSHOT_API_KEY'], ['zai', 'GLM (Z.ai / Zhipu)', 'ZAI_API_KEY']];
+const PROVIDERS = [['workers-ai', 'Workers AI (Cloudflare)', ''], ['gemini', 'Google Gemini', 'GEMINI_API_KEY'], ['groq', 'Groq', 'GROQ_API_KEY'], ['openrouter', 'OpenRouter', 'OPENROUTER_API_KEY'], ['cerebras', 'Cerebras', 'CEREBRAS_API_KEY'], ['sambanova', 'SambaNova', 'SAMBANOVA_API_KEY'], ['huggingface', 'Hugging Face Router', 'HF_TOKEN'], ['deepseek', 'DeepSeek', 'DEEPSEEK_API_KEY'], ['moonshot', 'Kimi (Moonshot AI)', 'MOONSHOT_API_KEY'], ['zai', 'GLM (Z.ai / Zhipu)', 'ZAI_API_KEY'], ['openai', 'OpenAI', 'OPENAI_API_KEY']];
 
 import crypto from 'node:crypto';
 
 // Per-bot state. 'default' is the platform bot (ADMIN_PASSWORD); other bots belong to mock accounts.
-const bots = new Map(); // id -> { owner, name, settings, keys, file, chunks, suggestions, logs }
-const newState = (name = 'Nara') => ({ settings: { ...structuredClone(DEFAULTS), name }, keys: {}, file: null, chunks: [], suggestions: { id: [], en: [] }, logs: [] });
+const bots = new Map(); // id -> { owner, name, settings, keys, files, chunks, suggestions, logs }
+const newState = (name = 'Nara') => ({ settings: { ...structuredClone(DEFAULTS), name }, keys: {}, files: [], chunks: [], suggestions: { id: [], en: [] }, logs: [] });
+const MAX_FILES = 10;
+const docsLabel = (n) => n.length <= 1 ? (n[0] || '') : n.length === 2 ? `${n[0]} dan ${n[1]}` : n.length === 3 ? `${n[0]}, ${n[1]}, dan ${n[2]}` : `${n.length} dokumen`;
+/** Same shape as the Worker's activeFile(): all finished documents as one record, else the newest one. */
+function agg(st) {
+  const ready = st.files.filter((f) => f.status === 'selesai');
+  if (!ready.length) return st.files.length ? { ...st.files[st.files.length - 1] } : null;
+  return { id: ready.map((f) => f.id).join(','), name: docsLabel(ready.map((f) => f.name)), status: 'selesai', chunk_count: ready.reduce((n, f) => n + f.chunk_count, 0), error: null, created_at: ready[ready.length - 1].created_at, embedder: ready[0].embedder, lang: null };
+}
 bots.set('default', { owner: null, name: 'Nara', ...newState('Nara') });
 const users = new Map(); // email -> { id, email, name, password, expires_at }
 const sessions = new Map(); // token -> userId
@@ -57,7 +65,8 @@ const words = (t) => (t.toLowerCase().match(/[\p{L}\p{N}]+/gu) || []).filter((w)
 
 function retrieve(q, s, st) {
   const qw = [...new Set(words(q))];
-  const scored = st.chunks.map((c) => {
+  const ready = new Set(st.files.filter((f) => f.status === 'selesai').map((f) => f.id));
+  const scored = st.chunks.filter((c) => ready.has(c.fileId)).map((c) => {
     const tw = new Set(words(c.label + ' ' + c.text));
     const hit = qw.filter((w) => [...tw].some((t) => t.startsWith(w))).length;
     return { ...c, score: qw.length ? Math.min(0.95, 0.2 + (hit / qw.length) * 0.7) : 0, kw: hit };
@@ -69,13 +78,13 @@ function retrieve(q, s, st) {
 }
 
 function buildSystem(s, st) {
-  const fill = (t) => t.replaceAll('{name}', s.name).replaceAll('{document}', st.file?.name || 'dokumen');
+  const fill = (t) => t.replaceAll('{name}', s.name).replaceAll('{document}', agg(st)?.name || 'dokumen');
   return ['role', 'context', 'task'].map((k) => `<${k}>\n${fill(s.prompt[k])}\n</${k}>`).join('\n\n') +
     `\n\n<knowledge_policy>\n…\n</knowledge_policy>\n\n<rules>\n1. Use ONLY facts found inside <knowledge>.\n…${s.prompt.rules ? '\n' + s.prompt.rules : ''}\n</rules>\n\n<output_format>\n${fill(s.prompt.format)}\n</output_format>\n\n<examples>\n${fill(s.prompt.examples)}\n</examples>\n\n<self_check>\n…\n</self_check>`;
 }
 
 async function streamAnswer(res, question, s, debug, source, lang = 'id', st) {
-  const { file } = st;
+  const file = agg(st);
   res.writeHead(200, { 'Content-Type': 'application/x-ndjson; charset=utf-8', 'Cache-Control': 'no-store', 'Access-Control-Allow-Origin': '*' });
   const emit = (e) => res.write(JSON.stringify(e) + '\n');
   const t0 = Date.now();
@@ -94,7 +103,9 @@ async function streamAnswer(res, question, s, debug, source, lang = 'id', st) {
   }
   const { sel, best, scored } = retrieve(question, s, st);
   if (debug) emit({ type: 'debug', data: { query: question, rewritten: null, embedder: 'workers-ai', keywordQuery: words(question).join(' OR '), bestVectorScore: best, keywordHits: scored.filter((c) => c.kw).length, gate: sel.length ? 'pass' : 'refuse', candidates: scored.slice(0, 10).map((c) => ({ label: c.label, idx: c.idx, vScore: c.score, kRank: c.kw ? 1 : undefined, rrf: 0, selected: sel.includes(c) })), timings: { vector: 3, keyword: 2, total: 6 } } });
-  const sources = sel.map((c, i) => ({ number: i + 1, label: c.label, document: file.name, snippet: c.text.slice(0, 280), score: c.score }));
+  const nameOf = (c) => st.files.find((f) => f.id === c.fileId)?.name || file.name;
+  const multi = st.files.filter((f) => f.status === 'selesai').length > 1;
+  const sources = sel.map((c, i) => ({ number: i + 1, label: multi ? `${nameOf(c)} › ${c.label}` : c.label, document: nameOf(c), snippet: c.text.slice(0, 280), score: c.score }));
   emit({ type: 'sources', items: sources });
   const text = sel.length
     ? `${sel[0].text.split(/(?<=[.!?])\s/).slice(0, 2).join(' ')} [1]${sel[1] ? (lang === 'en' ? `\n\nRelated details are in **${sel[1].label}** [2].` : `\n\nInformasi terkait juga ada di bagian **${sel[1].label}** [2].`) : ''}\n\n${lang === 'en' ? '*(Mock mode: stitched from the top chunk, not written by Gemini.)*' : '*(Mode mock: jawaban disusun dari potongan teratas, bukan dari Gemini.)*'}`
@@ -106,7 +117,8 @@ async function streamAnswer(res, question, s, debug, source, lang = 'id', st) {
 }
 
 function info(lang, st, botId) {
-  const { settings, file, suggestions } = st;
+  const { settings, suggestions } = st;
+  const file = agg(st);
   lang = lang === 'en' || lang === 'id' ? lang : settings.language;
   const en = lang === 'en';
   const ready = file?.status === 'selesai';
@@ -220,7 +232,7 @@ http.createServer(async (req, res) => {
     }
     if (p === '/api/admin/status') {
       const w = st.logs.filter((l) => l.source === 'widget');
-      return send(res, { bot: botId, platform: botId === 'default', account, bindings: { db: true, vectorize: true, ai: true }, file: st.file, botName: st.settings.name, weakPassword: !account && PASSWORD.length < 12, keys: keyStatus(st), chain: chain(st), embedderForNextUpload: st.keys.gemini ? 'gemini' : 'workers-ai', stats: { total: w.length, refused: w.filter((l) => l.refused).length, failed: 0 } });
+      return send(res, { bot: botId, platform: botId === 'default', account, bindings: { db: true, vectorize: true, ai: true }, file: agg(st), files: st.files, maxFiles: MAX_FILES, botName: st.settings.name, weakPassword: !account && PASSWORD.length < 12, keys: keyStatus(st), chain: chain(st), embedderForNextUpload: st.keys.gemini ? 'gemini' : 'workers-ai', stats: { total: w.length, refused: w.filter((l) => l.refused).length, failed: 0 } });
     }
     if (p === '/api/admin/config' && req.method === 'GET') return send(res, { settings: st.settings, defaults: { settings: DEFAULTS, layers: LAYERS }, keys: keyStatus(st), providers: PROVIDERS.map(([id, name]) => ({ id, name })), workersAiModels: ['@cf/zai-org/glm-4.7-flash', '@cf/meta/llama-3.1-8b-instruct-fast'] });
     if (p === '/api/admin/config') {
@@ -234,22 +246,40 @@ http.createServer(async (req, res) => {
     if (p === '/api/admin/prompt-preview') { const s2 = b.settings || st.settings; return send(res, { system: buildSystem(s2, st), user: '<knowledge>\n[1] Contoh Bab › Contoh Subbab\n(Potongan dokumen hasil pencarian akan muncul di sini.)\n</knowledge>\n\n<question>\nContoh pertanyaan pengunjung?\n</question>', chars: buildSystem(s2, st).length }); }
     if (p === '/api/admin/test-provider') return send(res, b.provider === 'workers-ai' || st.keys[b.provider] ? { ok: true, ms: 420, reply: 'siap' } : { ok: false, ms: 5, error: 'Kunci belum diatur' });
     if (p === '/api/admin/file' && req.method === 'POST') {
-      if (st.file) return send(res, { error: T('Sudah ada dokumen aktif. Hapus dulu sebelum mengunggah yang baru.', 'A document is already active. Delete it before uploading a new one.') }, 409);
-      st.file = { id: 'mock-' + botId, name: b.name, status: 'diproses', chunk_count: 0, error: null, created_at: new Date().toISOString().slice(0, 19).replace('T', ' '), embedder: st.keys.gemini ? 'gemini' : 'workers-ai' };
-      st.chunks = [];
-      return send(res, { success: true, id: st.file.id, name: st.file.name, embedder: st.file.embedder });
+      if (st.files.some((f) => f.status === 'diproses')) return send(res, { error: T('Masih ada dokumen yang sedang diproses. Tunggu sampai selesai atau hapus dokumen itu dulu.', 'Another document is still being processed. Wait for it to finish or delete it first.') }, 409);
+      if (st.files.length >= MAX_FILES) return send(res, { error: T(`Maksimal ${MAX_FILES} dokumen per bot. Hapus salah satu dokumen dulu.`, `At most ${MAX_FILES} documents per bot. Delete one first.`) }, 409);
+      const f = { id: `mock-${botId}-${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`, name: String(b.name || 'dokumen.txt').slice(0, 200), status: 'diproses', chunk_count: 0, error: null, created_at: new Date().toISOString().slice(0, 19).replace('T', ' '), embedder: st.files[0]?.embedder || (st.keys.gemini ? 'gemini' : 'workers-ai') };
+      st.files.push(f);
+      return send(res, { success: true, id: f.id, name: f.name, embedder: f.embedder });
     }
-    if (p === '/api/admin/file/chunks') { b.chunks.forEach((c, i) => st.chunks.push({ idx: b.startIdx + i, label: c.label, text: c.text })); st.file.chunk_count = st.chunks.length; await new Promise((r) => setTimeout(r, 150)); return send(res, { success: true, count: b.chunks.length }); }
+    const processing = () => st.files.find((f) => f.status === 'diproses' && (!b.fileId || f.id === b.fileId));
+    if (p === '/api/admin/file/chunks') {
+      const f = processing();
+      if (!f) return send(res, { error: T('Tidak ada dokumen yang sedang diproses.', 'No document is being processed.') }, 400);
+      b.chunks.forEach((c, i) => st.chunks.push({ fileId: f.id, idx: b.startIdx + i, label: c.label, text: c.text }));
+      f.chunk_count = st.chunks.filter((c) => c.fileId === f.id).length; await new Promise((r) => setTimeout(r, 150)); return send(res, { success: true, count: b.chunks.length }); }
     if (p === '/api/admin/file/done') {
-      st.file.status = 'selesai';
+      const f = processing();
+      if (!f) return send(res, { error: T('Tidak ada dokumen yang sedang diproses.', 'No document is being processed.') }, 400);
+      f.status = 'selesai';
       const heads = [...new Set(st.chunks.map((c) => c.label.split(' (')[0].split(' › ').pop()))].filter((l) => !/^Bagian \d+$/.test(l)).slice(0, 4);
       st.suggestions = { id: heads.map((l) => `Apa yang dibahas di bagian "${l}"?`), en: heads.map((l) => `What does the "${l}" section cover?`) };
       return send(res, { success: true, chunkCount: st.chunks.length, suggestions: st.suggestions });
     }
-    if (p === '/api/admin/file' && req.method === 'DELETE') { const n = st.chunks.length; st.file = null; st.chunks = []; st.suggestions = { id: [], en: [] }; return send(res, { success: true, removed: n }); }
+    if (p === '/api/admin/file' && req.method === 'DELETE') {
+      const id = url.searchParams.get('id');
+      if (id !== null && !st.files.some((f) => f.id === id)) return send(res, { error: T('Dokumen tidak ditemukan.', 'Document not found.') }, 404);
+      const gone = (c) => id === null || c.fileId === id;
+      const n = st.chunks.filter(gone).length;
+      st.chunks = st.chunks.filter((c) => !gone(c));
+      st.files = id === null ? [] : st.files.filter((f) => f.id !== id);
+      if (!st.files.some((f) => f.status === 'selesai')) st.suggestions = { id: [], en: [] };
+      return send(res, { success: true, removed: n });
+    }
     if (p === '/api/admin/chunks') {
       const q = (url.searchParams.get('q') || '').toLowerCase(); const off = Number(url.searchParams.get('offset') || 0);
-      return send(res, { items: (q ? st.chunks.filter((c) => (c.label + c.text).toLowerCase().includes(q)) : st.chunks.slice(off)).slice(0, 30) });
+      const withDoc = st.chunks.map((c) => ({ ...c, document: st.files.find((f) => f.id === c.fileId)?.name || null }));
+      return send(res, { items: (q ? withDoc.filter((c) => (c.label + c.text).toLowerCase().includes(q)) : withDoc.slice(off)).slice(0, 30) });
     }
     if (p === '/api/admin/suggestions/regenerate') return send(res, { suggestions: st.suggestions });
     if (p === '/api/admin/test-chat') return streamAnswer(res, String(b.question || '').trim(), b.settings || st.settings, true, 'admin', b.lang === 'en' ? 'en' : 'id', st);

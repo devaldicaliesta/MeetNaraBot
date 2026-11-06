@@ -4,6 +4,7 @@ import { RERANK_MODEL, getKeys, refusalFor, tenantEnv, type BotSettings, type Em
 import { AllProvidersFailed, completeChat, embed, streamChat } from './llm';
 import { cacheScope, lookupExact, lookupSemantic, storeAnswer } from './cache';
 import { checkCitations, detectDocLang } from './grounding';
+import { visibleLabel } from './channel-format';
 import { detectInjection, hasPii, injectionReply, piiKeys, redactPii } from './guard';
 
 /* ------------------------------------------------------------------ */
@@ -58,8 +59,9 @@ export function buildUserTurn(passages: Passage[], question: string, lang: Lang 
 /*  Retrieval                                                            */
 /* ------------------------------------------------------------------ */
 
-type ChunkRow = { id: string; idx: number; label: string; text: string };
-export type Passage = { label: string; text: string; score: number; idx: number };
+type ChunkRow = { id: string; file_id: string | null; idx: number; label: string; text: string };
+/** `fileId` is the document the passage comes from; `idx` is its position inside that document. */
+export type Passage = { label: string; text: string; score: number; idx: number; fileId?: string | null };
 
 const STOPWORDS = new Set(
   (
@@ -182,7 +184,7 @@ export async function retrieve(
   const rows = new Map<string, ChunkRow>();
   if (ids.length) {
     // Tenant isolation, layer 2: every candidate must be a chunk of this bot in D1, whatever the index returned.
-    const res = await env.DB.prepare(`SELECT id, idx, label, text FROM chunks WHERE bot_id = ? AND id IN (${ids.map(() => '?').join(',')})`)
+    const res = await env.DB.prepare(`SELECT id, file_id, idx, label, text FROM chunks WHERE bot_id = ? AND id IN (${ids.map(() => '?').join(',')})`)
       .bind(bot, ...ids)
       .all<ChunkRow>();
     for (const row of res.results || []) rows.set(row.id, row);
@@ -216,45 +218,54 @@ export async function retrieve(
   // 5) Neighbour expansion + merge contiguous chunks into passages.
   const passages: Passage[] = [];
   if (selected.length) {
-    const wanted = new Set<number>();
+    // Neighbours are looked up per document: idx is a position inside one document.
+    const key = (f: string | null, i: number) => `${f ?? ''}:${i}`;
+    const wantedIdx = new Set<number>();
+    const wantedFiles = new Set<string>();
     for (const c of selected) {
-      const idx = rows.get(c.id)!.idx;
-      for (let d = -r.neighborWindow; d <= r.neighborWindow; d++) if (idx + d >= 0) wanted.add(idx + d);
+      const row = rows.get(c.id)!;
+      wantedFiles.add(row.file_id ?? '');
+      for (let d = -r.neighborWindow; d <= r.neighborWindow; d++) if (row.idx + d >= 0) wantedIdx.add(row.idx + d);
     }
-    const idxList = [...wanted];
-    const res = await env.DB.prepare(`SELECT id, idx, label, text FROM chunks WHERE bot_id = ? AND idx IN (${idxList.map(() => '?').join(',')})`)
-      .bind(bot, ...idxList)
+    const idxList = [...wantedIdx];
+    const fileList = [...wantedFiles];
+    const res = await env.DB.prepare(
+      `SELECT id, file_id, idx, label, text FROM chunks WHERE bot_id = ? AND COALESCE(file_id, '') IN (${fileList.map(() => '?').join(',')}) AND idx IN (${idxList.map(() => '?').join(',')})`
+    )
+      .bind(bot, ...fileList, ...idxList)
       .all<ChunkRow>();
-    const byIdx = new Map((res.results || []).map((x) => [x.idx, x]));
-    const used = new Set<number>();
+    const byKey = new Map((res.results || []).map((x) => [key(x.file_id, x.idx), x]));
+    const used = new Set<string>();
     let budget = r.maxContextChars;
 
     for (const c of selected) {
       const hit = rows.get(c.id)!;
-      if (used.has(hit.idx)) continue;
+      const at = (i: number) => byKey.get(key(hit.file_id, i));
+      const isUsed = (i: number) => used.has(key(hit.file_id, i));
+      if (isUsed(hit.idx)) continue;
       let lo = hit.idx;
       let hi = hit.idx;
       // Only glue neighbours from the same section so passages stay coherent.
       const sameSection = (n?: ChunkRow) => !!n && n.label.split(' (')[0] === hit.label.split(' (')[0];
       for (let d = 1; d <= r.neighborWindow; d++) {
-        if (!used.has(hit.idx - d) && sameSection(byIdx.get(hit.idx - d))) lo = hit.idx - d;
+        if (!isUsed(hit.idx - d) && sameSection(at(hit.idx - d))) lo = hit.idx - d;
         else break;
       }
       for (let d = 1; d <= r.neighborWindow; d++) {
-        if (!used.has(hit.idx + d) && sameSection(byIdx.get(hit.idx + d))) hi = hit.idx + d;
+        if (!isUsed(hit.idx + d) && sameSection(at(hit.idx + d))) hi = hit.idx + d;
         else break;
       }
       const parts: string[] = [];
       for (let i = lo; i <= hi; i++) {
-        const row = i === hit.idx ? hit : byIdx.get(i);
+        const row = i === hit.idx ? hit : at(i);
         if (row) parts.push(row.text);
       }
       let text = parts.join('\n\n');
       if (text.length > budget) text = hit.text.slice(0, Math.max(0, budget));
       if (!text) break;
-      for (let i = lo; i <= hi; i++) used.add(i);
+      for (let i = lo; i <= hi; i++) used.add(key(hit.file_id, i));
       budget -= text.length;
-      passages.push({ label: hit.label.split(' (')[0], text, score: c.rerank ?? c.vScore ?? 0, idx: hit.idx });
+      passages.push({ label: hit.label.split(' (')[0], text, score: c.rerank ?? c.vScore ?? 0, idx: hit.idx, fileId: hit.file_id });
       if (budget <= 200) break;
     }
   }
@@ -332,8 +343,11 @@ export type AnswerInput = {
   settings: BotSettings;
   question: string;
   history: ChatMessage[];
-  /** `id` identifies the document version for the answer cache. */
-  file: { id?: string; name: string; embedder: Embedder; lang?: string | null };
+  /**
+   * The bot's documents as one record. `id` identifies the document set for the answer cache,
+   * `name` is a readable label for all of them, and `names` maps each document id to its file name.
+   */
+  file: { id?: string; name: string; embedder: Embedder; lang?: string | null; names?: Record<string, string> };
   lang: Lang;
   debug: boolean;
   emit: (e: ChatEvent) => Promise<void>;
@@ -424,11 +438,16 @@ export async function answer({ env: rawEnv, settings: baseSettings, question, hi
   const lastUser = [...history].reverse().find((m) => m.role === 'user')?.content;
   const query = rewritten || (history.length && lastUser ? `${lastUser.slice(0, 300)}\n${question}` : question);
 
-  const { passages, debug: dbg } = await retrieve(env, keys, settings, file.embedder, query, bot, query === question ? queryVector : null);
+  const { passages: found, debug: dbg } = await retrieve(env, keys, settings, file.embedder, query, bot, query === question ? queryVector : null);
+  // With several documents, each excerpt says which document it is from (for the model and the visitor).
+  const names = file.names || {};
+  const docOf = (p: Passage) => (p.fileId && names[p.fileId]) || file.name;
+  const multi = Object.keys(names).length > 1;
+  const passages = multi ? found.map((p) => ({ ...p, label: `${docOf(p)} › ${p.label}` })) : found;
   const sources: Source[] = passages.map((p, i) => ({
     number: i + 1,
     label: p.label,
-    document: file.name,
+    document: docOf(p),
     snippet: p.text.replace(/\s+/g, ' ').slice(0, 280),
     score: Number(p.score.toFixed(3)),
   }));
@@ -503,7 +522,7 @@ export function excerptFallback(passages: Passage[], lang: Lang, quota: boolean)
     const end = clean.lastIndexOf('. ', 420);
     return (end > 200 ? clean.slice(0, end + 1) : clean.slice(0, 420)) + ' …';
   };
-  const parts = passages.slice(0, 2).map((p, i) => `**${p.label.split(' › ').slice(-2).join(' › ')}** [${i + 1}]\n${cut(p.text)}`);
+  const parts = passages.slice(0, 2).map((p, i) => `**${visibleLabel(p.label)}** [${i + 1}]\n${cut(p.text)}`);
   const why = en
     ? quota
       ? "Sorry, the AI that writes my answers has used up today's quota"
