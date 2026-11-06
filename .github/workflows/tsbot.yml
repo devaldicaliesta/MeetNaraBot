@@ -2,7 +2,7 @@
 # (or https://tsbot-nara.pages.dev when tsbot.pages.dev is already taken; imtsbot.pages.dev is IMTS itself)
 #
 # Secrets (already used by deploy.yml): CLOUDFLARE_API_TOKEN (also needs "Cloudflare Pages: Edit"), CLOUDFLARE_ACCOUNT_ID
-# Repository variables (Settings > Secrets and variables > Actions > Variables):
+# Repository variables or secrets (Settings > Secrets and variables > Actions; Variables tab preferred):
 #   NARA_API_URL  origin of the Nara Worker, e.g. https://nara.<subdomain>.workers.dev   (required)
 #   NARA_BOT_ID   bot id TSbot chats with (empty = the platform bot)
 #   IMTS_ORIGIN   origin(s) of IMTS allowed to iframe TSbot, comma-separated, e.g. https://imts.example.com
@@ -37,9 +37,9 @@ jobs:
     env:
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
       CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-      NARA_API_URL: ${{ vars.NARA_API_URL }}
-      NARA_BOT_ID: ${{ vars.NARA_BOT_ID }}
-      IMTS_ORIGIN: ${{ vars.IMTS_ORIGIN }}
+      NARA_API_URL: ${{ vars.NARA_API_URL || secrets.NARA_API_URL }}
+      NARA_BOT_ID: ${{ vars.NARA_BOT_ID || secrets.NARA_BOT_ID }}
+      IMTS_ORIGIN: ${{ vars.IMTS_ORIGIN || secrets.IMTS_ORIGIN }}
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-node@v5
