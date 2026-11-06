@@ -1428,7 +1428,7 @@ async function loadChunks(reset) {
 /* =================================================================== */
 /*  Model chain & keys                                                  */
 /* =================================================================== */
-const MODEL_HINTS = { gemini: 'gemini-3.5-flash', groq: 'llama-3.3-70b-versatile', openrouter: 'google/gemini-3.8-flash', cerebras: 'gpt-oss-120b', sambanova: 'Meta-Llama-3.3-70B-Instruct', huggingface: 'openai/gpt-oss-120b', deepseek: 'deepseek-chat', moonshot: 'kimi-k2-turbo-preview', zai: 'glm-4.6', openai: 'gpt-5-mini', 'workers-ai': '@cf/zai-org/glm-4.7-flash' };
+const MODEL_HINTS = { gemini: 'gemini-3.5-flash', groq: 'llama-3.3-70b-versatile', openrouter: 'google/gemini-3.8-flash', cerebras: 'gpt-oss-120b', sambanova: 'Meta-Llama-3.3-70B-Instruct', huggingface: 'openai/gpt-oss-120b', deepseek: 'deepseek-chat', moonshot: 'kimi-k2-turbo-preview', zai: 'glm-4.6', openai: 'gpt-5-mini', cloudflare: '@cf/meta/llama-3.3-70b-instruct-fp8-fast', cohere: 'command-a-03-2025', nvidia: 'meta/llama-3.3-70b-instruct', mistral: 'mistral-small-latest', together: 'meta-llama/Llama-3.3-70B-Instruct-Turbo', fireworks: 'accounts/fireworks/models/llama-v3p3-70b-instruct', xai: 'grok-3-mini', 'workers-ai': '@cf/zai-org/glm-4.7-flash' };
 function renderChain() {
   const box = $('#chainEdit');
   box.innerHTML = S.draft.chain.map((c, i) => `
@@ -1476,8 +1476,8 @@ function renderKeys() {
     const pending = k.id in S.keyEdits;
     const state = pending ? (S.keyEdits[k.id] ? '<span class="pill wait">Akan disimpan</span>' : '<span class="pill wait">Akan dihapus</span>')
       : k.source === 'dashboard' ? '<span class="pill ok">Tersimpan</span>' : k.source === 'secret' ? '<span class="pill ok">Dari secret</span>' : '<span class="pill">Belum ada</span>';
-    return `<div class="key-row" data-id="${k.id}"><div><b>${esc(k.name)}</b><small>secret: ${esc(k.secret)}</small></div>
-      <input type="password" autocomplete="new-password" spellcheck="false" placeholder="${k.configured ? 'Tempel kunci baru untuk mengganti' : 'Tempel kunci API'}" aria-label="Kunci ${esc(k.name)}">
+    return `<div class="key-row" data-id="${k.id}"><div><b>${esc(k.name)}</b><small>secret: ${esc(k.secret)}${k.id === 'cloudflare' ? ' · ' + L('format ACCOUNT_ID:API_TOKEN (token dengan izin Workers AI)', 'format ACCOUNT_ID:API_TOKEN (token with Workers AI permission)') : ''}</small></div>
+      <input type="password" autocomplete="new-password" spellcheck="false" placeholder="${k.configured ? 'Tempel kunci baru untuk mengganti' : k.id === 'cloudflare' ? 'ACCOUNT_ID:API_TOKEN' : 'Tempel kunci API'}" aria-label="Kunci ${esc(k.name)}">
       <div class="row">${state}${k.source === 'dashboard' && !pending ? '<button class="btn ghost sm" type="button" data-a="clear">Hapus</button>' : ''}</div></div>`;
   }).join('');
 }

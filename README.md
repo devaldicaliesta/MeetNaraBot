@@ -23,7 +23,7 @@ Platform chatbot dokumen. Daftar, unggah **hingga 10 dokumen per bot** (panduan,
 |---|---|
 | Runtime | Cloudflare Workers + [Hono](https://hono.dev) (TypeScript) |
 | Data | D1 (SQLite + FTS5), Vectorize (1024 dimensi) |
-| AI | Gemini, Workers AI (bge-m3, bge-reranker, GLM/Llama cadangan), serta DeepSeek, Kimi, GLM, Groq, OpenRouter, Hugging Face, dan lainnya |
+| AI | Gemini, Workers AI (bge-m3, bge-reranker, GLM/Llama cadangan; atau lewat akun Cloudflare sendiri), serta OpenAI, Mistral, Cohere, NVIDIA NIM, xAI, DeepSeek, Kimi, GLM, Groq, OpenRouter, Together AI, Fireworks AI, Hugging Face, dan lainnya |
 | Frontend | HTML/CSS/JS tanpa framework; widget berupa Web Component |
 | QA & CI/CD | Playwright, `node:test`, GitHub Actions → `wrangler deploy` |
 

@@ -19,3 +19,17 @@ export function adaptBody(provider: string, model: string, body: Record<string, 
   }
   return body;
 }
+
+/**
+ * Chat-completions URL and bearer token for a provider. A base URL with `{account}` (Workers AI over
+ * REST) takes a key of the form "<32-hex account id>:<API token>"; the account id is validated
+ * strictly before it goes into the URL. Returns null when such a key is malformed.
+ */
+export function endpointFor(baseUrl: string, key: string): { url: string; token: string } | null {
+  if (!baseUrl.includes('{account}')) return { url: `${baseUrl}/chat/completions`, token: key };
+  const i = key.indexOf(':');
+  const account = key.slice(0, i).trim().toLowerCase();
+  const token = key.slice(i + 1).trim();
+  if (i < 0 || !/^[0-9a-f]{32}$/.test(account) || !token) return null;
+  return { url: `${baseUrl.replace('{account}', account)}/chat/completions`, token };
+}

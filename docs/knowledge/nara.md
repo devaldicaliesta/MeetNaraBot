@@ -33,7 +33,7 @@ Langkah-langkahnya:
 
 Jawaban disusun oleh Google Gemini 3.5 Flash. Kalau Gemini sedang penuh atau kuotanya habis, Nara otomatis pindah ke Gemini 3.5 Flash-Lite, lalu ke model gpt-oss-120b lewat Hugging Face, lalu ke model Workers AI dari Cloudflare. Pengunjung tidak perlu melakukan apa pun saat perpindahan ini terjadi.
 
-Pemilik bot juga bisa memakai model lain dengan menyimpan kunci API-nya sendiri di menu Bot & model: DeepSeek, Kimi (Moonshot AI), GLM (Z.ai), Groq, OpenRouter, Cerebras, SambaNova, dan Hugging Face.
+Pemilik bot juga bisa memakai model lain dengan menyimpan kunci API-nya sendiri di menu Bot & model: OpenAI, Mistral AI, Cohere, NVIDIA NIM, xAI (Grok), DeepSeek, Kimi (Moonshot AI), GLM (Z.ai), Groq, OpenRouter, Together AI, Fireworks AI, Cerebras, SambaNova, Hugging Face, dan Workers AI lewat akun Cloudflare sendiri (kunci berformat ACCOUNT_ID:API_TOKEN).
 
 ### Tempat Nara berjalan
 

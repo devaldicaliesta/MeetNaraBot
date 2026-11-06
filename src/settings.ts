@@ -17,6 +17,14 @@ export const PROVIDERS = {
   moonshot: { name: 'Kimi (Moonshot AI)', baseUrl: 'https://api.moonshot.ai/v1', secret: 'MOONSHOT_API_KEY' },
   zai: { name: 'GLM (Z.ai / Zhipu)', baseUrl: 'https://api.z.ai/api/paas/v4', secret: 'ZAI_API_KEY' },
   openai: { name: 'OpenAI', baseUrl: 'https://api.openai.com/v1', secret: 'OPENAI_API_KEY' },
+  // {account} is filled from the key, which is "<account id>:<API token>" (see endpointFor).
+  cloudflare: { name: 'Workers AI (akun Cloudflare sendiri)', baseUrl: 'https://api.cloudflare.com/client/v4/accounts/{account}/ai/v1', secret: 'CF_WORKERS_AI_KEY' },
+  cohere: { name: 'Cohere', baseUrl: 'https://api.cohere.ai/compatibility/v1', secret: 'COHERE_API_KEY' },
+  nvidia: { name: 'NVIDIA NIM (build.nvidia.com)', baseUrl: 'https://integrate.api.nvidia.com/v1', secret: 'NVIDIA_API_KEY' },
+  mistral: { name: 'Mistral AI (La Plateforme)', baseUrl: 'https://api.mistral.ai/v1', secret: 'MISTRAL_API_KEY' },
+  together: { name: 'Together AI', baseUrl: 'https://api.together.xyz/v1', secret: 'TOGETHER_API_KEY' },
+  fireworks: { name: 'Fireworks AI', baseUrl: 'https://api.fireworks.ai/inference/v1', secret: 'FIREWORKS_API_KEY' },
+  xai: { name: 'xAI (Grok)', baseUrl: 'https://api.x.ai/v1', secret: 'XAI_API_KEY' },
 } as const;
 
 export type ProviderId = keyof typeof PROVIDERS;

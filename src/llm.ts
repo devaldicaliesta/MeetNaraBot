@@ -1,5 +1,5 @@
 import type { Bindings, ChatMessage } from './types';
-import { adaptBody } from './openai-compat';
+import { adaptBody, endpointFor } from './openai-compat';
 import {
   PROVIDERS,
   WORKERS_AI_PRIMARY,
@@ -110,9 +110,11 @@ async function openStream(env: Bindings, keys: KeyStore, settings: BotSettings, 
   }
   const key = resolveKey(env, keys, entry.provider);
   if (!key) throw { status: 0, message: `Kunci ${PROVIDERS[entry.provider].name} belum diatur` };
-  const res = await fetch(`${PROVIDERS[entry.provider].baseUrl}/chat/completions`, {
+  const ep = endpointFor(PROVIDERS[entry.provider].baseUrl, key);
+  if (!ep) throw { status: 0, message: `Format kunci ${PROVIDERS[entry.provider].name} salah: pakai ACCOUNT_ID:API_TOKEN` };
+  const res = await fetch(ep.url, {
     method: 'POST',
-    headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' },
+    headers: { Authorization: `Bearer ${ep.token}`, 'Content-Type': 'application/json' },
     body: JSON.stringify(bodyFor(entry, settings, messages, true)),
     signal: AbortSignal.timeout(60000),
   });
@@ -175,10 +177,11 @@ export async function completeChat(
         continue;
       }
       const key = resolveKey(env, keys, entry.provider);
-      if (!key) continue;
-      const res = await fetch(`${PROVIDERS[entry.provider].baseUrl}/chat/completions`, {
+      const ep = key ? endpointFor(PROVIDERS[entry.provider].baseUrl, key) : null;
+      if (!ep) continue;
+      const res = await fetch(ep.url, {
         method: 'POST',
-        headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' },
+        headers: { Authorization: `Bearer ${ep.token}`, 'Content-Type': 'application/json' },
         body: JSON.stringify(bodyFor(entry, settings, messages, false, maxTokens, 0.1)),
         signal: AbortSignal.timeout(20000),
       });

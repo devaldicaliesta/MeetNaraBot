@@ -30,7 +30,7 @@ const DEFAULTS = {
   limits: { maxQuestionLength: 500, maxHistory: 6, requestsPerMinute: 10, dailyPerIp: 100, dailyTotal: 3000 },
   allowedOrigins: [], logQuestions: true,
 };
-const PROVIDERS = [['workers-ai', 'Workers AI (Cloudflare)', ''], ['gemini', 'Google Gemini', 'GEMINI_API_KEY'], ['groq', 'Groq', 'GROQ_API_KEY'], ['openrouter', 'OpenRouter', 'OPENROUTER_API_KEY'], ['cerebras', 'Cerebras', 'CEREBRAS_API_KEY'], ['sambanova', 'SambaNova', 'SAMBANOVA_API_KEY'], ['huggingface', 'Hugging Face Router', 'HF_TOKEN'], ['deepseek', 'DeepSeek', 'DEEPSEEK_API_KEY'], ['moonshot', 'Kimi (Moonshot AI)', 'MOONSHOT_API_KEY'], ['zai', 'GLM (Z.ai / Zhipu)', 'ZAI_API_KEY'], ['openai', 'OpenAI', 'OPENAI_API_KEY']];
+const PROVIDERS = [['workers-ai', 'Workers AI (Cloudflare)', ''], ['gemini', 'Google Gemini', 'GEMINI_API_KEY'], ['groq', 'Groq', 'GROQ_API_KEY'], ['openrouter', 'OpenRouter', 'OPENROUTER_API_KEY'], ['cerebras', 'Cerebras', 'CEREBRAS_API_KEY'], ['sambanova', 'SambaNova', 'SAMBANOVA_API_KEY'], ['huggingface', 'Hugging Face Router', 'HF_TOKEN'], ['deepseek', 'DeepSeek', 'DEEPSEEK_API_KEY'], ['moonshot', 'Kimi (Moonshot AI)', 'MOONSHOT_API_KEY'], ['zai', 'GLM (Z.ai / Zhipu)', 'ZAI_API_KEY'], ['openai', 'OpenAI', 'OPENAI_API_KEY'], ['cloudflare', 'Workers AI (akun Cloudflare sendiri)', 'CF_WORKERS_AI_KEY'], ['cohere', 'Cohere', 'COHERE_API_KEY'], ['nvidia', 'NVIDIA NIM (build.nvidia.com)', 'NVIDIA_API_KEY'], ['mistral', 'Mistral AI (La Plateforme)', 'MISTRAL_API_KEY'], ['together', 'Together AI', 'TOGETHER_API_KEY'], ['fireworks', 'Fireworks AI', 'FIREWORKS_API_KEY'], ['xai', 'xAI (Grok)', 'XAI_API_KEY']];
 
 import crypto from 'node:crypto';
 
