@@ -105,6 +105,8 @@
       this._ready = true;
       this.base = (this.getAttribute("api-base") || SCRIPT_ORIGIN || "").replace(/\/$/, "");
       // Which bot to talk to (multi-user platform). Without the attribute: the platform's own bot.
+      // mode="inline": fills its container (full-page/iframe use) — always open, no launcher or close.
+      this.inline = this.getAttribute("mode") === "inline";
       this.bot = String(this.getAttribute("bot") || "").toLowerCase().replace(/[^a-z0-9]/g, "").slice(0, 32);
       this.q = this.bot ? "bot=" + this.bot + "&" : "";
       this.storeKey = "tanyasaya:" + this.base + (this.bot ? ":" + this.bot : "");
@@ -215,14 +217,14 @@
       $(".lang").addEventListener("click", function () { if (!self.busy) self.setLang(self.lang === "id" ? "en" : "id"); });
 
       el.launcher.addEventListener("click", function () { self.setOpen(true); });
-      $(".close").addEventListener("click", function () { self.setOpen(false); el.launcher.focus(); });
+      $(".close").addEventListener("click", function () { if (!self.inline) { self.setOpen(false); el.launcher.focus(); } });
       $(".reset").addEventListener("click", function () { if (!self.busy) { self.history = []; self.save(); self.paintAll(); el.input.focus(); } });
       $("form").addEventListener("submit", function (e) { e.preventDefault(); self.ask(el.input.value); });
       el.input.addEventListener("keydown", function (e) {
         if (e.key === "Enter" && !e.shiftKey && !e.isComposing) { e.preventDefault(); self.ask(el.input.value); }
       });
       el.input.addEventListener("input", function () { self.syncInput(); });
-      this.root.addEventListener("keydown", function (e) { if (e.key === "Escape") { self.setOpen(false); el.launcher.focus(); } });
+      this.root.addEventListener("keydown", function (e) { if (e.key === "Escape" && !self.inline) { self.setOpen(false); el.launcher.focus(); } });
 
       // Delegated clicks: suggestions, citations, sources, tools.
       el.log.addEventListener("click", function (e) {
@@ -237,6 +239,7 @@
           t.lastChild.textContent = self.t("copied");
           setTimeout(function () { t.lastChild.textContent = self.t("copy"); }, 1400);
         }
+        if (t.dataset.action === "reload-info") { self.el.sub.textContent = self.t("loading"); return self.fetchInfo(); }
         if (t.dataset.action === "retry") {
           var last = self.history.filter(function (h) { return h.role === "user"; }).pop();
           self.history = self.history.filter(function (h) { return h.role !== "error"; });
@@ -245,6 +248,12 @@
       });
 
       this.paintAll();
+      if (this.inline) {
+        el.panel.setAttribute("role", "region");
+        el.panel.removeAttribute("aria-modal");
+        this.setOpen(true);
+        return;
+      }
       try { if (sessionStorage.getItem(this.storeKey + ":open") === "1") this.setOpen(true); } catch (e) {}
     }
 
@@ -268,6 +277,10 @@
         })
         .catch(function () {
           self.el.sub.textContent = self.t("offline");
+          if (self.info) return;
+          // Say what went wrong and offer the next step instead of "getting ready" forever.
+          var greet = self.el.log.querySelector(".msg.bot .bubble");
+          if (greet) greet.innerHTML = "<p>" + esc(self.t("network")) + '</p><div class="msg-tools"><button type="button" class="tool" data-action="reload-info">' + ICONS.retry + "<span>" + esc(self.t("retry")) + "</span></button></div>";
         });
     }
 
@@ -319,8 +332,8 @@
         var list = sources.filter(function (s) { return cited[s.number]; });
         if (!list.length) list = sources.slice(0, 3);
         html += '<div class="sources"><div class="sources-label">' + this.t("sources") + "</div>" + list.map(function (s) {
-          return '<button type="button" class="source" data-num="' + s.number + '">' +
-            '<span class="source-head"><span class="source-num">' + s.number + '</span><span class="source-label" title="' + esc(s.label) + '">' + esc(String(s.label).split(" › ").slice(-2).join(" › ")) + "</span></span>" +
+          return '<button type="button" class="source" data-num="' + (Number(s.number) || 0) + '">' +
+            '<span class="source-head"><span class="source-num">' + (Number(s.number) || 0) + '</span><span class="source-label" title="' + esc(s.label) + '">' + esc(String(s.label).split(" › ").slice(-2).join(" › ")) + "</span></span>" +
             '<span class="source-snippet">' + esc(s.snippet) + "…</span></button>";
         }).join("") + "</div>";
       }
