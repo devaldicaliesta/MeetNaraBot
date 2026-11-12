@@ -1,4 +1,4 @@
-/*! Nara widget v2 — <tanyasaya-chat> web component (shadow DOM, no dependencies). */
+/*! Nara widget v2: <tanyasaya-chat> web component (shadow DOM, no dependencies). */
 (function () {
   "use strict";
 
@@ -13,7 +13,7 @@
       loading: "Memuat…", newChat: "Mulai percakapan baru", close: "Tutup chat", closeShort: "Tutup",
       askLabel: "Tulis pertanyaan", placeholder: "Tulis pertanyaanmu…", send: "Kirim pertanyaan",
       note: "Jawaban disusun dari dokumen dan bisa keliru. Cek sumbernya.", launcher: "Tanya dokumen",
-      copied: "Tersalin", copy: "Salin", offline: "Tidak bisa terhubung ke server", cite: "Lihat sumber ",
+      copied: "Tersalin", copyFailed: "Gagal menyalin", copy: "Salin", offline: "Tidak bisa terhubung ke server", cite: "Lihat sumber ",
       sources: "Sumber dari dokumen", preparing: "Menyiapkan asisten…", tryAsking: "Coba tanyakan", retry: "Coba lagi",
       typing: "Sedang menyusun jawaban", noResponse: "Server tidak merespons ({n}).",
       network: "Koneksi terputus. Periksa internetmu lalu coba lagi.", switchTo: "Switch to English", langBtn: "EN"
@@ -22,7 +22,7 @@
       loading: "Loading…", newChat: "Start a new conversation", close: "Close chat", closeShort: "Close",
       askLabel: "Type a question", placeholder: "Type your question…", send: "Send question",
       note: "Answers come from the document and can be wrong. Check the sources.", launcher: "Ask the document",
-      copied: "Copied", copy: "Copy", offline: "Can't reach the server", cite: "Show source ",
+      copied: "Copied", copyFailed: "Couldn't copy", copy: "Copy", offline: "Can't reach the server", cite: "Show source ",
       sources: "Sources from the document", preparing: "Getting the assistant ready…", tryAsking: "Try asking", retry: "Try again",
       typing: "Composing an answer", noResponse: "The server didn't respond ({n}).",
       network: "Connection lost. Check your internet, then try again.", switchTo: "Ganti ke Bahasa Indonesia", langBtn: "ID"
@@ -65,7 +65,7 @@
       return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4);
     });
     var L = 0.2126 * lin[0] + 0.7152 * lin[1] + 0.0722 * lin[2];
-    return (1.05 / (L + 0.05)) >= 4.5 ? "#ffffff" : "#14202b";
+    return (1.05 / (L + 0.05)) >= 4.5 ? "#ffffff" : "#020a09";
   }
 
   /* ---------- Tiny, safe markdown renderer (escape first, then format) ---------- */
@@ -115,7 +115,7 @@
       this._ready = true;
       this.base = (this.getAttribute("api-base") || SCRIPT_ORIGIN || "").replace(/\/$/, "");
       // Which bot to talk to (multi-user platform). Without the attribute: the platform's own bot.
-      // mode="inline": fills its container (full-page/iframe use) — always open, no launcher or close.
+      // mode="inline": fills its container (full-page/iframe use), always open, no launcher or close.
       this.inline = this.getAttribute("mode") === "inline";
       this.bot = String(this.getAttribute("bot") || "").toLowerCase().replace(/[^a-z0-9]/g, "").slice(0, 32);
       this.q = this.bot ? "bot=" + this.bot + "&" : "";
@@ -245,9 +245,14 @@
         if (t.classList.contains("source")) return t.classList.toggle("is-active");
         if (t.dataset.action === "copy") {
           var txt = t.closest(".msg").dataset.raw || "";
-          navigator.clipboard && navigator.clipboard.writeText(txt.replace(/\s?\[\d+\]/g, ""));
-          t.lastChild.textContent = self.t("copied");
-          setTimeout(function () { t.lastChild.textContent = self.t("copy"); }, 1400);
+          // Say "copied" only once the browser confirms it; a denied clipboard gets its own message.
+          var done = function (ok) {
+            t.lastChild.textContent = self.t(ok ? "copied" : "copyFailed");
+            setTimeout(function () { t.lastChild.textContent = self.t("copy"); }, 1400);
+          };
+          if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(txt.replace(/\s?\[\d+\]/g, "")).then(function () { done(true); }, function () { done(false); });
+          } else done(false);
         }
         if (t.dataset.action === "reload-info") { self.el.sub.textContent = self.t("loading"); return self.fetchInfo(); }
         if (t.dataset.action === "retry") {
@@ -273,7 +278,7 @@
         .then(function (r) { return r.ok ? r.json() : Promise.reject(r.status); })
         .then(function (info) {
           self.info = info;
-          var accent = info.themeColor || "#5b3fe0";
+          var accent = info.themeColor || "#00a691";
           self.style.setProperty("--ts-accent", accent);
           self.style.setProperty("--ts-accent-ink", inkFor(accent));
           self.el.title.textContent = info.name;

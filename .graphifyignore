@@ -1,2 +1,4 @@
 # Skill antislop pihak ketiga, bukan kode Nara
 .claude/
+# Bundle hasil build (sumbernya di web/gradients)
+public/gradient/
