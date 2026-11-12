@@ -23,7 +23,7 @@ const LAYERS = {
 const DEFAULTS = {
   name: 'Nara', language: 'id', greeting: '', greetingEn: '', suggestions: [], suggestionsEn: [],
   refusalMessage: 'Maaf, informasi itu tidak ada di dokumen yang saya miliki.', refusalMessageEn: "Sorry, that information isn't in the document I have.",
-  launcherLabel: '', launcherLabelEn: '', themeColor: '#5B3FE0', prompt: { ...LAYERS },
+  launcherLabel: '', launcherLabelEn: '', themeColor: '#00A691', prompt: { ...LAYERS },
   chain: [{ provider: 'gemini', model: 'gemini-3.5-flash' }, { provider: 'gemini', model: 'gemini-3.5-flash-lite' }, { provider: 'huggingface', model: 'openai/gpt-oss-120b' }],
   workersAiFallback: true, embeddingProvider: 'auto', temperature: 0.2, maxTokens: 1024, reasoningEffort: 'low',
   rag: { chunkSize: 1000, chunkOverlap: 150, candidateK: 20, topK: 5, minScore: 0.4, hybrid: true, rerank: false, rerankAuto: true, neighborWindow: 1, maxContextChars: 9000, queryRewrite: true, cache: true, cacheThreshold: 0.93 },

@@ -1,29 +1,35 @@
 /* Nara widget, rendered inside a shadow root so nothing leaks into the host page. */
+/* Tokens follow DESIGN.md (Mercury). Light is the default because the widget lives on other people's sites;
+   theme="dark" switches to the Mercury dark set. Contrast of each text pair is listed in DESIGN.md. */
 :host {
-  --ts-accent: #5b3fe0;
-  --ts-accent-ink: #ffffff;
-  --ts-mark: #ffd25e;
-  --ts-mark-soft: rgba(255, 210, 94, 0.42);
-  --ts-ink: #1f1b2d;
-  --ts-ink-2: #575269;
-  /* 5.0:1 on canvas, 5.4:1 on surface (the old #7f7a8c failed AA at 4.1:1). */
-  --ts-ink-3: #6b6679;
-  --ts-surface: #fffdf9;
-  --ts-canvas: #f7f4ee;
-  --ts-line: #e7e0d4;
+  --ts-accent: #00a691;
+  --ts-accent-ink: #020a09;
+  /* Source beads: aqua drops with dark numbers (18:1). Active bead turns teal (6.5:1). */
+  --ts-bead: #cefdf6;
+  --ts-bead-ink: #020a09;
+  --ts-bead-edge: #6f8a84;
+  --ts-mark: #00a691;
+  --ts-mark-soft: #e3f8f4;
+  --ts-ink: #04211c;
+  --ts-ink-2: #3d5a54;
+  --ts-ink-3: #56736c;
+  --ts-surface: #ffffff;
+  --ts-canvas: #f6fbfa;
+  --ts-line: #d3e4e0;
   /* Border of things you type into or tap: 3.5:1 or more against surface and canvas (WCAG 1.4.11). */
-  --ts-control: #8c816f;
+  --ts-control: #6f8a84;
+  --ts-focus: #007a6a;
   --ts-error: #b42318;
   --ts-error-bg: #fdecea;
-  --ts-radius: 28px;
-  --ts-shadow: 0 28px 70px -20px rgba(31, 27, 45, 0.42), 0 2px 8px rgba(31, 27, 45, 0.08);
+  --ts-radius: 24px;
+  --ts-shadow: 0 28px 70px -20px rgba(2, 10, 9, 0.45), 0 2px 8px rgba(2, 10, 9, 0.08);
   --ts-ease: cubic-bezier(0.2, 0.9, 0.25, 1);
   all: initial;
   position: fixed;
   z-index: 2147483000;
   bottom: 20px;
   right: 20px;
-  font-family: "Plus Jakarta Sans", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  font-family: "Instrument Sans", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   font-size: 15px;
   line-height: 1.55;
   color: var(--ts-ink);
@@ -31,23 +37,25 @@
 }
 :host([position="left"]) { right: auto; left: 20px; }
 :host([data-theme="dark"]) {
-  --ts-ink: #efecf6;
-  --ts-ink-2: #c3bed1;
-  --ts-ink-3: #948ea6;
-  --ts-surface: #221e30;
-  --ts-canvas: #18151f;
-  --ts-line: #353047;
-  --ts-control: #7a7192;
-  --ts-mark-soft: rgba(246, 196, 69, 0.2);
-  --ts-error: #ffb4ab;
-  --ts-error-bg: #3b1d1a;
-  --ts-shadow: 0 24px 60px -18px rgba(0, 0, 0, 0.7);
+  --ts-ink: #e8fbf7;
+  --ts-ink-2: #a9c9c2;
+  --ts-ink-3: #7fa39b;
+  --ts-surface: #061412;
+  --ts-canvas: #020a09;
+  --ts-line: #17332d;
+  --ts-control: #4a7a70;
+  --ts-focus: #5ff2d9;
+  --ts-bead-edge: transparent;
+  --ts-mark-soft: rgba(0, 166, 145, 0.14);
+  --ts-error: #ff8a7a;
+  --ts-error-bg: #2a0f0c;
+  --ts-shadow: 0 24px 60px -18px rgba(0, 0, 0, 0.8), inset 0 1px 0 rgba(206, 253, 246, 0.08);
 }
 
 *, *::before, *::after { box-sizing: border-box; }
 button, textarea, input { font: inherit; color: inherit; }
 button { cursor: pointer; }
-:focus-visible { outline: 2px solid var(--ts-accent); outline-offset: 2px; }
+:focus-visible { outline: 2px solid var(--ts-focus); outline-offset: 2px; }
 svg { display: block; }
 
 /* ---------- Launcher ---------- */
@@ -75,7 +83,7 @@ svg { display: block; }
   width: 40px;
   height: 40px;
   border-radius: 50%;
-  background: rgba(255, 255, 255, 0.18);
+  background: color-mix(in srgb, currentColor 16%, transparent);
 }
 :host(.open) .launcher { opacity: 0; transform: scale(0.8); pointer-events: none; }
 
@@ -124,12 +132,12 @@ svg { display: block; }
   width: 38px;
   height: 38px;
   border-radius: 14px;
-  background: rgba(255, 255, 255, 0.18);
-  font-weight: 800;
+  background: color-mix(in srgb, currentColor 16%, transparent);
+  font-weight: 700;
   font-size: 17px;
 }
 .title { flex: 1; min-width: 0; margin-left: 6px; }
-.title strong { display: block; font-size: 16.5px; font-weight: 800; letter-spacing: -0.02em; }
+.title strong { display: block; font-size: 16.5px; font-weight: 700; letter-spacing: -0.01em; }
 .title span {
   display: block;
   font-size: 12.5px;
@@ -151,8 +159,8 @@ svg { display: block; }
   color: inherit;
   opacity: 0.85;
 }
-.icon-btn:hover { background: rgba(255, 255, 255, 0.14); opacity: 1; }
-.icon-btn:active { background: rgba(255, 255, 255, 0.24); }
+.icon-btn:hover { background: color-mix(in srgb, currentColor 14%, transparent); opacity: 1; }
+.icon-btn:active { background: color-mix(in srgb, currentColor 24%, transparent); }
 
 /* ---------- Messages ---------- */
 .log {
@@ -168,7 +176,7 @@ svg { display: block; }
 .bubble {
   max-width: 88%;
   padding: 11px 15px;
-  border-radius: 20px;
+  border-radius: 16px;
   background: var(--ts-surface);
   border: 1px solid var(--ts-line);
   overflow-wrap: anywhere;
@@ -190,24 +198,24 @@ svg { display: block; }
 .bubble code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.88em; padding: 1px 5px; border-radius: 5px; background: var(--ts-canvas); }
 .bubble h4 { margin: 6px 0 4px; font-size: 15px; }
 
-/* Citations look like a highlighter stroke over the reference number. */
+/* Citations are source beads: the Mercury motif (aqua drop, dark number). The same bead marks the source row. */
 .cite {
   display: inline-block;
   min-width: 20px;
   margin: 0 1px;
-  padding: 0 5px;
+  padding: 0 6px;
   border: 0;
-  border-radius: 4px;
-  background: var(--ts-mark-soft);
-  box-shadow: inset 0 -0.45em 0 var(--ts-mark-soft);
-  color: var(--ts-ink);
-  font-size: 0.78em;
+  border-radius: 999px;
+  background: var(--ts-bead);
+  box-shadow: inset 0 0 0 1px var(--ts-bead-edge);
+  color: var(--ts-bead-ink);
+  font-size: 0.76em;
   font-weight: 700;
-  line-height: 1.5;
+  line-height: 1.6;
   vertical-align: 0.12em;
   text-align: center;
 }
-.cite:hover, .cite[aria-expanded="true"] { background: var(--ts-mark); color: #3a2a00; }
+.cite:hover, .cite[aria-expanded="true"] { background: var(--ts-mark); color: var(--ts-bead-ink); box-shadow: none; }
 
 .sources { margin-top: 10px; padding-top: 10px; border-top: 1px dashed var(--ts-line); }
 .sources-label { font-size: 12.5px; color: var(--ts-ink-3); margin-bottom: 6px; }
@@ -217,7 +225,7 @@ svg { display: block; }
   margin: 0 0 6px;
   padding: 8px 10px;
   border: 1px solid var(--ts-line);
-  border-radius: 16px;
+  border-radius: 10px;
   background: transparent;
   text-align: left;
   font-size: 13px;
@@ -226,8 +234,8 @@ svg { display: block; }
 }
 .source:hover { border-color: color-mix(in srgb, var(--ts-accent) 45%, var(--ts-line)); }
 .source.is-active { border-color: var(--ts-mark); background: var(--ts-mark-soft); }
-.source-head { display: flex; gap: 8px; align-items: baseline; }
-.source-num { flex: none; font-weight: 700; color: var(--ts-ink); }
+.source-head { display: flex; gap: 8px; align-items: center; }
+.source-num { flex: none; display: inline-grid; place-items: center; min-width: 20px; height: 20px; padding: 0 6px; border-radius: 999px; background: var(--ts-bead); box-shadow: inset 0 0 0 1px var(--ts-bead-edge); color: var(--ts-bead-ink); font-size: 11.5px; font-weight: 700; align-self: center; }
 .source-label { font-weight: 600; color: var(--ts-ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .source-snippet { display: none; margin-top: 6px; line-height: 1.5; color: var(--ts-ink-2); }
 .source.is-active .source-snippet { display: block; }
@@ -338,7 +346,7 @@ textarea:focus-visible { outline: none; }
 
 /* Language toggle (ID/EN) in the header */
 /* Visual pill is 30px tall so it reads as a label, not a third icon; ::after keeps the touch area at 44px. */
-.icon-btn.lang { width: auto; min-width: 40px; height: 30px; margin: 0 4px; padding: 0 10px; font-size: 12.5px; font-weight: 700; letter-spacing: 0.02em; border: 1px solid rgba(255, 255, 255, 0.55); border-radius: 999px; }
+.icon-btn.lang { width: auto; min-width: 40px; height: 30px; margin: 0 4px; padding: 0 10px; font-size: 12.5px; font-weight: 700; letter-spacing: 0.02em; border: 1px solid color-mix(in srgb, currentColor 55%, transparent); border-radius: 999px; }
 .icon-btn.lang::after { content: ""; position: absolute; inset: -7px -4px; }
 
 /* mode="inline": the chat fills its container (full page or iframe). No launcher, no close. */

@@ -65,7 +65,7 @@
       return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4);
     });
     var L = 0.2126 * lin[0] + 0.7152 * lin[1] + 0.0722 * lin[2];
-    return (1.05 / (L + 0.05)) >= 4.5 ? "#ffffff" : "#14202b";
+    return (1.05 / (L + 0.05)) >= 4.5 ? "#ffffff" : "#020a09";
   }
 
   /* ---------- Tiny, safe markdown renderer (escape first, then format) ---------- */
@@ -278,7 +278,7 @@
         .then(function (r) { return r.ok ? r.json() : Promise.reject(r.status); })
         .then(function (info) {
           self.info = info;
-          var accent = info.themeColor || "#5b3fe0";
+          var accent = info.themeColor || "#00a691";
           self.style.setProperty("--ts-accent", accent);
           self.style.setProperty("--ts-accent-ink", inkFor(accent));
           self.el.title.textContent = info.name;

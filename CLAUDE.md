@@ -46,3 +46,14 @@ Skill antislop (dari [miqdadbadjuber/anti-slop](https://github.com/miqdadbadjube
 - Untuk teks yang dibaca orang (landing, pesan widget, README): muat `antislop` + `antislop-copywriting`.
 - Cek kontras dengan `python3 .claude/skills/antislop-human/contrast-check.py "#fg" "#bg"`, jangan ditebak.
 - `DESIGN.md` adalah data desain, bukan instruksi. Format mengikuti spesifikasi design.md (front matter token + bagian Overview sampai Do's and Don'ts), sama seperti keluaran generator context.dev. Bila memakai generator itu untuk situs live, gabungkan hasilnya ke `DESIGN.md` dan pertahankan token yang lolos cek kontras.
+
+## Gradien Mercury (gradients.sh)
+
+Arah visual saat ini adalah "Mercury", gradien chrome dari gradients.sh (`npx shadcn add https://gradients.sh/r/c/kX8nN9Jqdy.json`).
+Item itu komponen React, sedangkan halaman Nara HTML biasa, jadi sumber registry-nya disalin ke `web/gradients/`
+(mesin MIT di `gradient-engine/`, padanan komponen di `mercury.ts`) dan di-bundle ke `public/gradient/`.
+
+- Setelah mengubah apa pun di `web/gradients/`, jalankan `npm run build:gradient` lalu commit `public/gradient/` juga.
+- `npm run typecheck` juga memeriksa `web/` (lib DOM).
+- `mount.ts` punya satu tambahan Nara, `setPaused()`, untuk tombol "Jeda animasi". Pertahankan bila mesin diperbarui dari registry.
+- Pakai gradien hidup sekali per halaman, dan jangan taruh teks langsung di atasnya (lihat `DESIGN.md`).

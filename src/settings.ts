@@ -127,7 +127,7 @@ export const DEFAULT_SETTINGS: BotSettings = {
   refusalMessageEn: "Sorry, that information isn't in the document I have.",
   launcherLabel: '',
   launcherLabelEn: '',
-  themeColor: '#5B3FE0',
+  themeColor: '#00A691', // Mercury teal (DESIGN.md); the widget picks dark text on it (6.5:1).
   prompt: { ...DEFAULT_LAYERS },
   chain: [
     { provider: 'gemini', model: 'gemini-3.5-flash' },
