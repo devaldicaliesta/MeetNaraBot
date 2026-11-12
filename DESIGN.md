@@ -10,6 +10,8 @@ colors:
   surface: "#fffdf9"
   line: "#e7e0d4"
   line-2: "#d3c9ba"
+  control: "#8c816f"
+  dark-control: "#7a7192"
   primary: "#5b3fe0"
   primary-dark: "#4429c4"
   on-primary: "#ffffff"
@@ -22,7 +24,7 @@ colors:
   mark-soft: "#fff1c2"
   error: "#b42318"
   error-bg: "#fdecea"
-  ok: "#15803d"
+  ok: "#166534"
   ok-bg: "#e6f4ea"
   dark-ink: "#efecf6"
   dark-ink-2: "#c3bed1"
@@ -105,7 +107,9 @@ components:
 
 # Nara
 
-Dial: ENERGY 3 / RHYTHM 3 / MOTION 2
+Dial: ENERGY 2 / RHYTHM 3 / MOTION 1
+
+Design Read: landing dan dashboard produk untuk pemilik situs kecil (sekolah, toko, lembaga) yang ingin chatbot dari dokumen sendiri, dengan bahasa visual kertas dan stabilo, dial ENERGY 2 / RHYTHM 3 / MOTION 1. Gerak hanya umpan balik (hover, tekan, buka-tutup panel widget); tidak ada animasi saat menggulir.
 
 ## Overview
 
@@ -119,7 +123,8 @@ Motif identitas: **stabilo**. Sorotan kuning (`mark`) di bawah kata kunci judul 
 - Teks memakai tiga tingkat tinta: `ink` untuk judul dan isi, `ink-2` untuk teks pendukung, `ink-3` untuk keterangan kecil.
 - `primary` (ungu) dipakai hemat: launcher widget, cincin fokus, dan aksen merek. Tombol utama di landing memakai `ink`, bukan ungu.
 - Pastel (`lilac`, `mint`, `sky`, `butter`) hanya untuk blok besar yang membedakan bagian, tidak untuk teks.
-- Mode gelap (widget dan admin) memakai token `dark-*`. Gelap adalah pilihan pengguna lewat `prefers-color-scheme`, bukan bawaan.
+- Batas kontrol (input, kolom chat, chip saran, sakelar mati) memakai `control`, bukan `line`, supaya lolos 3:1 (WCAG 1.4.11). `line` dan `line-2` hanya untuk pemisah.
+- Landing dan dashboard sengaja terang saja: metafora "kertas dan tinta" adalah identitas produk yang menjawab dari dokumen. Widget punya tema gelap (`theme="dark"` di potongan embed, token `dark-*`) karena tampil di situs orang lain yang mungkin gelap.
 
 Kontras (dihitung dengan `contrast-check.py` dari antislop-human):
 
@@ -135,7 +140,12 @@ Kontras (dihitung dengan `contrast-check.py` dari antislop-human):
 | ink-3 lama `#8a8597` di canvas (landing) | 3.25:1 | **gagal** |
 | ink-3 baru `#6b6679` di canvas | 5.03:1 | lolos |
 
-`ink-3` di file ini sudah memakai nilai baru `#6b6679`. Kode di `public/` masih memakai nilai lama dan perlu diselaraskan.
+| ok `#166534` di ok-bg (lama `#15803d`: 4.42:1, gagal) | 6.28:1 | lolos |
+| control di surface (lama `line-2`: 1.61:1) | 3.77:1 | lolos (non-teks) |
+| control di canvas | 3.49:1 | lolos (non-teks) |
+| dark-control di dark-surface | 3.55:1 | lolos (non-teks) |
+
+Semua nilai di atas sudah dipakai di `public/index.html`, `public/admin.html`, dan `public/widget.css`.
 
 ## Typography
 
@@ -171,6 +181,8 @@ Sudut membulat besar tapi bertingkat: 8px untuk fokus dan elemen kecil, 14px unt
 - Lakukan: pakai stabilo kuning untuk menandai satu hal penting per bagian, bukan semua.
 - Lakukan: tulis teks dalam bahasa Indonesia yang lugas; sebut fakta yang bisa dicek (sumber dokumen), bukan klaim kosong.
 - Lakukan: hormati `prefers-reduced-motion`; animasi hanya transform singkat (0.18s).
+- Lakukan: target sentuh minimal 44px. Bila tampilannya harus kecil (sakelar bahasa, tombol alat di bawah jawaban), perluas area sentuhnya dengan `::after`.
+- Jangan: tiga kartu identik bernomor bulat untuk "cara kerja". Landing memakai daftar bernomor dengan angka berstabilo dan kode embed asli.
 - Jangan: gradien biru-ungu, glow, atau pola grid di latar.
 - Jangan: angka pengguna, testimoni, atau logo pelanggan yang tidak nyata.
 - Jangan: abu-abu muda untuk teks tanpa cek kontras.
