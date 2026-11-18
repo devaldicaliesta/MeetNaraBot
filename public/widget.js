@@ -275,7 +275,11 @@
     fetchInfo(resetChat) {
       var self = this;
       fetch(this.base + "/api/public/info?" + this.q + "lang=" + this.lang, { credentials: "omit" })
-        .then(function (r) { return r.ok ? r.json() : Promise.reject(r.status); })
+        // On an HTTP error, keep the server's reason ("bot not found", "domain not allowed") for the visitor.
+        .then(function (r) {
+          if (r.ok) return r.json();
+          return r.json().catch(function () { return {}; }).then(function (b) { return Promise.reject(b && typeof b.error === "string" ? b.error : ""); });
+        })
         .then(function (info) {
           self.info = info;
           var accent = info.themeColor || "#00a691";
@@ -290,12 +294,13 @@
           self.paintAll();
           self.syncInput();
         })
-        .catch(function () {
-          self.el.sub.textContent = self.t("offline");
+        .catch(function (why) {
+          var reason = typeof why === "string" && why ? why : "";
+          self.el.sub.textContent = reason ? "" : self.t("offline");
           if (self.info) return;
           // Say what went wrong and offer the next step instead of "getting ready" forever.
           var greet = self.el.log.querySelector(".msg.bot .bubble");
-          if (greet) greet.innerHTML = "<p>" + esc(self.t("network")) + '</p><div class="msg-tools"><button type="button" class="tool" data-action="reload-info">' + ICONS.retry + "<span>" + esc(self.t("retry")) + "</span></button></div>";
+          if (greet) greet.innerHTML = "<p>" + esc(reason || self.t("network")) + '</p><div class="msg-tools"><button type="button" class="tool" data-action="reload-info">' + ICONS.retry + "<span>" + esc(self.t("retry")) + "</span></button></div>";
         });
     }
 

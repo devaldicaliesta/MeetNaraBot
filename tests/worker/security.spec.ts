@@ -38,6 +38,19 @@ test('public chat rejects oversized bodies, honeypot and missing user agent', as
   expect(honeypot.status()).toBe(400);
 });
 
+test('a refused origin can read why it was refused', async ({ request }) => {
+  // TSbot 2 (seeded) only allows one site; any other site gets a readable "domain not allowed".
+  const signIn = await (await request.post('/api/auth/login', { data: { email: 'tsbot-active@qa.test', password: 'tsbot-active-password' } })).json();
+  const headers = { Authorization: `Bearer ${signIn.token}`, 'X-Bot-Id': 'qatsbot002' };
+  expect((await request.post('/api/admin/config', { headers, data: { settings: { allowedOrigins: ['https://allowed.example'] } } })).ok()).toBeTruthy();
+  const res = await request.get('/api/public/info?bot=qatsbot002', { headers: { Origin: 'https://not-allowed.example' } });
+  expect(res.status()).toBe(403);
+  expect(res.headers()['access-control-allow-origin']).toBe('https://not-allowed.example');
+  expect((await res.json()).error).toContain('Domain ini belum diizinkan');
+  const ok = await request.get('/api/public/info?bot=qatsbot002', { headers: { Origin: 'https://allowed.example' } });
+  expect(ok.status()).toBe(200);
+});
+
 test('a chunked body without Content-Length is still size-checked', async ({ baseURL }) => {
   const send = (size: number) => {
     const payload = new TextEncoder().encode(JSON.stringify({ question: 'halo', pad: 'a'.repeat(size) }));

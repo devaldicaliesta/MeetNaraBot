@@ -128,6 +128,14 @@ test('the TSbot bot (PERMANENT_BOTS) skips the 7-day limit and survives the clea
   expect((await request.get('/api/public/info?bot=qatsbot001')).status()).toBe(200);
 });
 
+test('a permanent bot account that still has days left loses its limit at sign-in', async ({ request }) => {
+  const signIn = await login(request, 'tsbot-active@qa.test', 'tsbot-active-password');
+  expect(signIn.status).toBe(200);
+  expect(signIn.body.user.expires_at).toMatch(/^9999-/);
+  const me = await request.get('/api/auth/me', { headers: { Authorization: `Bearer ${signIn.body.token}` } });
+  expect((await me.json()).user.expires_at).toMatch(/^9999-/);
+});
+
 test('bots can be created up to the limit and deleted with their data', async ({ request }) => {
   const b = await login(request, 'owner-b@qa.test', 'owner-b-password');
   const auth = { Authorization: `Bearer ${b.body.token}` };

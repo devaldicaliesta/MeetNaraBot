@@ -68,6 +68,16 @@ test('other sites cannot embed TSbot', async ({ page }) => {
   expect(await frame?.locator('tanyasaya-chat').count().catch(() => 0)).toBe(0);
 });
 
+test('shows the server reason when the bot cannot be loaded, not "connection lost"', async ({ page }) => {
+  await page.route(`${API}/api/public/info**`, (r) =>
+    r.fulfill({ status: 404, contentType: 'application/json', headers: { 'Access-Control-Allow-Origin': '*' }, body: JSON.stringify({ error: 'Bot ini tidak ditemukan. Periksa kode widget di website Anda.' }) })
+  );
+  await page.goto('/');
+  const chat = page.locator('tanyasaya-chat');
+  await expect(chat.locator('.msg.bot').first()).toContainText('Bot ini tidak ditemukan');
+  await expect(chat.locator('.msg.bot').first()).not.toContainText('Koneksi terputus');
+});
+
 test('names the problem and offers a retry when the API is unreachable', async ({ page }) => {
   let down = true;
   await page.route(`${API}/api/public/info**`, (r) => (down ? r.abort() : r.continue()));

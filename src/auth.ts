@@ -28,16 +28,20 @@ export function permanentBots(env: Bindings): string[] {
 
 /**
  * Moves the expiry of every account that owns a permanent bot to NO_EXPIRY, so the usual
- * expiry checks (sign-in, sessions, widget, daily purge) all treat it as active. Returns the
+ * expiry checks (sign-in, sessions, widget, daily purge) all treat it as active. Sessions that
+ * were cut short to the old account expiry get their normal SESSION_DAYS back. Returns the
  * number of accounts changed.
  */
 export async function keepPermanentAccounts(env: Bindings): Promise<number> {
   const ids = permanentBots(env);
   if (!ids.length) return 0;
-  const res = await env.DB.prepare(`UPDATE users SET expires_at = ? WHERE expires_at < ? AND id IN (SELECT owner_id FROM bots WHERE id IN (${ids.map(() => '?').join(',')}))`)
-    .bind(NO_EXPIRY, NO_EXPIRY, ...ids)
-    .run();
-  return res.meta?.changes ?? 0;
+  const owners = `SELECT owner_id FROM bots WHERE id IN (${ids.map(() => '?').join(',')})`;
+  const full = `strftime('%Y-%m-%dT%H:%M:%fZ', created_at, '+${SESSION_DAYS} days')`;
+  const [users] = await env.DB.batch([
+    env.DB.prepare(`UPDATE users SET expires_at = ? WHERE expires_at < ? AND id IN (${owners})`).bind(NO_EXPIRY, NO_EXPIRY, ...ids),
+    env.DB.prepare(`UPDATE sessions SET expires_at = ${full} WHERE expires_at < ${full} AND user_id IN (${owners})`).bind(...ids),
+  ]);
+  return users.meta?.changes ?? 0;
 }
 
 export type User = { id: string; email: string; name: string; expires_at: string };
@@ -105,13 +109,13 @@ export async function verifyLogin(env: Bindings, email: string, password: string
     .first<{ id: string; email: string; name: string; pass_hash: string; pass_salt: string; pass_iter: number; expires_at: string }>();
   const hash = await pbkdf2(password, fromHex(row?.pass_salt || DUMMY.salt), row?.pass_iter || DUMMY.iter);
   if (!row || !constantTimeEqualHex(hash, row.pass_hash)) return null;
-  if (row.expires_at <= new Date().toISOString()) {
-    // The owner of a permanent bot may have signed up before PERMANENT_BOTS was set.
-    if (!(await keepPermanentAccounts(env))) return 'expired';
+  // The owner of a permanent bot may have signed up before PERMANENT_BOTS was set: lift the limit now,
+  // whether or not the 7 days are over yet.
+  if (row.expires_at < NO_EXPIRY && (await keepPermanentAccounts(env))) {
     const fresh = await env.DB.prepare('SELECT expires_at FROM users WHERE id = ?').bind(row.id).first<{ expires_at: string }>();
-    if (!fresh || fresh.expires_at <= new Date().toISOString()) return 'expired';
-    row.expires_at = fresh.expires_at;
+    if (fresh) row.expires_at = fresh.expires_at;
   }
+  if (row.expires_at <= new Date().toISOString()) return 'expired';
   await env.DB.prepare('UPDATE users SET last_login_at = CURRENT_TIMESTAMP WHERE id = ?').bind(row.id).run();
   return { id: row.id, email: row.email, name: row.name, expires_at: row.expires_at };
 }
