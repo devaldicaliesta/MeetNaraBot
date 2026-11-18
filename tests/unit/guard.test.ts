@@ -56,3 +56,18 @@ test('keeps only assistant turns signed by the server', async () => {
   // A signature for another bot is not valid here.
   assert.equal((await verifyHistory('secret', 'bot2', [{ role: 'assistant', content: good, sig }], 10, norm)).length, 0);
 });
+
+test('history verification only looks at the newest turns', async () => {
+  const secret = 'x'.repeat(32);
+  const sig = await signAnswer(secret, 'default', 'Jawaban lama');
+  const old = { role: 'assistant', content: 'Jawaban lama', sig };
+  const filler = Array.from({ length: 500 }, (_, i) => ({ role: 'user', content: `q${i}` }));
+  const norm = (raw: unknown, max: number) => (raw as ChatMessage[]).slice(-max);
+  const kept = await verifyHistory(secret, 'default', [old, ...filler], 6, norm);
+  assert.equal(kept.length, 6);
+  assert.ok(kept.every((m: any) => m.role === 'user'));
+  const recent = await verifyHistory(secret, 'default', [{ role: 'user', content: 'q' }, old], 6, norm);
+  assert.equal(recent.length, 2);
+  const forged = await verifyHistory(secret, 'default', [{ ...old, sig: sig.slice(0, -1) + (sig.endsWith('A') ? 'B' : 'A') }], 6, norm);
+  assert.equal(forged.length, 0);
+});

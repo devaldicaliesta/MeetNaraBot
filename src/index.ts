@@ -30,6 +30,7 @@ import { redactPii, signingEmitter, verifyHistory } from './guard';
 import { answer, buildSystemPrompt, buildUserTurn, generateSuggestions, normalizeHistory } from './rag';
 import { buildChain, embed, pickEmbedder } from './llm';
 import { channelRoutes } from './channels';
+import { bodyTooLarge } from './body';
 import {
   ACCOUNT_DAYS,
   DEFAULT_BOT,
@@ -40,6 +41,7 @@ import {
   createSession,
   createUser,
   endSession,
+  keepPermanentAccounts,
   listBots,
   normalizeEmail,
   ownedBot,
@@ -83,7 +85,6 @@ async function secretEquals(a: string, b: string): Promise<boolean> {
 const MAX_PUBLIC_BODY = 32 * 1024;
 const MAX_ADMIN_BODY = 512 * 1024;
 const MAX_AUTH_BODY = 4 * 1024;
-const tooLarge = (c: Context<Env>, max: number) => Number(c.req.header('Content-Length') || 0) > max;
 
 /** Daily question cap shared by all user bots together (the platform bot has its own settings). */
 const platformDailyTotal = (env: Bindings) => Math.max(100, Number(env.PLATFORM_DAILY_TOTAL) || 5000);
@@ -298,17 +299,27 @@ async function purgeBot(env: Bindings, bot: string) {
 }
 
 /** Daily cleanup: delete accounts whose active period ended, with all of their bots and data. */
+// Up to 20 batches of 25 per run, more than the default daily sign-up cap, so expired accounts never pile up.
+const PURGE_BATCH = 25;
+const PURGE_ROUNDS = 20;
 async function purgeExpiredAccounts(env: Bindings) {
+  // Accounts behind a permanent bot (PERMANENT_BOTS, e.g. TSbot) are never deleted.
+  await keepPermanentAccounts(env).catch((e) => console.error('permanent accounts not updated', e));
   const now = new Date().toISOString();
-  const users = await env.DB.prepare('SELECT id FROM users WHERE expires_at <= ? LIMIT 25').bind(now).all<{ id: string }>();
-  for (const u of users.results || []) {
-    for (const b of await listBots(env, u.id)) await purgeBot(env, b.id);
-    await env.DB.batch([env.DB.prepare('DELETE FROM sessions WHERE user_id = ?').bind(u.id), env.DB.prepare('DELETE FROM users WHERE id = ?').bind(u.id)]);
+  let purged = 0;
+  for (let round = 0; round < PURGE_ROUNDS; round++) {
+    const users = (await env.DB.prepare('SELECT id FROM users WHERE expires_at <= ? LIMIT ?').bind(now, PURGE_BATCH).all<{ id: string }>()).results || [];
+    for (const u of users) {
+      for (const b of await listBots(env, u.id)) await purgeBot(env, b.id);
+      await env.DB.batch([env.DB.prepare('DELETE FROM sessions WHERE user_id = ?').bind(u.id), env.DB.prepare('DELETE FROM users WHERE id = ?').bind(u.id)]);
+    }
+    purged += users.length;
+    if (users.length < PURGE_BATCH) break;
   }
   await env.DB.prepare('DELETE FROM sessions WHERE expires_at <= ?').bind(now).run();
   await purgeExpiredCache(env.DB).catch((e) => console.error('cache purge failed', e));
   await retryTombstones(env);
-  return (users.results || []).length;
+  return purged;
 }
 
 /** NDJSON streaming response helper (used by public chat and admin playground). */
@@ -428,7 +439,7 @@ app.post('/api/public/chat', async (c) => {
   const bot = c.get('bot');
   const settings = await getSettings(c.env, bot);
   const wantsStream = (c.req.header('Accept') || '').includes('ndjson');
-  if (tooLarge(c, MAX_PUBLIC_BODY)) return c.json({ error: msg('rejected', asLang(c.req.query('lang'), settings.language)) }, 413);
+  if (await bodyTooLarge(c, MAX_PUBLIC_BODY)) return c.json({ error: msg('rejected', asLang(c.req.query('lang'), settings.language)) }, 413);
   const body = await c.req.json<{ question?: string; history?: unknown; website?: string; lang?: string }>().catch(() => ({} as any));
   const question = String(body.question || '').trim();
   const lang = asLang(body.lang, settings.language);
@@ -520,7 +531,7 @@ const passwordMessage = (c: Context<Env>, problem: string) =>
       : tr(c, 'Kata sandi jangan sama dengan atau memuat alamat email Anda.', "Don't use your e-mail address in the password.");
 
 app.use('/api/auth/*', async (c, next) => {
-  if (tooLarge(c, MAX_AUTH_BODY)) return c.json({ error: tr(c, 'Data yang dikirim terlalu besar.', 'The request is too large.') }, 413);
+  if (await bodyTooLarge(c, MAX_AUTH_BODY)) return c.json({ error: tr(c, 'Data yang dikirim terlalu besar.', 'The request is too large.') }, 413);
   c.header('Cache-Control', 'no-store');
   await next();
 });
@@ -610,7 +621,7 @@ const DEPLOY_ROUTES = /^\/api\/admin\/(status|file(\/chunks|\/done)?|channels\/t
 app.use('/api/admin/*', async (c, next) => {
   const token = bearer(c);
   const finish = async () => {
-    if (tooLarge(c, MAX_ADMIN_BODY)) return c.json({ error: tr(c, 'Data yang dikirim terlalu besar.', 'The request is too large.') }, 413);
+    if (await bodyTooLarge(c, MAX_ADMIN_BODY)) return c.json({ error: tr(c, 'Data yang dikirim terlalu besar.', 'The request is too large.') }, 413);
     c.header('Cache-Control', 'no-store');
     await next();
   };
@@ -886,8 +897,10 @@ app.get('/api/admin/chunks', async (c) => {
   const bot = c.get('bot');
   const offset = Math.max(0, Math.min(100_000, Number(c.req.query('offset') || 0) || 0));
   const q = (c.req.query('q') || '').trim().slice(0, 200);
+  // % and _ in the search text are literal characters, not LIKE wildcards.
+  const like = `%${q.replace(/[\\%_]/g, (m) => '\\' + m)}%`;
   const rows = q
-    ? await c.env.DB.prepare('SELECT c.idx, c.label, c.text, f.name AS document FROM chunks c LEFT JOIN file f ON f.id = c.file_id WHERE c.bot_id = ? AND (c.text LIKE ? OR c.label LIKE ?) ORDER BY f.created_at, c.idx LIMIT 30').bind(bot, `%${q}%`, `%${q}%`).all()
+    ? await c.env.DB.prepare("SELECT c.idx, c.label, c.text, f.name AS document FROM chunks c LEFT JOIN file f ON f.id = c.file_id WHERE c.bot_id = ? AND (c.text LIKE ? ESCAPE '\\' OR c.label LIKE ? ESCAPE '\\') ORDER BY f.created_at, c.idx LIMIT 30").bind(bot, like, like).all()
     : await c.env.DB.prepare('SELECT c.idx, c.label, c.text, f.name AS document FROM chunks c LEFT JOIN file f ON f.id = c.file_id WHERE c.bot_id = ? ORDER BY f.created_at, c.idx LIMIT 30 OFFSET ?').bind(bot, offset).all();
   return c.json({ items: rows.results || [] });
 });

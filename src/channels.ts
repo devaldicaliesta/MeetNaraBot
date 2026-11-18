@@ -6,6 +6,7 @@
 // raw body (app secret); GET verification uses WHATSAPP_VERIFY_TOKEN.
 
 import { redactPii } from './guard';
+import { bodyTooLarge } from './body';
 import type { Context, Hono } from 'hono';
 import type { AppEnv, Bindings, ChatMessage } from './types';
 import { channelCommand, toTelegram, toWhatsApp, type FormatSource } from './channel-format';
@@ -266,7 +267,7 @@ export function channelRoutes(app: Hono<Env>, deps: ChannelDeps) {
     if (!token) return c.json({ error: 'Telegram is not configured.' }, 404);
     const given = c.req.header('X-Telegram-Bot-Api-Secret-Token') || '';
     if (!given || !(await digestEquals(given, await telegramSecret(token)))) return c.json({ error: 'Unauthorized' }, 401);
-    if (Number(c.req.header('Content-Length') || 0) > MAX_WEBHOOK_BODY) return c.json({ error: 'Too large' }, 413);
+    if (await bodyTooLarge(c, MAX_WEBHOOK_BODY)) return c.json({ error: 'Too large' }, 413);
     const update = await c.req.json().catch(() => null);
     // Answer Telegram immediately; the reply is produced in the background.
     c.executionCtx.waitUntil(handleTelegram(c.env, deps, update).catch((e) => console.error('telegram', e)));
@@ -285,9 +286,8 @@ export function channelRoutes(app: Hono<Env>, deps: ChannelDeps) {
   app.post('/api/channels/whatsapp', async (c) => {
     const { WHATSAPP_APP_SECRET: secret, WHATSAPP_TOKEN, WHATSAPP_PHONE_NUMBER_ID } = c.env;
     if (!secret || !WHATSAPP_TOKEN || !WHATSAPP_PHONE_NUMBER_ID) return c.json({ error: 'WhatsApp is not configured.' }, 404);
-    if (Number(c.req.header('Content-Length') || 0) > MAX_WEBHOOK_BODY) return c.json({ error: 'Too large' }, 413);
+    if (await bodyTooLarge(c, MAX_WEBHOOK_BODY)) return c.json({ error: 'Too large' }, 413);
     const raw = await c.req.arrayBuffer();
-    if (raw.byteLength > MAX_WEBHOOK_BODY) return c.json({ error: 'Too large' }, 413);
     const signature = (c.req.header('X-Hub-Signature-256') || '').replace(/^sha256=/, '');
     if (!signature || !(await digestEquals(signature, await hmacHex(secret, raw)))) return c.json({ error: 'Unauthorized' }, 401);
     let payload: unknown = null;

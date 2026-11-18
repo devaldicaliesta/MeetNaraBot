@@ -880,8 +880,9 @@ function renderBotSwitch() {
   if (S.mode !== 'user') return;
   $('#botSelect').innerHTML = S.bots.map((b) => `<option value="${esc(b.id)}" ${b.id === S.bot ? 'selected' : ''}>${esc(b.name)}</option>`).join('');
   $('#botNew').disabled = S.bots.length >= (S.maxBots || 3);
-  const until = S.user?.expires_at ? new Date(S.user.expires_at).toLocaleDateString(LOCALE(), { dateStyle: 'medium' }) : '';
-  $('#accountInfo').textContent = `${S.user?.email || ''}${until ? ' · ' + L('aktif sampai ', 'active until ') + until : ''}`;
+  const forever = String(S.user?.expires_at || '').startsWith('9999');
+  const until = S.user?.expires_at && !forever ? new Date(S.user.expires_at).toLocaleDateString(LOCALE(), { dateStyle: 'medium' }) : '';
+  $('#accountInfo').textContent = `${S.user?.email || ''}${forever ? ' · ' + L('tanpa batas waktu', 'no time limit') : until ? ' · ' + L('aktif sampai ', 'active until ') + until : ''}`;
 }
 async function switchBot(id) {
   if (S.draft && dirtyCheck() && !confirm(L('Perubahan yang belum disimpan akan hilang. Lanjutkan?', 'Unsaved changes will be lost. Continue?'))) { renderBotSwitch(); return; }
@@ -1050,6 +1051,11 @@ function renderAccountCard() {
   const box = $('#accountCard');
   box.classList.toggle('hidden', S.mode !== 'user' || !S.user);
   if (S.mode !== 'user' || !S.user) return;
+  // An account behind a permanent bot (TSbot) has no end date.
+  if (String(S.user.expires_at).startsWith('9999')) {
+    box.innerHTML = `<div><b>${esc(S.user.name || S.user.email)}</b><br><span>${esc(S.user.email)} · ${L('akun tanpa batas waktu', 'account with no time limit')}</span></div>`;
+    return;
+  }
   const end = new Date(S.user.expires_at);
   const days = Math.max(0, Math.ceil((end - Date.now()) / 864e5));
   box.innerHTML = `<div><b>${esc(S.user.name || S.user.email)}</b><br><span>${esc(S.user.email)} · ${L('akun aktif sampai', 'account active until')} ${esc(end.toLocaleString(LOCALE(), { dateStyle: 'medium', timeStyle: 'short' }))}</span></div>`
@@ -1306,7 +1312,9 @@ function renderDoc() {
 }
 
 async function loadSuggestions() {
-  const info = await fetch('/api/public/info?lang=' + LANG.cur).then((r) => r.json()).catch(() => null);
+  // A user's bot has its own suggestions; without ?bot= this would show the platform bot's list.
+  const bot = S.mode === 'user' && S.bot ? '&bot=' + encodeURIComponent(S.bot) : '';
+  const info = await fetch('/api/public/info?lang=' + LANG.cur + bot).then((r) => r.json()).catch(() => null);
   const list = info?.suggestions || [];
   $('#sugList').innerHTML = list.length ? list.map((s) => `<span>${esc(s)}</span>`).join('') : '<span class="muted small">Belum ada saran.</span>';
 }
