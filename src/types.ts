@@ -15,6 +15,8 @@ export type Bindings = {
   PLATFORM_DAILY_TOTAL?: string | number;
   MAX_SIGNUPS_PER_DAY?: string | number;
   PLATFORM_DAILY_EMBEDS?: string | number;
+  /** Comma-separated bot ids whose owner accounts never expire (e.g. the bot TSbot shows). */
+  PERMANENT_BOTS?: string;
   GEMINI_API_KEY?: string;
   GROQ_API_KEY?: string;
   OPENROUTER_API_KEY?: string;

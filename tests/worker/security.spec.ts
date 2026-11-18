@@ -38,6 +38,18 @@ test('public chat rejects oversized bodies, honeypot and missing user agent', as
   expect(honeypot.status()).toBe(400);
 });
 
+test('a chunked body without Content-Length is still size-checked', async ({ baseURL }) => {
+  const send = (size: number) => {
+    const payload = new TextEncoder().encode(JSON.stringify({ question: 'halo', pad: 'a'.repeat(size) }));
+    const body = new ReadableStream({ start(c) { for (let i = 0; i < payload.length; i += 4096) c.enqueue(payload.slice(i, i + 4096)); c.close(); } });
+    return fetch(new URL('/api/public/chat', baseURL), { method: 'POST', body, duplex: 'half', headers: { 'Content-Type': 'application/json', 'User-Agent': 'qa' } } as RequestInit);
+  };
+  expect((await send(40_000)).status).toBe(413);
+  const small = await send(100);
+  expect(small.status).toBe(200);
+  expect((await small.json()).answer).toContain('Halo, aku');
+});
+
 test('public chat greets small talk and falls back to excerpts when no AI is reachable', async ({ request }) => {
   const hello = await request.post('/api/public/chat', { data: { question: 'halo', history: [], website: '', lang: 'id' } });
   expect((await hello.json()).answer).toContain('Halo, aku');

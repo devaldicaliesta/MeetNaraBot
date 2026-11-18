@@ -57,12 +57,17 @@ export function toTelegram(answer: string, sources: FormatSource[], lang: 'id' |
 }
 
 /** Clips without leaving an unclosed tag behind (tags never span lines in toTelegram output). */
-function clipHtml(html: string, limit: number): string {
+export function clipHtml(html: string, limit: number): string {
   if (html.length <= limit) return html;
   const lines = html.split('\n');
   let out = '';
   for (const line of lines) {
-    if (out.length + line.length + 3 > limit) break;
+    if (out.length + line.length + 3 > limit) {
+      // One line longer than the whole limit (a long paragraph): keep its start as plain text
+      // instead of sending only "…". Tags are dropped and the cut never splits an entity.
+      if (!out) out = line.replace(/<[^>]*>/g, '').slice(0, limit - 3).replace(/&[a-z]*$/i, '');
+      break;
+    }
     out += (out ? '\n' : '') + line;
   }
   return out + '\n…';

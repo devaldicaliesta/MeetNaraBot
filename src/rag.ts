@@ -506,7 +506,9 @@ async function documentLanguage(env: Bindings, bot: string, file: AnswerInput['f
     const rows = res.results || [];
     if (!rows.length) return null;
     const lang = detectDocLang(rows.map((r) => r.text));
-    await env.DB.prepare('UPDATE file SET lang = ? WHERE id = ? AND bot_id = ?').bind(lang, file.id, bot).run();
+    // `file.id` lists every document of the bot ("a,b,c"), so each of them is updated.
+    const ids = file.id.split(',').filter(Boolean);
+    await env.DB.prepare(`UPDATE file SET lang = ? WHERE bot_id = ? AND id IN (${ids.map(() => '?').join(',')})`).bind(lang, bot, ...ids).run();
     return lang;
   } catch {
     return null;

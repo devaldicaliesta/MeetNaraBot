@@ -48,6 +48,10 @@ const sql = [
   account('qauserexpired003', 'expired@qa.test', 'expired-password', past),
   `INSERT INTO bots (id, owner_id, name) VALUES ('qaexpired1', 'qauserexpired003', 'Bot kedaluwarsa');`,
   ...doc('qaexpired1', 'qaexpire', 'lama.md', [['Lama', 'Isi dokumen lama yang tidak boleh dijawab lagi.']]),
+  // The bot TSbot shows (PERMANENT_BOTS): its account is past 7 days but must keep working.
+  account('qausertsbot00004', 'tsbot@qa.test', 'tsbot-password', past),
+  `INSERT INTO bots (id, owner_id, name) VALUES ('qatsbot001', 'qausertsbot00004', 'TSbot');`,
+  ...doc('qatsbot001', 'qatsbotf', 'tsbot.md', [['TSbot › Jam', 'Layanan TSbot buka setiap hari kerja pukul 08.00.']]),
 ].join('\n');
 fs.writeFileSync(path.join(state, 'seed.sql'), sql);
 wrangler('d1', 'execute', 'tanyasaya-db', '--file', path.join(state, 'seed.sql'));
@@ -63,6 +67,7 @@ const vars = {
   WHATSAPP_VERIFY_TOKEN: 'qa-verify-token',
   WHATSAPP_APP_SECRET: 'qa-app-secret',
   WHATSAPP_API_BASE: `http://127.0.0.1:${fakePort}/whatsapp`,
+  PERMANENT_BOTS: 'qatsbot001',
 };
 const args = ['wrangler', 'dev', '--local', '--test-scheduled', '--port', port, '--ip', '127.0.0.1', '--persist-to', state, ...Object.entries(vars).flatMap(([k, v]) => ['--var', `${k}:${v}`])];
 const child = spawn('npx', args, { stdio: 'inherit' });

@@ -1,7 +1,7 @@
 // Run with: npm run test:unit (Node >= 22.18 runs these TypeScript files directly).
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { channelCommand, citedSources, toTelegram, toWhatsApp } from '../../src/channel-format.ts';
+import { channelCommand, citedSources, clipHtml, toTelegram, toWhatsApp } from '../../src/channel-format.ts';
 import { detectSmallTalk } from '../../src/smalltalk.ts';
 
 const sources = [
@@ -28,6 +28,14 @@ test('Telegram output escapes HTML and keeps only safe tags', () => {
 test('Telegram output stays under the 4096-character limit', () => {
   const long = Array.from({ length: 400 }, (_, i) => `Baris ${i} dengan **teks** panjang [1]`).join('\n');
   assert.ok(toTelegram(long, sources, 'id').length <= 4096);
+});
+
+test('one paragraph longer than the Telegram limit is cut, not dropped', () => {
+  const out = toTelegram('**Penting** ' + 'kata &amp; '.repeat(800), sources, 'id');
+  assert.ok(out.length <= 4096);
+  assert.ok(out.length > 3000, 'the start of the paragraph is kept');
+  assert.doesNotMatch(out, /<b>|<\/b>/, 'no tag is left half-open');
+  assert.doesNotMatch(clipHtml('a &amp;' + 'b'.repeat(10), 9), /&[a-z]*\n/, 'no entity is split');
 });
 
 test('WhatsApp output uses *bold* and _italic_', () => {

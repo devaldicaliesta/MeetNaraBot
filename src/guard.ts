@@ -152,8 +152,10 @@ export async function signAnswer(secret: string, bot: string, text: string): Pro
  * Keeps visitor turns, and assistant turns only when they carry a valid signature issued by this
  * server for this bot. A forged or edited "assistant" message is dropped, so it can never steer the model.
  */
-export async function verifyHistory(secret: string, bot: string, raw: unknown, max: number, normalize: (raw: unknown, max: number) => ChatMessage[]): Promise<ChatMessage[]> {
-  if (!Array.isArray(raw)) return [];
+export async function verifyHistory(secret: string, bot: string, input: unknown, max: number, normalize: (raw: unknown, max: number) => ChatMessage[]): Promise<ChatMessage[]> {
+  if (!Array.isArray(input) || max <= 0) return [];
+  // Only the newest turns can be kept, so older ones are never checked (bounds the HMAC work per request).
+  const raw = input.slice(-Math.max(4, max * 2));
   const sigs = raw.map((m: any) => (typeof m?.sig === 'string' ? m.sig.slice(0, 64) : ''));
   const kept: unknown[] = [];
   for (let i = 0; i < raw.length; i++) {
@@ -165,9 +167,17 @@ export async function verifyHistory(secret: string, bot: string, raw: unknown, m
     }
     if (role !== 'assistant') continue;
     const content = typeof m?.content === 'string' ? m.content : typeof m?.text === 'string' ? m.text : '';
-    if (sigs[i] && sigs[i] === (await signAnswer(secret, bot, content))) kept.push(m);
+    if (sigs[i] && sameString(sigs[i], await signAnswer(secret, bot, content))) kept.push(m);
   }
   return normalize(kept, max);
+}
+
+/** Length-safe constant-time comparison of two short ASCII strings (signatures). */
+function sameString(a: string, b: string): boolean {
+  if (a.length !== b.length) return false;
+  let diff = 0;
+  for (let i = 0; i < a.length; i++) diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  return diff === 0;
 }
 
 /** Wraps an event emitter so the final `done` event carries the signature of the full answer text. */

@@ -15,6 +15,31 @@ export const MIN_PASSWORD = 10;
 export const MAX_BOTS_PER_USER = 3;
 export const DEFAULT_BOT = 'default';
 
+/** Expiry given to accounts that must not expire (see keepPermanentAccounts). */
+export const NO_EXPIRY = '9999-12-31T23:59:59.999Z';
+
+/** Bot ids from PERMANENT_BOTS (comma-separated), e.g. the bot TSbot shows. Their accounts never expire. */
+export function permanentBots(env: Bindings): string[] {
+  return String(env.PERMANENT_BOTS || '')
+    .split(',')
+    .map((s) => s.trim().toLowerCase())
+    .filter((id) => /^[a-z0-9]{6,32}$/.test(id));
+}
+
+/**
+ * Moves the expiry of every account that owns a permanent bot to NO_EXPIRY, so the usual
+ * expiry checks (sign-in, sessions, widget, daily purge) all treat it as active. Returns the
+ * number of accounts changed.
+ */
+export async function keepPermanentAccounts(env: Bindings): Promise<number> {
+  const ids = permanentBots(env);
+  if (!ids.length) return 0;
+  const res = await env.DB.prepare(`UPDATE users SET expires_at = ? WHERE expires_at < ? AND id IN (SELECT owner_id FROM bots WHERE id IN (${ids.map(() => '?').join(',')}))`)
+    .bind(NO_EXPIRY, NO_EXPIRY, ...ids)
+    .run();
+  return res.meta?.changes ?? 0;
+}
+
 export type User = { id: string; email: string; name: string; expires_at: string };
 export type BotRow = { id: string; owner_id: string; name: string; created_at: string };
 
@@ -80,7 +105,13 @@ export async function verifyLogin(env: Bindings, email: string, password: string
     .first<{ id: string; email: string; name: string; pass_hash: string; pass_salt: string; pass_iter: number; expires_at: string }>();
   const hash = await pbkdf2(password, fromHex(row?.pass_salt || DUMMY.salt), row?.pass_iter || DUMMY.iter);
   if (!row || !constantTimeEqualHex(hash, row.pass_hash)) return null;
-  if (row.expires_at <= new Date().toISOString()) return 'expired';
+  if (row.expires_at <= new Date().toISOString()) {
+    // The owner of a permanent bot may have signed up before PERMANENT_BOTS was set.
+    if (!(await keepPermanentAccounts(env))) return 'expired';
+    const fresh = await env.DB.prepare('SELECT expires_at FROM users WHERE id = ?').bind(row.id).first<{ expires_at: string }>();
+    if (!fresh || fresh.expires_at <= new Date().toISOString()) return 'expired';
+    row.expires_at = fresh.expires_at;
+  }
   await env.DB.prepare('UPDATE users SET last_login_at = CURRENT_TIMESTAMP WHERE id = ?').bind(row.id).run();
   return { id: row.id, email: row.email, name: row.name, expires_at: row.expires_at };
 }
@@ -135,7 +166,12 @@ export async function botStatus(env: Bindings, botId: string): Promise<'active' 
   if (!/^[a-z0-9]{6,32}$/.test(botId)) return 'missing';
   const row = await env.DB.prepare('SELECT u.expires_at FROM bots b JOIN users u ON u.id = b.owner_id WHERE b.id = ?').bind(botId).first<{ expires_at: string }>();
   if (!row) return 'missing';
-  return row.expires_at > new Date().toISOString() ? 'active' : 'expired';
+  if (row.expires_at > new Date().toISOString()) return 'active';
+  if (permanentBots(env).includes(botId)) {
+    await keepPermanentAccounts(env);
+    return 'active';
+  }
+  return 'expired';
 }
 
 export async function createBot(env: Bindings, userId: string, name: string): Promise<BotRow | 'limit'> {

@@ -116,6 +116,18 @@ test('the daily cleanup deletes expired accounts with their bots and data', asyn
   expect((await request.get('/api/public/info?bot=qabotaaaa1')).status()).toBe(200);
 });
 
+test('the TSbot bot (PERMANENT_BOTS) skips the 7-day limit and survives the cleanup', async ({ request }) => {
+  const info = await request.get('/api/public/info?bot=qatsbot001');
+  expect(await info.json()).toMatchObject({ ready: true });
+  expect((await chat(request, 'qatsbot001', 'halo')).status).toBe(200);
+  const signIn = await login(request, 'tsbot@qa.test', 'tsbot-password');
+  expect(signIn.status).toBe(200);
+  expect(signIn.body.user.expires_at).toMatch(/^9999-/);
+  await request.get('/__scheduled?cron=23+3+*+*+*');
+  await expect.poll(async () => (await request.get('/api/public/info?bot=qaexpired1')).status(), { timeout: 10_000 }).toBe(404);
+  expect((await request.get('/api/public/info?bot=qatsbot001')).status()).toBe(200);
+});
+
 test('bots can be created up to the limit and deleted with their data', async ({ request }) => {
   const b = await login(request, 'owner-b@qa.test', 'owner-b-password');
   const auth = { Authorization: `Bearer ${b.body.token}` };
