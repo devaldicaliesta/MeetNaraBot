@@ -584,6 +584,8 @@ app.post('/api/auth/logout', async (c) => {
 });
 
 app.get('/api/auth/me', async (c) => {
+  // Lifts the 7-day limit for the owner of a permanent bot (TSbot) as soon as the dashboard opens.
+  await keepPermanentAccounts(c.env).catch((e) => console.error('permanent accounts not updated', e));
   const user = await sessionUser(c.env, bearer(c));
   if (!user) return c.json({ error: tr(c, 'Sesi berakhir. Silakan masuk lagi.', 'Your session has ended. Please sign in again.') }, 401);
   return c.json({ user, bots: await listBots(c.env, user.id), maxBots: MAX_BOTS_PER_USER });

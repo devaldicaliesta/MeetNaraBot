@@ -1,7 +1,7 @@
 # Graph Report - MeetNaraBot  (2026-11-18)
 
 ## Corpus Check
-- 126 files · ~124,015 words
+- 126 files · ~124,173 words
 - Verdict: corpus is large enough that graph structure adds value.
 - Unclassified: 11 file(s) not represented in the graph (top: (none) 7, .css 2, .example 1)
 
@@ -11,7 +11,7 @@
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `09877588`
+- Built from commit: `a4dbe792`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -84,26 +84,26 @@
 ## God Nodes (most connected - your core abstractions)
 1. `answer()` - 29 edges
 2. `GradientKindDefinition` - 27 edges
-3. `env` - 24 edges
-4. `mountGradient()` - 24 edges
+3. `mountGradient()` - 24 edges
+4. `env` - 24 edges
 5. `TanyaSayaChat` - 21 edges
 6. `GradientParams` - 19 edges
-7. `pick()` - 17 edges
+7. `WebGPULease` - 17 edges
 8. `normalizeParams()` - 17 edges
-9. `WebGPULease` - 17 edges
+9. `pick()` - 17 edges
 10. `createWebGLRenderer()` - 14 edges
 
 ## Surprising Connections (you probably didn't know these)
 - `Batas yang diperiksa` --references--> `storeAnswer()`  [INFERRED]
   docs/security/audit-2026-11-run4.md → src/cache.ts
+- `Batas yang diperiksa` --references--> `run()`  [INFERRED]
+  docs/security/tsbot-audit-2026-11.md → web/gradients/gradient-engine/scheduler.ts
 - `Batas yang diperiksa` --references--> `checkCitations()`  [INFERRED]
   docs/security/audit-2026-11-run4.md → src/grounding.ts
 - `Nara platform (chatbot dokumen)` --references--> `answer()`  [INFERRED]
   README.md → src/rag.ts
 - `Isolasi data per bot` --implements--> `tenantEnv()`  [EXTRACTED]
   README.md → src/settings.ts
-- `Batas yang diperiksa` --references--> `run()`  [INFERRED]
-  docs/security/tsbot-audit-2026-11.md → web/gradients/gradient-engine/scheduler.ts
 
 ## Import Cycles
 - None detected.
@@ -307,7 +307,7 @@ Nodes (5): pick(), aurora, chrome, wgsl, wgsl
 _Questions this graph is uniquely positioned to answer:_
 
 - **Why does `Batas yang diperiksa` connect `TanyaSayaChat` to `scheduler.ts`?**
-  _High betweenness centrality (0.392) - this node is a cross-community bridge._
+  _High betweenness centrality (0.386) - this node is a cross-community bridge._
 - **Are the 2 inferred relationships involving `answer()` (e.g. with `paint()` and `Nara platform (chatbot dokumen)`) actually correct?**
   _`answer()` has 2 INFERRED edges - model-reasoned connections that need verification._
 - **What connects `Device`, `Dashboard pemilik bot`, `DEPLOY_TOKEN satu kali pakai` to the rest of the system?**
@@ -315,7 +315,7 @@ _Questions this graph is uniquely positioned to answer:_
 - **Should `src/index.ts` be split into smaller, more focused modules?**
   _Cohesion score 0.09195402298850575 - nodes in this community are weakly interconnected._
 - **Why does `run()` connect `scheduler.ts` to `TanyaSayaChat`?**
-  _High betweenness centrality (0.391) - this node is a cross-community bridge._
+  _High betweenness centrality (0.380) - this node is a cross-community bridge._
 - **Are the 3 inferred relationships involving `mountGradient()` (e.g. with `.isLost()` and `.renderFrame()`) actually correct?**
   _`mountGradient()` has 3 INFERRED edges - model-reasoned connections that need verification._
 - **Should `channels.ts` be split into smaller, more focused modules?**

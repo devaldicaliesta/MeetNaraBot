@@ -51,6 +51,9 @@ const sql = [
   // The bot TSbot shows (PERMANENT_BOTS): its account is past 7 days but must keep working.
   account('qausertsbot00004', 'tsbot@qa.test', 'tsbot-password', past),
   `INSERT INTO bots (id, owner_id, name) VALUES ('qatsbot001', 'qausertsbot00004', 'TSbot');`,
+  // A second permanent bot whose account still has days left: the limit is lifted before it runs out.
+  account('qausertsbot00005', 'tsbot-active@qa.test', 'tsbot-active-password', future),
+  `INSERT INTO bots (id, owner_id, name) VALUES ('qatsbot002', 'qausertsbot00005', 'TSbot 2');`,
   ...doc('qatsbot001', 'qatsbotf', 'tsbot.md', [['TSbot › Jam', 'Layanan TSbot buka setiap hari kerja pukul 08.00.']]),
 ].join('\n');
 fs.writeFileSync(path.join(state, 'seed.sql'), sql);
@@ -67,7 +70,7 @@ const vars = {
   WHATSAPP_VERIFY_TOKEN: 'qa-verify-token',
   WHATSAPP_APP_SECRET: 'qa-app-secret',
   WHATSAPP_API_BASE: `http://127.0.0.1:${fakePort}/whatsapp`,
-  PERMANENT_BOTS: 'qatsbot001',
+  PERMANENT_BOTS: 'qatsbot001,qatsbot002',
 };
 const args = ['wrangler', 'dev', '--local', '--test-scheduled', '--port', port, '--ip', '127.0.0.1', '--persist-to', state, ...Object.entries(vars).flatMap(([k, v]) => ['--var', `${k}:${v}`])];
 const child = spawn('npx', args, { stdio: 'inherit' });
