@@ -56,9 +56,19 @@ test('answers from the document with a clickable citation', async ({ page }) => 
   await expect(chat.locator('.source.is-active')).toContainText('Biaya');
 });
 
-test('IMTS can embed TSbot in an iframe', async ({ page }) => {
-  await page.goto(`http://127.0.0.1:${IMTS_PORT}/`);
-  await expect(page.frameLocator('#tsbot').locator('tanyasaya-chat textarea')).toBeVisible();
+test('the IMTS page shows TSbot in an iframe', async ({ page, request }) => {
+  const res = await request.get(`http://127.0.0.1:${IMTS_PORT}/`);
+  const csp = res.headers()['content-security-policy'];
+  expect(csp).toContain('frame-src http://127.0.0.1:8801');
+  expect(csp).toContain("frame-ancestors 'none'");
+  expect(csp).not.toContain('script-src');
+  for (const [w, h] of [[390, 844], [1280, 900]] as const) {
+    await page.setViewportSize({ width: w, height: h });
+    await page.goto(`http://127.0.0.1:${IMTS_PORT}/`);
+    await expect(page.locator('h1')).toHaveText('IMTS');
+    await expect(page.frameLocator('iframe').locator('tanyasaya-chat textarea')).toBeVisible();
+    expect(await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth)).toBe(0);
+  }
 });
 
 test('other sites cannot embed TSbot', async ({ page }) => {
