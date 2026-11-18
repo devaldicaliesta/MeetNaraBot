@@ -377,7 +377,9 @@ app.use('/api/public/*', async (c, next) => {
     : {};
   if (c.req.method === 'OPTIONS') return new Response(null, { status: ok ? 204 : 403, headers: cors });
   if (status === 'missing') return c.json({ error: msg('noBot', lang) }, { status: 404, headers: cors });
-  if (!ok) return c.json({ error: msg('origin', lang) }, 403);
+  // The refusal itself is readable cross-origin, so the widget can say "domain not allowed" instead of
+  // "connection lost". It carries no bot data.
+  if (!ok) return c.json({ error: msg('origin', lang) }, { status: 403, headers: origin ? { 'Access-Control-Allow-Origin': origin, Vary: 'Origin' } : {} });
   c.set('bot', bot);
   await next();
   for (const [k, v] of Object.entries(cors)) c.res.headers.set(k, v);
