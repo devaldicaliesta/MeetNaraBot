@@ -11,7 +11,7 @@
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `0782b803`
+- Built from commit: `09877588`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -88,22 +88,22 @@
 4. `mountGradient()` - 24 edges
 5. `TanyaSayaChat` - 21 edges
 6. `GradientParams` - 19 edges
-7. `WebGPULease` - 17 edges
+7. `pick()` - 17 edges
 8. `normalizeParams()` - 17 edges
-9. `pick()` - 17 edges
+9. `WebGPULease` - 17 edges
 10. `createWebGLRenderer()` - 14 edges
 
 ## Surprising Connections (you probably didn't know these)
 - `Batas yang diperiksa` --references--> `storeAnswer()`  [INFERRED]
   docs/security/audit-2026-11-run4.md → src/cache.ts
-- `Batas yang diperiksa` --references--> `run()`  [INFERRED]
-  docs/security/tsbot-audit-2026-11.md → web/gradients/gradient-engine/scheduler.ts
+- `Batas yang diperiksa` --references--> `checkCitations()`  [INFERRED]
+  docs/security/audit-2026-11-run4.md → src/grounding.ts
 - `Nara platform (chatbot dokumen)` --references--> `answer()`  [INFERRED]
   README.md → src/rag.ts
 - `Isolasi data per bot` --implements--> `tenantEnv()`  [EXTRACTED]
   README.md → src/settings.ts
-- `Batas yang diperiksa` --references--> `checkCitations()`  [INFERRED]
-  docs/security/audit-2026-11-run4.md → src/grounding.ts
+- `Batas yang diperiksa` --references--> `run()`  [INFERRED]
+  docs/security/tsbot-audit-2026-11.md → web/gradients/gradient-engine/scheduler.ts
 
 ## Import Cycles
 - None detected.
@@ -299,7 +299,7 @@ Cohesion: 0.22
 Nodes (5): pick(), aurora, chrome, wgsl, wgsl
 
 ## Knowledge Gaps
-- **11 isolated node(s):** `Device`, `Dashboard pemilik bot`, `Audit keamanan 1–3`, `Paket gratis Cloudflare Workers/D1/Vectorize`, `Peringatan PII saat unggah` (+6 more)
+- **11 isolated node(s):** `Device`, `Dashboard pemilik bot`, `DEPLOY_TOKEN satu kali pakai`, `Peringatan PII saat unggah`, `Guardrail prompt injection` (+6 more)
   These have ≤1 connection - possible missing edges or undocumented components. (Counts symbols only; 372 node(s) total have ≤1 connection when file, concept and rationale nodes are included.)
 - **18 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
 
@@ -307,15 +307,15 @@ Nodes (5): pick(), aurora, chrome, wgsl, wgsl
 _Questions this graph is uniquely positioned to answer:_
 
 - **Why does `Batas yang diperiksa` connect `TanyaSayaChat` to `scheduler.ts`?**
-  _High betweenness centrality (0.417) - this node is a cross-community bridge._
+  _High betweenness centrality (0.392) - this node is a cross-community bridge._
 - **Are the 2 inferred relationships involving `answer()` (e.g. with `paint()` and `Nara platform (chatbot dokumen)`) actually correct?**
   _`answer()` has 2 INFERRED edges - model-reasoned connections that need verification._
-- **What connects `Device`, `Dashboard pemilik bot`, `Audit keamanan 1–3` to the rest of the system?**
+- **What connects `Device`, `Dashboard pemilik bot`, `DEPLOY_TOKEN satu kali pakai` to the rest of the system?**
   _11 weakly-connected nodes found - possible documentation gaps or missing edges._
 - **Should `src/index.ts` be split into smaller, more focused modules?**
   _Cohesion score 0.09195402298850575 - nodes in this community are weakly interconnected._
 - **Why does `run()` connect `scheduler.ts` to `TanyaSayaChat`?**
-  _High betweenness centrality (0.416) - this node is a cross-community bridge._
+  _High betweenness centrality (0.391) - this node is a cross-community bridge._
 - **Are the 3 inferred relationships involving `mountGradient()` (e.g. with `.isLost()` and `.renderFrame()`) actually correct?**
   _`mountGradient()` has 3 INFERRED edges - model-reasoned connections that need verification._
 - **Should `channels.ts` be split into smaller, more focused modules?**
