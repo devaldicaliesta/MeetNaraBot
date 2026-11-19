@@ -11,7 +11,7 @@
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `511b4491`
+- Built from commit: `844c31c8`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -24,7 +24,7 @@
 - package.json
 - settings.ts
 - steps
-- env
+- steps
 - env
 - cache.ts
 - dev-server.mjs
@@ -35,7 +35,7 @@
 - run
 - compilerOptions
 - graph.yml
-- GradientParams
+- WebGPULease
 - file
 - Nara: catatan untuk Claude
 - scheduler.ts
@@ -45,10 +45,10 @@
 - GradientKindDefinition
 - chunks
 - webgpu-device.ts
-- gradient-engine/index.ts
+- renderer.ts
 - webgpu.ts
 - purgeBot
-- WebGPULease
+- .renderFrame
 - scripts
 - src/types.ts
 - playwright.config.ts
@@ -94,22 +94,22 @@
 4. `mountGradient()` - 24 edges
 5. `TanyaSayaChat` - 21 edges
 6. `GradientParams` - 19 edges
-7. `WebGPULease` - 17 edges
+7. `pick()` - 17 edges
 8. `normalizeParams()` - 17 edges
-9. `pick()` - 17 edges
+9. `WebGPULease` - 17 edges
 10. `createWebGLRenderer()` - 14 edges
 
 ## Surprising Connections (you probably didn't know these)
 - `Kunci login per IP/email` --implements--> `verifyLogin()`  [INFERRED]
   SECURITY.md → src/auth.ts
-- `Isolasi data per bot` --implements--> `tenantEnv()`  [EXTRACTED]
-  README.md → src/settings.ts
 - `Batas yang diperiksa` --references--> `storeAnswer()`  [INFERRED]
   docs/security/audit-2026-11-run4.md → src/cache.ts
 - `Batas yang diperiksa` --references--> `checkCitations()`  [INFERRED]
   docs/security/audit-2026-11-run4.md → src/grounding.ts
-- `Batas yang diperiksa` --references--> `run()`  [INFERRED]
-  docs/security/tsbot-audit-2026-11.md → web/gradients/gradient-engine/scheduler.ts
+- `Nara platform (chatbot dokumen)` --references--> `answer()`  [INFERRED]
+  README.md → src/rag.ts
+- `Isolasi data per bot` --implements--> `tenantEnv()`  [EXTRACTED]
+  README.md → src/settings.ts
 
 ## Import Cycles
 - None detected.
@@ -148,7 +148,7 @@ Nodes (22): settings, asLang(), clamp(), DEFAULT_SETTINGS, deleteSetting(), envD
 Cohesion: 0.08
 Nodes (25): CI, jobs, qa, name, on, pull_request, push, workflow_call (+17 more)
 
-### Community 8 - "env"
+### Community 8 - "steps"
 Cohesion: 0.06
 Nodes (33): concurrency, cancel-in-progress, group, env, needs, runs-on, steps, CLOUDFLARE_ACCOUNT_ID (+25 more)
 
@@ -192,7 +192,7 @@ Nodes (10): compilerOptions, lib, module, moduleResolution, noEmit, skipLibCheck
 Cohesion: 0.10
 Nodes (19): concurrency, cancel-in-progress, group, runs-on, steps, jobs, graph, name (+11 more)
 
-### Community 19 - "GradientParams"
+### Community 19 - "WebGPULease"
 Cohesion: 0.14
 Nodes (8): BackendLease, Oklab, PooledContext, AnyCanvas, ColorResolver, removeSurface(), WebGPULease, WgpuBuffer
 
@@ -232,7 +232,7 @@ Nodes (11): chunks, chat_log, chunks_fts, idx_chat_log_created, idx_chunks_idx, 
 Cohesion: 0.10
 Nodes (24): adapterRefusal(), describe(), deviceLost(), fail(), isWgpuGpu(), loseWebGPUDevice(), navigatorGpu(), pipelines (+16 more)
 
-### Community 30 - "gradient-engine/index.ts"
+### Community 30 - "renderer.ts"
 Cohesion: 0.07
 Nodes (52): FALLBACK_RGB, getProbe(), hasCssVariable(), linearToSrgb(), literalCache, oklabToSrgb(), parseChannel(), parseColorLiteral() (+44 more)
 
@@ -244,7 +244,7 @@ Nodes (23): backendFor(), BackendName, webglBackend, webgpuBackend, getKind(), k
 Cohesion: 0.15
 Nodes (14): Audit keamanan run 4 (2026-11), Batas yang diperiksa, Hasil, vector_tombstones, Akun 7 hari + cron pembersihan, listBots(), purgeExpiredCache(), deleteVectors() (+6 more)
 
-### Community 33 - "WebGPULease"
+### Community 33 - ".renderFrame"
 Cohesion: 0.14
 Nodes (11): FrameInput, RenderTarget, acquireSurface(), isWgpuContext(), leasedBytes(), packUniforms(), probeCopyPath(), webgpuContext() (+3 more)
 
@@ -329,7 +329,7 @@ Cohesion: 0.67
 Nodes (3): Audit keamanan 1–3, Kunci login per IP/email, loginLocked()
 
 ## Knowledge Gaps
-- **11 isolated node(s):** `Device`, `Dashboard pemilik bot`, `Audit keamanan 1–3`, `Uji coba + panel X-ray`, `Peringatan PII saat unggah` (+6 more)
+- **11 isolated node(s):** `Device`, `Dashboard pemilik bot`, `Paket gratis Cloudflare Workers/D1/Vectorize`, `Gerbang skor sebelum AI`, `Peringatan PII saat unggah` (+6 more)
   These have ≤1 connection - possible missing edges or undocumented components. (Counts symbols only; 375 node(s) total have ≤1 connection when file, concept and rationale nodes are included.)
 - **18 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
 
@@ -337,15 +337,15 @@ Nodes (3): Audit keamanan 1–3, Kunci login per IP/email, loginLocked()
 _Questions this graph is uniquely positioned to answer:_
 
 - **Why does `Batas yang diperiksa` connect `TanyaSayaChat` to `run`?**
-  _High betweenness centrality (0.418) - this node is a cross-community bridge._
+  _High betweenness centrality (0.390) - this node is a cross-community bridge._
 - **Are the 2 inferred relationships involving `answer()` (e.g. with `paint()` and `Nara platform (chatbot dokumen)`) actually correct?**
   _`answer()` has 2 INFERRED edges - model-reasoned connections that need verification._
-- **What connects `Device`, `Dashboard pemilik bot`, `Audit keamanan 1–3` to the rest of the system?**
+- **What connects `Device`, `Dashboard pemilik bot`, `Paket gratis Cloudflare Workers/D1/Vectorize` to the rest of the system?**
   _11 weakly-connected nodes found - possible documentation gaps or missing edges._
 - **Should `src/index.ts` be split into smaller, more focused modules?**
   _Cohesion score 0.08143939393939394 - nodes in this community are weakly interconnected._
 - **Why does `run()` connect `run` to `TanyaSayaChat`, `pool.ts`, `scheduler.ts`?**
-  _High betweenness centrality (0.411) - this node is a cross-community bridge._
+  _High betweenness centrality (0.385) - this node is a cross-community bridge._
 - **Are the 3 inferred relationships involving `mountGradient()` (e.g. with `.isLost()` and `.renderFrame()`) actually correct?**
   _`mountGradient()` has 3 INFERRED edges - model-reasoned connections that need verification._
 - **Should `llm.ts` be split into smaller, more focused modules?**
