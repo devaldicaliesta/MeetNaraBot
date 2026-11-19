@@ -34,7 +34,9 @@ import { channelRoutes } from './channels';
 import { bodyTooLarge } from './body';
 import {
   ACCOUNT_DAYS,
-  applyAccountExpiry,
+  endPermanentAccounts,
+  ownsPermanentBot,
+  setAccountPermanent,
   DEFAULT_BOT,
   MAX_BOTS_PER_USER,
   MIN_PASSWORD,
@@ -311,10 +313,9 @@ async function purgeAccount(env: Bindings, userId: string) {
 }
 
 async function purgeExpiredAccounts(env: Bindings) {
-  // Accounts behind a permanent bot (PERMANENT_BOTS, e.g. TSbot) are never deleted, and with the
-  // platform's account expiry switched off no account is.
+  // Accounts behind a permanent bot (PERMANENT_BOTS, e.g. TSbot) are never deleted; permanent
+  // accounts chosen by their owners have no end date, so they never match below.
   await keepPermanentAccounts(env).catch((e) => console.error('permanent accounts not updated', e));
-  if (!(await getPlatform(env.DB)).accountExpiry) await applyAccountExpiry(env, false);
   const now = new Date().toISOString();
   let purged = 0;
   for (let round = 0; round < PURGE_ROUNDS; round++) {
@@ -546,7 +547,7 @@ app.use('/api/auth/*', async (c, next) => {
 });
 
 app.post('/api/auth/signup', async (c) => {
-  const body = await c.req.json<{ email?: string; password?: string; name?: string }>().catch(() => ({} as any));
+  const body = await c.req.json<{ email?: string; password?: string; name?: string; permanent?: boolean }>().catch(() => ({} as any));
   const email = normalizeEmail(body.email);
   if (!email) return c.json({ error: tr(c, 'Alamat email tidak valid.', 'That e-mail address is not valid.') }, 400);
   const problem = passwordProblem(body.password, email);
@@ -571,18 +572,36 @@ app.post('/api/auth/signup', async (c) => {
   }
 
   const name = String(body.name || '').trim().replace(/[\r\n<>]/g, '').slice(0, 80) || email.split('@')[0];
-  const { accountExpiry } = await getPlatform(c.env.DB);
-  const user = await createUser(c.env, email, String(body.password), name, accountExpiry);
+  // Permanent only when the user chose it and the platform admin allows it; otherwise ACCOUNT_DAYS.
+  const { allowPermanent } = await getPlatform(c.env.DB);
+  const permanent = allowPermanent && body.permanent === true;
+  const user = await createUser(c.env, email, String(body.password), name, !permanent);
   if (!user) return c.json({ error: tr(c, 'Email ini sudah terdaftar. Silakan masuk.', 'This e-mail is already registered. Please sign in.') }, 409);
   const first = await createBot(c.env, user.id, `Bot ${name}`.slice(0, 60));
   const token = await createSession(c.env, user.id);
-  return c.json({ token, user, bots: first === 'limit' ? [] : [first], accountDays: accountExpiry ? ACCOUNT_DAYS : null }, 201);
+  return c.json({ token, user, bots: first === 'limit' ? [] : [first], accountDays: permanent ? null : ACCOUNT_DAYS }, 201);
 });
 
-/** Whether accounts expire, for the sign-up form and the landing page. */
+/** Whether users may choose a permanent account, for the sign-up form and the landing page. */
 app.get('/api/auth/policy', async (c) => {
-  const { accountExpiry } = await getPlatform(c.env.DB);
-  return c.json({ accountExpiry, accountDays: accountExpiry ? ACCOUNT_DAYS : null });
+  const { allowPermanent } = await getPlatform(c.env.DB);
+  return c.json({ allowPermanent, accountDays: ACCOUNT_DAYS });
+});
+
+/** The signed-in user switches their own account between permanent and ACCOUNT_DAYS. */
+app.post('/api/auth/account', async (c) => {
+  const user = await sessionUser(c.env, bearer(c));
+  if (!user) return c.json({ error: tr(c, 'Sesi berakhir. Silakan masuk lagi.', 'Your session has ended. Please sign in again.') }, 401);
+  const body = await c.req.json<{ permanent?: unknown }>().catch(() => null);
+  if (typeof body?.permanent !== 'boolean') return c.json({ error: tr(c, 'Data pengaturan tidak valid.', 'Invalid settings data.') }, 400);
+  if (body.permanent && !(await getPlatform(c.env.DB)).allowPermanent) {
+    return c.json({ error: tr(c, 'Admin platform sedang tidak mengizinkan akun permanen.', 'The platform admin does not allow permanent accounts right now.') }, 403);
+  }
+  if (!body.permanent && (await ownsPermanentBot(c.env, user.id))) {
+    return c.json({ error: tr(c, 'Akun ini memegang bot TSbot, jadi selalu permanen.', 'This account holds the TSbot bot, so it is always permanent.') }, 409);
+  }
+  const expires_at = await setAccountPermanent(c.env, user.id, body.permanent);
+  return c.json({ user: { ...user, expires_at } });
 });
 
 app.post('/api/auth/login', async (c) => {
@@ -613,7 +632,8 @@ app.get('/api/auth/me', async (c) => {
   await keepPermanentAccounts(c.env).catch((e) => console.error('permanent accounts not updated', e));
   const user = await sessionUser(c.env, bearer(c));
   if (!user) return c.json({ error: tr(c, 'Sesi berakhir. Silakan masuk lagi.', 'Your session has ended. Please sign in again.') }, 401);
-  return c.json({ user, bots: await listBots(c.env, user.id), maxBots: MAX_BOTS_PER_USER });
+  // `pinned`: the account holds a PERMANENT_BOTS bot (TSbot), so its owner cannot make it temporary.
+  return c.json({ user, bots: await listBots(c.env, user.id), maxBots: MAX_BOTS_PER_USER, pinned: await ownsPermanentBot(c.env, user.id) });
 });
 
 app.post('/api/auth/bots', async (c) => {
@@ -736,18 +756,18 @@ const platformAdminOnly = (c: Context<Env>) =>
 app.get('/api/admin/platform', async (c) => {
   const denied = platformAdminOnly(c);
   if (denied) return denied;
-  const { accountExpiry } = await getPlatform(c.env.DB);
-  return c.json({ accountExpiry, accountDays: ACCOUNT_DAYS });
+  const { allowPermanent } = await getPlatform(c.env.DB);
+  return c.json({ allowPermanent, accountDays: ACCOUNT_DAYS });
 });
 
 app.post('/api/admin/platform', async (c) => {
   const denied = platformAdminOnly(c);
   if (denied) return denied;
-  const body = await c.req.json<{ accountExpiry?: unknown }>().catch(() => null);
-  if (typeof body?.accountExpiry !== 'boolean') return c.json({ error: tr(c, 'Data pengaturan tidak valid.', 'Invalid settings data.') }, 400);
-  await writeSetting(c.env.DB, 'platform', { accountExpiry: body.accountExpiry });
-  await applyAccountExpiry(c.env, body.accountExpiry);
-  return c.json({ accountExpiry: body.accountExpiry, accountDays: ACCOUNT_DAYS });
+  const body = await c.req.json<{ allowPermanent?: unknown }>().catch(() => null);
+  if (typeof body?.allowPermanent !== 'boolean') return c.json({ error: tr(c, 'Data pengaturan tidak valid.', 'Invalid settings data.') }, 400);
+  await writeSetting(c.env.DB, 'platform', { allowPermanent: body.allowPermanent });
+  if (!body.allowPermanent) await endPermanentAccounts(c.env);
+  return c.json({ allowPermanent: body.allowPermanent, accountDays: ACCOUNT_DAYS });
 });
 
 app.get('/api/admin/config', async (c) => {

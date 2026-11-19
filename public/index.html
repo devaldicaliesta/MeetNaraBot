@@ -247,12 +247,12 @@ const chat = document.getElementById('chat');
 const host = location.origin;
 document.getElementById('snip').textContent = `<script src="${host}/widget.js" defer><\/script>\n<tanyasaya-chat api-base="${host}" bot="ID_BOT_ANDA"></tanyasaya-chat>`;
 fetch('/api/public/info').then(r => r.json()).then(i => { if (i.name) document.getElementById('bn').textContent = i.name; }).catch(() => {});
-// The 7-day account limit is a platform setting: drop that sentence when it is switched off.
+// Whether users may keep a permanent account is a platform setting; the sentence says which applies.
 fetch('/api/auth/policy').then(r => r.json()).then((p) => {
-  if (p.accountExpiry !== false) return;
+  if (p.allowPermanent !== true) return;
   const el = document.getElementById('bandNote');
-  el.dataset.id = 'Tanyakan ke bot demo, atau daftar gratis untuk membuat bot dari dokumen Anda sendiri.';
-  el.dataset.en = 'Ask the demo bot, or sign up free to build a bot from your own document.';
+  el.dataset.id = 'Tanyakan ke bot demo, atau daftar gratis untuk membuat bot dari dokumen Anda sendiri. Saat mendaftar, pilih akun permanen atau 7 hari.';
+  el.dataset.en = 'Ask the demo bot, or sign up free to build a bot from your own document. When you sign up, choose a permanent or a 7-day account.';
   el.textContent = document.documentElement.lang === 'en' ? el.dataset.en : el.dataset.id;
 }).catch(() => {});
 

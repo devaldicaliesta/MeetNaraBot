@@ -44,24 +44,44 @@ export async function keepPermanentAccounts(env: Bindings): Promise<number> {
   return users.meta?.changes ?? 0;
 }
 
+const daysFromNow = () => new Date(Date.now() + ACCOUNT_DAYS * 86_400_000).toISOString();
+
 /**
- * Applies the platform's account-expiry switch to existing accounts.
- * Off: every account (and every session cut short by it) stays active.
- * On again: accounts that had no end date get a fresh ACCOUNT_DAYS from now, so nobody is deleted
- * at once; accounts behind a permanent bot (PERMANENT_BOTS) keep no end date.
+ * The platform admin stopped allowing permanent accounts: every permanent account gets a fresh
+ * ACCOUNT_DAYS from now (so nobody is deleted at once), except the owners of PERMANENT_BOTS.
  */
-export async function applyAccountExpiry(env: Bindings, limited: boolean): Promise<void> {
-  if (!limited) {
+export async function endPermanentAccounts(env: Bindings): Promise<void> {
+  await env.DB.prepare('UPDATE users SET expires_at = ? WHERE expires_at >= ?').bind(daysFromNow(), NO_EXPIRY).run();
+  await keepPermanentAccounts(env);
+}
+
+/** True when the user owns a bot listed in PERMANENT_BOTS (e.g. TSbot): that account is always permanent. */
+export async function ownsPermanentBot(env: Bindings, userId: string): Promise<boolean> {
+  const ids = permanentBots(env);
+  if (!ids.length) return false;
+  const row = await env.DB.prepare(`SELECT 1 AS x FROM bots WHERE owner_id = ? AND id IN (${ids.map(() => '?').join(',')}) LIMIT 1`)
+    .bind(userId, ...ids)
+    .first<{ x: number }>();
+  return !!row;
+}
+
+/**
+ * The user's own choice. Permanent: no end date, and sessions cut short by the old one get their
+ * normal SESSION_DAYS back. Not permanent: ACCOUNT_DAYS from now (only if it had no end date, so
+ * switching back and forth cannot extend a running 7-day period).
+ */
+export async function setAccountPermanent(env: Bindings, userId: string, permanent: boolean): Promise<string> {
+  if (permanent) {
     const full = `strftime('%Y-%m-%dT%H:%M:%fZ', created_at, '+${SESSION_DAYS} days')`;
     await env.DB.batch([
-      env.DB.prepare('UPDATE users SET expires_at = ? WHERE expires_at < ?').bind(NO_EXPIRY, NO_EXPIRY),
-      env.DB.prepare(`UPDATE sessions SET expires_at = ${full} WHERE expires_at < ${full}`),
+      env.DB.prepare('UPDATE users SET expires_at = ? WHERE id = ?').bind(NO_EXPIRY, userId),
+      env.DB.prepare(`UPDATE sessions SET expires_at = ${full} WHERE user_id = ? AND expires_at < ${full}`).bind(userId),
     ]);
-    return;
+  } else {
+    await env.DB.prepare('UPDATE users SET expires_at = ? WHERE id = ? AND expires_at >= ?').bind(daysFromNow(), userId, NO_EXPIRY).run();
   }
-  const until = new Date(Date.now() + ACCOUNT_DAYS * 86_400_000).toISOString();
-  await env.DB.prepare('UPDATE users SET expires_at = ? WHERE expires_at >= ?').bind(until, NO_EXPIRY).run();
-  await keepPermanentAccounts(env);
+  const row = await env.DB.prepare('SELECT expires_at FROM users WHERE id = ?').bind(userId).first<{ expires_at: string }>();
+  return row?.expires_at || '';
 }
 
 export type User = { id: string; email: string; name: string; expires_at: string };

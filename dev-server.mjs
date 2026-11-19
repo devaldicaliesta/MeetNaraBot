@@ -51,7 +51,7 @@ const sessions = new Map(); // token -> userId
 const MAX_BOTS = 3;
 const ACCOUNT_DAYS = 7;
 const NO_EXPIRY = '9999-12-31T23:59:59.999Z';
-const platform = { accountExpiry: true };
+const platform = { allowPermanent: true };
 const rid = (n = 10) => [...crypto.randomBytes(n)].map((b) => 'abcdefghijkmnpqrstuvwxyz23456789'[b % 32]).join('');
 
 const keyStatus = (st) => PROVIDERS.filter(([id]) => id !== 'workers-ai').map(([id, name, secret]) => ({ id, name, secret, configured: !!st.keys[id], source: st.keys[id] ? 'dashboard' : null }));
@@ -173,7 +173,7 @@ http.createServer(async (req, res) => {
   const makeBot = (u, name) => { const id = rid(); bots.set(id, { owner: u.id, name, created_at: new Date().toISOString(), ...newState(name) }); return { id, owner_id: u.id, name, created_at: bots.get(id).created_at }; };
 
   // Platform switch: whether accounts expire after ACCOUNT_DAYS (mirrors src/settings.ts getPlatform).
-  if (p === '/api/auth/policy') return send(res, { accountExpiry: platform.accountExpiry, accountDays: platform.accountExpiry ? ACCOUNT_DAYS : null });
+  if (p === '/api/auth/policy') return send(res, { allowPermanent: platform.allowPermanent, accountDays: ACCOUNT_DAYS });
   if (p === '/api/auth/signup' && req.method === 'POST') {
     const b = await body(req);
     const email = String(b.email || '').trim().toLowerCase();
@@ -181,12 +181,13 @@ http.createServer(async (req, res) => {
     if (String(b.password || '').length < 10) return send(res, { error: T('Kata sandi minimal 10 karakter.', 'The password needs at least 10 characters.') }, 400);
     if (users.has(email)) return send(res, { error: T('Email ini sudah terdaftar. Silakan masuk.', 'This e-mail is already registered. Please sign in.') }, 409);
     const name = String(b.name || '').trim().slice(0, 80) || email.split('@')[0];
-    const u = { id: rid(16), email, name, password: String(b.password), expires_at: platform.accountExpiry ? new Date(Date.now() + ACCOUNT_DAYS * 864e5).toISOString() : NO_EXPIRY };
+    const permanent = platform.allowPermanent && b.permanent === true;
+    const u = { id: rid(16), email, name, password: String(b.password), expires_at: permanent ? NO_EXPIRY : new Date(Date.now() + ACCOUNT_DAYS * 864e5).toISOString() };
     users.set(email, u);
     const first = makeBot(u, `Bot ${name}`.slice(0, 60));
     const token = 'nara_' + crypto.randomBytes(32).toString('hex');
     sessions.set(token, u.id);
-    return send(res, { token, user: publicUser(u), bots: [first], accountDays: platform.accountExpiry ? ACCOUNT_DAYS : null }, 201);
+    return send(res, { token, user: publicUser(u), bots: [first], accountDays: permanent ? null : ACCOUNT_DAYS }, 201);
   }
   if (p === '/api/auth/login' && req.method === 'POST') {
     const b = await body(req);
@@ -200,7 +201,15 @@ http.createServer(async (req, res) => {
   if (p.startsWith('/api/auth/')) {
     const u = sessionUser();
     if (!u) return send(res, { error: T('Sesi berakhir. Silakan masuk lagi.', 'Your session has ended. Please sign in again.') }, 401);
-    if (p === '/api/auth/me') return send(res, { user: publicUser(u), bots: userBots(u), maxBots: MAX_BOTS });
+    if (p === '/api/auth/me') return send(res, { user: publicUser(u), bots: userBots(u), maxBots: MAX_BOTS, pinned: false });
+    if (p === '/api/auth/account' && req.method === 'POST') {
+      const b = await body(req);
+      if (typeof b.permanent !== 'boolean') return send(res, { error: T('Data pengaturan tidak valid.', 'Invalid settings data.') }, 400);
+      if (b.permanent && !platform.allowPermanent) return send(res, { error: T('Admin platform sedang tidak mengizinkan akun permanen.', 'The platform admin does not allow permanent accounts right now.') }, 403);
+      if (b.permanent) u.expires_at = NO_EXPIRY;
+      else if (u.expires_at === NO_EXPIRY) u.expires_at = new Date(Date.now() + ACCOUNT_DAYS * 864e5).toISOString();
+      return send(res, { user: publicUser(u) });
+    }
     if (p === '/api/auth/bots' && req.method === 'POST') {
       const b = await body(req);
       if (userBots(u).length >= MAX_BOTS) return send(res, { error: T(`Satu akun maksimal punya ${MAX_BOTS} bot.`, `An account can have at most ${MAX_BOTS} bots.`) }, 409);
@@ -232,12 +241,11 @@ http.createServer(async (req, res) => {
     if (p === '/api/admin/platform') {
       if (account) return send(res, { error: T('Hanya admin platform yang bisa mengubah ini.', 'Only the platform admin can change this.') }, 403);
       if (req.method === 'POST') {
-        if (typeof b.accountExpiry !== 'boolean') return send(res, { error: T('Data pengaturan tidak valid.', 'Invalid settings data.') }, 400);
-        platform.accountExpiry = b.accountExpiry;
-        const until = b.accountExpiry ? new Date(Date.now() + ACCOUNT_DAYS * 864e5).toISOString() : NO_EXPIRY;
-        for (const u of users.values()) if (!b.accountExpiry || u.expires_at === NO_EXPIRY) u.expires_at = until;
+        if (typeof b.allowPermanent !== 'boolean') return send(res, { error: T('Data pengaturan tidak valid.', 'Invalid settings data.') }, 400);
+        platform.allowPermanent = b.allowPermanent;
+        if (!b.allowPermanent) for (const u of users.values()) if (u.expires_at === NO_EXPIRY) u.expires_at = new Date(Date.now() + ACCOUNT_DAYS * 864e5).toISOString();
       }
-      return send(res, { accountExpiry: platform.accountExpiry, accountDays: ACCOUNT_DAYS });
+      return send(res, { allowPermanent: platform.allowPermanent, accountDays: ACCOUNT_DAYS });
     }
     if (p === '/api/admin/channels') {
       if (botId !== 'default') return send(res, { error: T('Telegram dan WhatsApp hanya tersedia untuk bot platform.', 'Telegram and WhatsApp are only available for the platform bot.'), available: false }, 403);

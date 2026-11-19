@@ -367,13 +367,16 @@ export async function getSettings(env: Bindings, bot = 'default'): Promise<BotSe
 
 /** Platform-wide switches, set by the platform admin. */
 export type PlatformSettings = {
-  /** true: accounts are active for ACCOUNT_DAYS and then deleted. false: every account stays active. */
-  accountExpiry: boolean;
+  /**
+   * true (default): each user chooses at sign-up, and later in the dashboard, whether their account
+   * is permanent or active for ACCOUNT_DAYS. false: every account is active for ACCOUNT_DAYS only.
+   */
+  allowPermanent: boolean;
 };
 
 export async function getPlatform(db: D1Database): Promise<PlatformSettings> {
   const saved = await readSetting<Partial<PlatformSettings>>(db, 'platform');
-  return { accountExpiry: saved?.accountExpiry !== false };
+  return { allowPermanent: saved?.allowPermanent !== false };
 }
 
 export async function getKeys(env: Bindings, bot = 'default'): Promise<KeyStore> {

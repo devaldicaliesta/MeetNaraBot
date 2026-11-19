@@ -148,30 +148,56 @@ test('a permanent bot account that still has days left loses its limit at sign-i
   expect((await me.json()).user.expires_at).toMatch(/^9999-/);
 });
 
-test('the platform admin can switch the 7-day account limit off and on', async ({ request }) => {
+test('users choose a permanent or 7-day account at sign-up and can change it later', async ({ request }) => {
+  const ip = (n: number) => ({ 'cf-connecting-ip': `198.51.100.${n}` });
+  expect(await request.get('/api/auth/policy').then((r) => r.json())).toEqual({ allowPermanent: true, accountDays: 7 });
+
+  // Sign-up: permanent when asked for, 7 days otherwise.
+  const keep = await (await request.post('/api/auth/signup', { headers: ip(71), data: { email: 'keep@qa.test', password: 'kuda-biru-melompat', permanent: true } })).json();
+  expect(keep.user.expires_at).toMatch(/^9999-/);
+  expect(keep.accountDays).toBeNull();
+  const temp = await (await request.post('/api/auth/signup', { headers: ip(72), data: { email: 'temp@qa.test', password: 'kuda-biru-melompat' } })).json();
+  const days = (Date.parse(temp.user.expires_at) - Date.now()) / 864e5;
+  expect(days).toBeGreaterThan(6.9);
+  expect(days).toBeLessThanOrEqual(7);
+
+  // Later, from the dashboard: 7-day -> permanent -> 7 days from now.
+  const auth = { Authorization: `Bearer ${temp.token}` };
+  const up = await (await request.post('/api/auth/account', { headers: auth, data: { permanent: true } })).json();
+  expect(up.user.expires_at).toMatch(/^9999-/);
+  const down = await (await request.post('/api/auth/account', { headers: auth, data: { permanent: false } })).json();
+  expect((Date.parse(down.user.expires_at) - Date.now()) / 864e5).toBeGreaterThan(6.9);
+  expect((await request.post('/api/auth/account', { headers: auth, data: { permanent: 'ya' } })).status()).toBe(400);
+  expect((await request.post('/api/auth/account', { data: { permanent: true } })).status()).toBe(401);
+
+  // The TSbot owner cannot make the account temporary.
+  const tsbot = await login(request, 'tsbot-active@qa.test', 'tsbot-active-password');
+  const tsAuth = { Authorization: `Bearer ${tsbot.body.token}` };
+  expect((await (await request.get('/api/auth/me', { headers: tsAuth })).json()).pinned).toBe(true);
+  expect((await request.post('/api/auth/account', { headers: tsAuth, data: { permanent: false } })).status()).toBe(409);
+});
+
+test('the platform admin decides whether users may choose a permanent account', async ({ request }) => {
   const admin = { Authorization: `Bearer ${QA_PASSWORD}` };
   // Only the platform admin may change it.
   const owner = await login(request, 'owner-a@qa.test', 'owner-a-password');
-  expect((await request.post('/api/admin/platform', { headers: { Authorization: `Bearer ${owner.body.token}`, 'X-Bot-Id': 'qabotaaaa1' }, data: { accountExpiry: false } })).status()).toBe(403);
-  expect((await request.get('/api/auth/policy').then((r) => r.json())).accountExpiry).toBe(true);
+  expect((await request.post('/api/admin/platform', { headers: { Authorization: `Bearer ${owner.body.token}`, 'X-Bot-Id': 'qabotaaaa1' }, data: { allowPermanent: false } })).status()).toBe(403);
+  expect((await request.post('/api/admin/platform', { headers: admin, data: { allowPermanent: 'no' } })).status()).toBe(400);
 
-  // Off: existing accounts and new sign-ups never expire.
-  expect((await request.post('/api/admin/platform', { headers: admin, data: { accountExpiry: false } })).ok()).toBeTruthy();
-  expect(await request.get('/api/auth/policy').then((r) => r.json())).toEqual({ accountExpiry: false, accountDays: null });
-  expect((await login(request, 'owner-a@qa.test', 'owner-a-password')).body.user.expires_at).toMatch(/^9999-/);
-  const signup = await request.post('/api/auth/signup', { headers: { 'cf-connecting-ip': '198.51.100.77' }, data: { email: 'forever-signup@qa.test', password: 'kuda-biru-melompat' } });
-  const fresh = await signup.json();
-  expect(signup.status(), JSON.stringify(fresh)).toBe(201);
-  expect(fresh.user.expires_at).toMatch(/^9999-/);
-  expect(fresh.accountDays).toBeNull();
-
-  // On again: accounts get a fresh 7 days from now (nobody is deleted at once); permanent ones stay.
-  expect((await request.post('/api/admin/platform', { headers: admin, data: { accountExpiry: true } })).ok()).toBeTruthy();
-  const days = (Date.parse((await login(request, 'owner-a@qa.test', 'owner-a-password')).body.user.expires_at) - Date.now()) / 864e5;
-  expect(days).toBeGreaterThan(6.9);
-  expect(days).toBeLessThanOrEqual(7);
+  // Off: permanent accounts get 7 days from now (TSbot owner excepted), and nobody can choose permanent.
+  expect((await request.post('/api/admin/platform', { headers: admin, data: { allowPermanent: false } })).ok()).toBeTruthy();
+  expect((await request.get('/api/auth/policy').then((r) => r.json())).allowPermanent).toBe(false);
+  const keep = await login(request, 'keep@qa.test', 'kuda-biru-melompat');
+  expect((Date.parse(keep.body.user.expires_at) - Date.now()) / 864e5).toBeGreaterThan(6.9);
   expect((await login(request, 'tsbot-active@qa.test', 'tsbot-active-password')).body.user.expires_at).toMatch(/^9999-/);
-  expect((await request.post('/api/admin/platform', { headers: admin, data: { accountExpiry: 'no' } })).status()).toBe(400);
+  expect((await request.post('/api/auth/account', { headers: { Authorization: `Bearer ${keep.body.token}` }, data: { permanent: true } })).status()).toBe(403);
+  const late = await (await request.post('/api/auth/signup', { headers: { 'cf-connecting-ip': '198.51.100.73' }, data: { email: 'late@qa.test', password: 'kuda-biru-melompat', permanent: true } })).json();
+  expect(late.user.expires_at).not.toMatch(/^9999-/);
+
+  // On again: the choice is back.
+  expect((await request.post('/api/admin/platform', { headers: admin, data: { allowPermanent: true } })).ok()).toBeTruthy();
+  const again = await (await request.post('/api/auth/account', { headers: { Authorization: `Bearer ${keep.body.token}` }, data: { permanent: true } })).json();
+  expect(again.user.expires_at).toMatch(/^9999-/);
 });
 
 test('bots can be created up to the limit and deleted with their data', async ({ request }) => {
