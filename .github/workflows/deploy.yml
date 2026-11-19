@@ -13,6 +13,7 @@
 #                          WhatsApp Cloud API (Meta) credentials
 # Optional variable NARA_BOT_ID (also used by tsbot.yml): pushed as PERMANENT_BOTS, so that bot's
 #                          owner account never expires.
+# Optional variable PERMANENT_EMAILS: comma-separated e-mails whose accounts never expire.
 #
 # After deploying, docs/knowledge/nara.md is indexed as the bot's reference document
 # when no document is active yet, using a random DEPLOY_TOKEN minted for this run (it can only
@@ -128,6 +129,8 @@ jobs:
           WHATSAPP_APP_SECRET: ${{ secrets.WHATSAPP_APP_SECRET }}
           # The bot TSbot shows never expires (its owner account skips the 7-day limit).
           PERMANENT_BOTS: ${{ vars.NARA_BOT_ID || secrets.NARA_BOT_ID }}
+          # Accounts (comma-separated e-mails) that never expire, e.g. the site owner's.
+          PERMANENT_EMAILS: ${{ vars.PERMANENT_EMAILS || secrets.PERMANENT_EMAILS }}
         run: |
           set -euo pipefail
           if [ -n "$ADMIN_PASSWORD" ]; then
@@ -136,7 +139,7 @@ jobs:
             echo "::warning::ADMIN_PASSWORD repository secret is empty or missing, so the dashboard cannot be used yet. Add it under Settings > Secrets and variables > Actions > Repository secrets (not Environment secrets or Variables), then re-run this workflow."
           fi
           if [ -n "$GEMINI_API_KEY" ]; then printf '%s' "$GEMINI_API_KEY" | npx wrangler secret put GEMINI_API_KEY; fi
-          for name in HF_TOKEN DEEPSEEK_API_KEY MOONSHOT_API_KEY ZAI_API_KEY OPENAI_API_KEY CF_WORKERS_AI_KEY COHERE_API_KEY NVIDIA_API_KEY MISTRAL_API_KEY TOGETHER_API_KEY FIREWORKS_API_KEY XAI_API_KEY TELEGRAM_BOT_TOKEN WHATSAPP_TOKEN WHATSAPP_PHONE_NUMBER_ID WHATSAPP_VERIFY_TOKEN WHATSAPP_APP_SECRET PERMANENT_BOTS; do
+          for name in HF_TOKEN DEEPSEEK_API_KEY MOONSHOT_API_KEY ZAI_API_KEY OPENAI_API_KEY CF_WORKERS_AI_KEY COHERE_API_KEY NVIDIA_API_KEY MISTRAL_API_KEY TOGETHER_API_KEY FIREWORKS_API_KEY XAI_API_KEY TELEGRAM_BOT_TOKEN WHATSAPP_TOKEN WHATSAPP_PHONE_NUMBER_ID WHATSAPP_VERIFY_TOKEN WHATSAPP_APP_SECRET PERMANENT_BOTS PERMANENT_EMAILS; do
             value="${!name}"
             if [ -n "$value" ]; then printf '%s' "$value" | npx wrangler secret put "$name"; fi
           done

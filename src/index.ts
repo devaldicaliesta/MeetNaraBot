@@ -302,6 +302,12 @@ async function purgeBot(env: Bindings, bot: string) {
 // Up to 20 batches of 25 per run, more than the default daily sign-up cap, so expired accounts never pile up.
 const PURGE_BATCH = 25;
 const PURGE_ROUNDS = 20;
+/** Deletes one account with all of its bots, documents, logs and sessions. */
+async function purgeAccount(env: Bindings, userId: string) {
+  for (const b of await listBots(env, userId)) await purgeBot(env, b.id);
+  await env.DB.batch([env.DB.prepare('DELETE FROM sessions WHERE user_id = ?').bind(userId), env.DB.prepare('DELETE FROM users WHERE id = ?').bind(userId)]);
+}
+
 async function purgeExpiredAccounts(env: Bindings) {
   // Accounts behind a permanent bot (PERMANENT_BOTS, e.g. TSbot) are never deleted.
   await keepPermanentAccounts(env).catch((e) => console.error('permanent accounts not updated', e));
@@ -309,10 +315,7 @@ async function purgeExpiredAccounts(env: Bindings) {
   let purged = 0;
   for (let round = 0; round < PURGE_ROUNDS; round++) {
     const users = (await env.DB.prepare('SELECT id FROM users WHERE expires_at <= ? LIMIT ?').bind(now, PURGE_BATCH).all<{ id: string }>()).results || [];
-    for (const u of users) {
-      for (const b of await listBots(env, u.id)) await purgeBot(env, b.id);
-      await env.DB.batch([env.DB.prepare('DELETE FROM sessions WHERE user_id = ?').bind(u.id), env.DB.prepare('DELETE FROM users WHERE id = ?').bind(u.id)]);
-    }
+    for (const u of users) await purgeAccount(env, u.id);
     purged += users.length;
     if (users.length < PURGE_BATCH) break;
   }
@@ -552,6 +555,15 @@ app.post('/api/auth/signup', async (c) => {
   const [a, b] = await c.env.DB.batch<{ n: number }>([bump(ipKey), bump('su:all')]);
   if ((a.results?.[0]?.n ?? 0) > 5 || (b.results?.[0]?.n ?? 0) > signupsPerDay(c.env)) {
     return c.json({ error: tr(c, 'Pendaftaran hari ini sudah mencapai batas. Coba lagi besok.', "Today's sign-up limit has been reached. Please try again tomorrow.") }, 429);
+  }
+
+  // An expired account is deleted by the daily cleanup anyway, and the sign-in error tells its owner to
+  // sign up again, so a new sign-up with that e-mail removes it now instead of saying "already registered".
+  const old = await c.env.DB.prepare('SELECT id, expires_at FROM users WHERE email = ?').bind(email).first<{ id: string; expires_at: string }>();
+  if (old && old.expires_at <= new Date().toISOString()) {
+    await keepPermanentAccounts(c.env);
+    const still = await c.env.DB.prepare('SELECT expires_at FROM users WHERE id = ?').bind(old.id).first<{ expires_at: string }>();
+    if (still && still.expires_at <= new Date().toISOString()) await purgeAccount(c.env, old.id);
   }
 
   const name = String(body.name || '').trim().replace(/[\r\n<>]/g, '').slice(0, 80) || email.split('@')[0];
