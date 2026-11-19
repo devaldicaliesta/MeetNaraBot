@@ -69,42 +69,71 @@ test('dashboard rejects a wrong password', async ({ page }) => {
   await expect(page.locator('#loginErr')).toContainText(/salah|Wrong/);
 });
 
-test('the platform admin switches the 7-day account limit, and sign-up and landing text follow', async ({ page }) => {
+test('a new user picks a permanent account at sign-up and can switch it in the dashboard', async ({ page }) => {
+  await page.goto('/admin.html#daftar');
+  const choice = page.locator('#permanent');
+  await expect(page.locator('#fPermanent')).toBeVisible();
+  await expect(choice).toBeChecked();
+  await expect(page.locator('#authNote')).toHaveText('Kata sandi minimal 10 karakter.');
+  await page.fill('#name', 'Tetap');
+  await page.fill('#email', `keep-${Date.now()}@qa.test`);
+  await page.fill('#pass', 'tetap-password-123');
+  await page.click('#authSubmit');
+  await expect(page.locator('#app')).toBeVisible();
+  const me = page.locator('#mePermanent');
+  await expect(me).toBeChecked();
+  await expect(page.locator('#accountCard .days')).toHaveCount(0);
+
+  // Turning it off asks first; dismissing keeps it permanent.
+  page.once('dialog', (d) => d.dismiss());
+  await me.click();
+  await expect(me).toBeChecked();
+  page.once('dialog', (d) => d.accept());
+  await me.click();
+  await expect(page.locator('#accountCard .days')).toHaveText('7');
+  await expect(page.locator('#toast')).toContainText('7 hari dari sekarang');
+  // Back to permanent, by keyboard, with no confirmation.
+  await page.locator('#mePermanent').focus();
+  await page.keyboard.press('Space');
+  await expect(page.locator('#mePermanent')).toBeChecked();
+  await expect(page.locator('#accountCard .days')).toHaveCount(0);
+});
+
+test('the platform admin can hide the permanent choice, and sign-up and landing text follow', async ({ page }) => {
   await page.goto('/admin.html');
   await page.click('#platformToggle');
   await page.fill('#pass', QA_PASSWORD);
   await page.press('#pass', 'Enter');
-  await expect(page.locator('#app')).toBeVisible();
-  const panel = page.locator('#platformPanel');
-  await expect(panel).toBeVisible();
-  const box = page.locator('#accountExpiry');
+  await expect(page.locator('#platformPanel')).toBeVisible();
+  const box = page.locator('#allowPermanent');
   await expect(box).toBeEnabled();
   await expect(box).toBeChecked();
-  await expect(page.locator('#accountExpiryState')).toContainText('dihapus 7 hari');
 
-  // Off: no confirmation needed, state and toast say every account has no time limit. Keyboard works too.
-  await box.focus();
-  await page.keyboard.press('Space');
-  await expect(box).not.toBeChecked();
-  await expect(page.locator('#accountExpiryState')).toContainText('tanpa batas waktu');
-  await expect(page.locator('#toast')).toContainText('Batas 7 hari dimatikan');
-
-  // The sign-up note and the landing page drop the 7-day sentence.
-  const other = await page.context().newPage();
-  await other.goto('/admin.html#daftar');
-  await expect(other.locator('#authNote')).toHaveText('Minimal 10 karakter. Akun aktif tanpa batas waktu.');
-  await other.goto('/');
-  await expect(other.locator('#bandNote')).not.toContainText('7 hari');
-  await other.close();
-
-  // On again asks first; dismissing keeps it off, accepting turns it on.
-  page.once('dialog', (d) => d.dismiss());
-  await box.click();
-  await expect(box).not.toBeChecked();
+  // Off asks first.
   page.once('dialog', (d) => d.accept());
   await box.click();
+  await expect(box).not.toBeChecked();
+  await expect(page.locator('#allowPermanentState')).toContainText('semua akun aktif 7 hari');
+
+  const other = await page.context().newPage();
+  await other.goto('/admin.html#daftar');
+  await expect(other.locator('#authNote')).toContainText('Akun aktif selama 7 hari');
+  await expect(other.locator('#fPermanent')).toBeHidden();
+  await other.goto('/');
+  await expect(other.locator('#bandNote')).not.toContainText('permanen');
+  await other.close();
+
+  // On again needs no confirmation; the choice is back on the sign-up form and the landing page.
+  await box.focus();
+  await page.keyboard.press('Space');
   await expect(box).toBeChecked();
-  await expect(page.locator('#accountExpiryState')).toContainText('dihapus 7 hari');
+  await expect(page.locator('#allowPermanentState')).toContainText('boleh memilih');
+  const after = await page.context().newPage();
+  await after.goto('/admin.html#daftar');
+  await expect(after.locator('#fPermanent')).toBeVisible();
+  await after.goto('/');
+  await expect(after.locator('#bandNote')).toContainText('pilih akun permanen atau 7 hari');
+  await after.close();
 });
 
 test('a bot owner does not see the platform switch', async ({ page }) => {
@@ -137,7 +166,8 @@ test('anyone can sign up, get their own bot, add a second one and embed it', asy
   await expect(page.locator('#botSwitch')).toBeVisible();
   await expect(page.locator('#botSelect option')).toHaveCount(1);
   await expect(page.locator('#accountInfo')).toContainText(email);
-  await expect(page.locator('#accountInfo')).toContainText('aktif sampai');
+  // Sign-up defaults to a permanent account (the user can still switch it off).
+  await expect(page.locator('#accountInfo')).toContainText('tanpa batas waktu');
 
   page.once('dialog', (d) => d.accept('Bot Kedua'));
   await page.click('#botNew');
