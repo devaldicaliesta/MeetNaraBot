@@ -107,6 +107,18 @@ test('unknown bots are 404 and expired accounts stop answering', async ({ reques
   expect(signIn.body.error).toContain('7 hari');
 });
 
+test('an expired e-mail can sign up again right away, replacing the old account', async ({ request }) => {
+  expect((await login(request, 'again@qa.test', 'again-old-password')).status).toBe(403);
+  const res = await request.post('/api/auth/signup', { data: { email: 'again@qa.test', password: 'brand-new-password', name: 'Lagi' } });
+  expect(res.status()).toBe(201);
+  // The old account and its bot are gone; the new password works, the old one does not.
+  expect((await request.get('/api/public/info?bot=qaagainold')).status()).toBe(404);
+  expect((await login(request, 'again@qa.test', 'brand-new-password')).status).toBe(200);
+  expect((await login(request, 'again@qa.test', 'again-old-password')).status).toBe(401);
+  // An active account still cannot be taken over by signing up with its e-mail.
+  expect((await request.post('/api/auth/signup', { data: { email: 'owner-a@qa.test', password: 'some-other-password' } })).status()).toBe(409);
+});
+
 test('the daily cleanup deletes expired accounts with their bots and data', async ({ request }) => {
   const run = await request.get('/__scheduled?cron=23+3+*+*+*');
   expect(run.ok()).toBeTruthy();
@@ -134,6 +146,13 @@ test('a permanent bot account that still has days left loses its limit at sign-i
   expect(signIn.body.user.expires_at).toMatch(/^9999-/);
   const me = await request.get('/api/auth/me', { headers: { Authorization: `Bearer ${signIn.body.token}` } });
   expect((await me.json()).user.expires_at).toMatch(/^9999-/);
+});
+
+test('an account in PERMANENT_EMAILS keeps working after its 7 days', async ({ request }) => {
+  const signIn = await login(request, 'owner-forever@qa.test', 'owner-forever-password');
+  expect(signIn.status).toBe(200);
+  expect(signIn.body.user.expires_at).toMatch(/^9999-/);
+  expect((await request.get('/api/public/info?bot=qaforever1')).status()).toBe(200);
 });
 
 test('bots can be created up to the limit and deleted with their data', async ({ request }) => {
