@@ -71,6 +71,8 @@ input[type=range]{width:100%;accent-color:var(--laut)}
 .switch input{appearance:none;flex:none;width:40px;height:24px;margin:0;border-radius:99px;background:var(--control);position:relative;cursor:pointer;transition:background .15s}
 .switch input::after{content:"";position:absolute;top:3px;left:3px;width:18px;height:18px;border-radius:50%;background:var(--ink);transition:transform .2s}
 .switch input:checked{background:var(--laut)}
+/* A switch has no border to recolor on focus, so the text-field rule (outline:0 + faint glow, 1.55:1) hid it; give it the real ring (13.6:1). */
+.switch input:focus-visible{outline:2px solid var(--focus);outline-offset:2px;box-shadow:none}
 .switch input:checked::after{transform:translateX(16px);background:var(--on-solid)}
 .switch b{display:block;font-size:14px;font-weight:600}
 .switch em{display:block;font-style:normal;font-size:12.5px;color:var(--ink-3)}
@@ -326,7 +328,7 @@ input[type=range]{width:100%;accent-color:var(--laut)}
       <label class="field"><span id="passLabel">Kata sandi</span>
         <input type="password" id="pass" autocomplete="current-password" required maxlength="200">
       </label>
-      <p class="small muted hidden" id="authNote">Minimal 10 karakter. Akun aktif selama 7 hari sejak mendaftar; setelah itu akun dan semua datanya dihapus otomatis.</p>
+      <p class="small muted hidden" id="authNote" data-noi18n>Minimal 10 karakter. Akun aktif selama 7 hari sejak mendaftar; setelah itu akun dan semua datanya dihapus otomatis.</p>
       <div class="err hidden" id="loginErr"></div>
       <button class="btn" type="submit" id="authSubmit">Masuk</button>
       <button class="linkish" type="button" id="platformToggle">Masuk sebagai admin platform</button>
@@ -377,6 +379,11 @@ input[type=range]{width:100%;accent-color:var(--laut)}
         <div class="panel-head"><div><h2>Urutan penyedia AI</h2><p>Jika penyedia pertama gagal, kuotanya habis, atau terlalu lambat, chatbot otomatis pindah ke penyedia berikutnya.</p></div><a class="btn ghost sm" href="#model">Atur</a></div>
         <div class="chain-view" id="chainView"></div>
         <p class="small muted" style="margin-top:12px">Embedding untuk unggahan berikutnya: <b id="embNext">–</b></p>
+      </div>
+      <div class="panel hidden" id="platformPanel">
+        <div class="panel-head"><div><h2>Masa aktif akun pengguna</h2><p>Berlaku untuk semua akun yang mendaftar sendiri, termasuk yang baru mendaftar. Bot platform tidak terpengaruh.</p></div></div>
+        <label class="switch"><input type="checkbox" id="accountExpiry" disabled><div><b>Batasi masa aktif akun 7 hari</b><em>Nyala: akun dan semua datanya dihapus otomatis 7 hari setelah mendaftar. Mati: semua akun aktif tanpa batas waktu. Saat dinyalakan lagi, tiap akun mendapat 7 hari baru terhitung sejak itu, jadi tidak ada yang langsung terhapus.</em></div></label>
+        <p class="small muted" id="accountExpiryState" role="status" data-noi18n style="margin-top:12px">Memuat pengaturan…</p>
       </div>
     </section>
 
@@ -587,6 +594,7 @@ const LANG = { cur: (() => { try { const v = localStorage.getItem('ts.adminLang'
 const L = (id, en) => (LANG.cur === 'en' ? en : id);
 const LOCALE = () => (LANG.cur === 'en' ? 'en-GB' : 'id-ID');
 const DICT = {
+  'Masa aktif akun pengguna': 'User account period', 'Berlaku untuk semua akun yang mendaftar sendiri, termasuk yang baru mendaftar. Bot platform tidak terpengaruh.': 'Applies to every self-registered account, including new sign-ups. The platform bot is not affected.', 'Batasi masa aktif akun 7 hari': 'Limit accounts to 7 days', 'Nyala: akun dan semua datanya dihapus otomatis 7 hari setelah mendaftar. Mati: semua akun aktif tanpa batas waktu. Saat dinyalakan lagi, tiap akun mendapat 7 hari baru terhitung sejak itu, jadi tidak ada yang langsung terhapus.': 'On: an account and all of its data are deleted automatically 7 days after sign-up. Off: every account stays active with no time limit. When turned on again, each account gets a fresh 7 days from that moment, so nothing is deleted at once.',
   'Nara': 'Nara', 'Dashboard pemilik chatbot': 'Chatbot owner dashboard', 'Masuk': 'Sign in', 'Kata sandi admin': 'Admin password',
   'Masuk ke dashboard': 'Sign in to the dashboard', 'Dashboard': 'Dashboard', 'Menu': 'Menu',
   'Ringkasan': 'Overview', 'Dokumen': 'Document', 'Bot & model': 'Bot & model', 'Pencarian (RAG)': 'Retrieval (RAG)', 'Uji coba': 'Playground',
@@ -801,6 +809,7 @@ function setAuthTab(tab) {
   $('#fEmail').classList.toggle('hidden', platform);
   $('#email').required = !platform;
   $('#authNote').classList.toggle('hidden', !signup);
+  renderAuthNote();
   $('#pass').autocomplete = signup ? 'new-password' : 'current-password';
   $('#authTitle').textContent = platform ? L('Masuk sebagai admin platform', 'Sign in as the platform admin') : signup ? L('Buat akun baru', 'Create an account') : L('Masuk ke akun Anda', 'Sign in to your account');
   $('#passLabel').textContent = platform ? L('Kata sandi admin', 'Admin password') : L('Kata sandi', 'Password');
@@ -808,6 +817,14 @@ function setAuthTab(tab) {
   $('#platformToggle').textContent = platform ? L('Masuk dengan akun email', 'Sign in with an e-mail account') : L('Masuk sebagai admin platform', 'Sign in as the platform admin');
   $('#loginErr').classList.add('hidden');
 }
+// Whether accounts expire is a platform setting, so the sign-up note follows /api/auth/policy.
+function renderAuthNote() {
+  const limited = S.policy?.accountExpiry !== false;
+  $('#authNote').textContent = limited
+    ? L('Minimal 10 karakter. Akun aktif selama 7 hari sejak mendaftar; setelah itu akun dan semua datanya dihapus otomatis.', 'At least 10 characters. Accounts are active for 7 days from sign-up; after that the account and all of its data are deleted automatically.')
+    : L('Minimal 10 karakter. Akun aktif tanpa batas waktu.', 'At least 10 characters. Accounts have no time limit.');
+}
+fetch('/api/auth/policy').then((r) => (r.ok ? r.json() : null)).then((p) => { if (p) { S.policy = p; renderAuthNote(); } }).catch(() => {});
 $$('[data-auth]').forEach((b) => b.addEventListener('click', () => setAuthTab(b.dataset.auth)));
 $('#platformToggle').addEventListener('click', () => setAuthTab(S.authTab === 'platform' ? 'login' : 'platform'));
 if (location.hash === '#daftar') setAuthTab('signup');
@@ -957,7 +974,45 @@ async function boot() {
   renderAll();
   mountPreview();
   route();
+  loadPlatform();
 }
+
+/* ---------- Platform switch: account expiry (platform admin only) ---------- */
+function renderPlatformState(limited) {
+  $('#accountExpiryState').textContent = limited
+    ? L('Sekarang: akun pengguna dihapus 7 hari setelah mendaftar.', 'Now: user accounts are deleted 7 days after sign-up.')
+    : L('Sekarang: semua akun pengguna aktif tanpa batas waktu.', 'Now: every user account stays active with no time limit.');
+}
+async function loadPlatform() {
+  $('#platformPanel').classList.toggle('hidden', S.mode !== 'platform');
+  if (S.mode !== 'platform') return;
+  const box = $('#accountExpiry');
+  box.disabled = true;
+  try {
+    const p = await api('/api/admin/platform');
+    box.checked = p.accountExpiry;
+    box.disabled = false;
+    renderPlatformState(p.accountExpiry);
+  } catch (e) {
+    $('#accountExpiryState').textContent = L('Pengaturan tidak bisa dimuat: ', 'Could not load the setting: ') + e.message;
+  }
+}
+$('#accountExpiry').addEventListener('change', async (e) => {
+  const box = e.target, limited = box.checked;
+  // Turning the limit on starts a 7-day countdown for every account, so it is confirmed first.
+  if (limited && !confirm(L('Nyalakan batas 7 hari? Setiap akun pengguna akan dihapus 7 hari dari sekarang, kecuali akun yang dikecualikan.', 'Turn on the 7-day limit? Every user account will be deleted 7 days from now, except exempt accounts.'))) { box.checked = false; return; }
+  box.disabled = true;
+  try {
+    await api('/api/admin/platform', { method: 'POST', body: JSON.stringify({ accountExpiry: limited }) });
+    renderPlatformState(limited);
+    toast(limited ? L('Batas 7 hari dinyalakan.', '7-day limit turned on.') : L('Batas 7 hari dimatikan. Semua akun kini aktif tanpa batas waktu.', '7-day limit turned off. Every account now has no time limit.'));
+  } catch (err) {
+    box.checked = !limited;
+    toast(err.message, true);
+  } finally {
+    box.disabled = false;
+  }
+});
 function renderAll() {
   bindForm();
   renderOverview();

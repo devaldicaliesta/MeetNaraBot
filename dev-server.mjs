@@ -50,6 +50,8 @@ const users = new Map(); // email -> { id, email, name, password, expires_at }
 const sessions = new Map(); // token -> userId
 const MAX_BOTS = 3;
 const ACCOUNT_DAYS = 7;
+const NO_EXPIRY = '9999-12-31T23:59:59.999Z';
+const platform = { accountExpiry: true };
 const rid = (n = 10) => [...crypto.randomBytes(n)].map((b) => 'abcdefghijkmnpqrstuvwxyz23456789'[b % 32]).join('');
 
 const keyStatus = (st) => PROVIDERS.filter(([id]) => id !== 'workers-ai').map(([id, name, secret]) => ({ id, name, secret, configured: !!st.keys[id], source: st.keys[id] ? 'dashboard' : null }));
@@ -170,6 +172,8 @@ http.createServer(async (req, res) => {
   const publicUser = (u) => ({ id: u.id, email: u.email, name: u.name, expires_at: u.expires_at });
   const makeBot = (u, name) => { const id = rid(); bots.set(id, { owner: u.id, name, created_at: new Date().toISOString(), ...newState(name) }); return { id, owner_id: u.id, name, created_at: bots.get(id).created_at }; };
 
+  // Platform switch: whether accounts expire after ACCOUNT_DAYS (mirrors src/settings.ts getPlatform).
+  if (p === '/api/auth/policy') return send(res, { accountExpiry: platform.accountExpiry, accountDays: platform.accountExpiry ? ACCOUNT_DAYS : null });
   if (p === '/api/auth/signup' && req.method === 'POST') {
     const b = await body(req);
     const email = String(b.email || '').trim().toLowerCase();
@@ -177,12 +181,12 @@ http.createServer(async (req, res) => {
     if (String(b.password || '').length < 10) return send(res, { error: T('Kata sandi minimal 10 karakter.', 'The password needs at least 10 characters.') }, 400);
     if (users.has(email)) return send(res, { error: T('Email ini sudah terdaftar. Silakan masuk.', 'This e-mail is already registered. Please sign in.') }, 409);
     const name = String(b.name || '').trim().slice(0, 80) || email.split('@')[0];
-    const u = { id: rid(16), email, name, password: String(b.password), expires_at: new Date(Date.now() + ACCOUNT_DAYS * 864e5).toISOString() };
+    const u = { id: rid(16), email, name, password: String(b.password), expires_at: platform.accountExpiry ? new Date(Date.now() + ACCOUNT_DAYS * 864e5).toISOString() : NO_EXPIRY };
     users.set(email, u);
     const first = makeBot(u, `Bot ${name}`.slice(0, 60));
     const token = 'nara_' + crypto.randomBytes(32).toString('hex');
     sessions.set(token, u.id);
-    return send(res, { token, user: publicUser(u), bots: [first], accountDays: ACCOUNT_DAYS }, 201);
+    return send(res, { token, user: publicUser(u), bots: [first], accountDays: platform.accountExpiry ? ACCOUNT_DAYS : null }, 201);
   }
   if (p === '/api/auth/login' && req.method === 'POST') {
     const b = await body(req);
@@ -225,6 +229,16 @@ http.createServer(async (req, res) => {
     }
     const st = bots.get(botId);
     const b = req.method === 'POST' ? await body(req) : {};
+    if (p === '/api/admin/platform') {
+      if (account) return send(res, { error: T('Hanya admin platform yang bisa mengubah ini.', 'Only the platform admin can change this.') }, 403);
+      if (req.method === 'POST') {
+        if (typeof b.accountExpiry !== 'boolean') return send(res, { error: T('Data pengaturan tidak valid.', 'Invalid settings data.') }, 400);
+        platform.accountExpiry = b.accountExpiry;
+        const until = b.accountExpiry ? new Date(Date.now() + ACCOUNT_DAYS * 864e5).toISOString() : NO_EXPIRY;
+        for (const u of users.values()) if (!b.accountExpiry || u.expires_at === NO_EXPIRY) u.expires_at = until;
+      }
+      return send(res, { accountExpiry: platform.accountExpiry, accountDays: ACCOUNT_DAYS });
+    }
     if (p === '/api/admin/channels') {
       if (botId !== 'default') return send(res, { error: T('Telegram dan WhatsApp hanya tersedia untuk bot platform.', 'Telegram and WhatsApp are only available for the platform bot.'), available: false }, 403);
       const base = `http://localhost:${PORT}`;
