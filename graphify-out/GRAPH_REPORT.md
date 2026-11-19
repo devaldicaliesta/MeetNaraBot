@@ -11,7 +11,7 @@
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `9607f980`
+- Built from commit: `e28ba6be`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -24,7 +24,7 @@
 - package.json
 - uniforms.ts
 - steps
-- env
+- steps
 - env
 - cache.ts
 - dev-server.mjs
@@ -35,7 +35,7 @@
 - Nara platform (chatbot dokumen)
 - compilerOptions
 - graph.yml
-- .drop
+- WebGPULease
 - deploy
 - Nara: catatan untuk Claude
 - scheduler.ts
@@ -43,17 +43,17 @@
 - TSbot
 - stops
 - kinds.ts
-- chunks
+- 0002_rag_upgrade.sql
 - webgpu-device.ts
 - renderer.ts
 - webgpu.ts
 - purgeBot
-- .renderFrame
+- probeCopyPath
 - reseed
 - shaders/dither-field.ts
 - steps
-- guard.test.ts
-- .renderFrame
+- grounding.ts
+- WgpuDevice
 - compilerOptions
 - shaders/smear.ts
 - channels.spec.ts
@@ -86,26 +86,26 @@
 ## God Nodes (most connected - your core abstractions)
 1. `answer()` - 29 edges
 2. `GradientKindDefinition` - 27 edges
-3. `mountGradient()` - 24 edges
-4. `env` - 24 edges
+3. `env` - 24 edges
+4. `mountGradient()` - 24 edges
 5. `TanyaSayaChat` - 21 edges
 6. `GradientParams` - 19 edges
-7. `WebGPULease` - 17 edges
+7. `pick()` - 17 edges
 8. `normalizeParams()` - 17 edges
-9. `pick()` - 17 edges
+9. `WebGPULease` - 17 edges
 10. `createWebGLRenderer()` - 14 edges
 
 ## Surprising Connections (you probably didn't know these)
-- `Batas yang diperiksa` --references--> `storeAnswer()`  [INFERRED]
-  docs/security/audit-2026-11-run4.md → src/cache.ts
 - `Kunci login per IP/email` --implements--> `verifyLogin()`  [INFERRED]
   SECURITY.md → src/auth.ts
-- `Batas yang diperiksa` --references--> `run()`  [INFERRED]
-  docs/security/tsbot-audit-2026-11.md → web/gradients/gradient-engine/scheduler.ts
-- `Nara platform (chatbot dokumen)` --references--> `answer()`  [INFERRED]
-  README.md → src/rag.ts
+- `Batas yang diperiksa` --references--> `storeAnswer()`  [INFERRED]
+  docs/security/audit-2026-11-run4.md → src/cache.ts
 - `Batas yang diperiksa` --references--> `checkCitations()`  [INFERRED]
   docs/security/audit-2026-11-run4.md → src/grounding.ts
+- `Nara platform (chatbot dokumen)` --references--> `answer()`  [INFERRED]
+  README.md → src/rag.ts
+- `Batas yang diperiksa` --references--> `run()`  [INFERRED]
+  docs/security/tsbot-audit-2026-11.md → web/gradients/gradient-engine/scheduler.ts
 
 ## Import Cycles
 - None detected.
@@ -144,7 +144,7 @@ Nodes (10): grainFrame(), loopVector(), loopVectorAtPhase(), FrameInput, RenderT
 Cohesion: 0.08
 Nodes (25): CI, jobs, qa, name, on, pull_request, push, workflow_call (+17 more)
 
-### Community 8 - "env"
+### Community 8 - "steps"
 Cohesion: 0.06
 Nodes (33): concurrency, cancel-in-progress, group, env, needs, runs-on, steps, CLOUDFLARE_ACCOUNT_ID (+25 more)
 
@@ -188,7 +188,7 @@ Nodes (10): compilerOptions, lib, module, moduleResolution, noEmit, skipLibCheck
 Cohesion: 0.10
 Nodes (19): concurrency, cancel-in-progress, group, runs-on, steps, jobs, graph, name (+11 more)
 
-### Community 19 - ".drop"
+### Community 19 - "WebGPULease"
 Cohesion: 0.21
 Nodes (4): Oklab, removeSurface(), WebGPULease, WgpuBuffer
 
@@ -220,7 +220,7 @@ Nodes (7): stops(), ditherBurst, rise, waves, wgsl, wgsl, wgsl
 Cohesion: 0.18
 Nodes (7): registry, pixelGlass, swirl, voidKind, wgsl, wgsl, wgsl
 
-### Community 28 - "chunks"
+### Community 28 - "0002_rag_upgrade.sql"
 Cohesion: 0.29
 Nodes (7): chat_log, chunks_fts, idx_chat_log_created, idx_chunks_idx, usage, idx_chat_log_bot, spendPlatform()
 
@@ -248,11 +248,11 @@ Nodes (9): reseed, on, push, workflow_dispatch, branches, default, description, 
 Cohesion: 0.25
 Nodes (8): steps, id, name, run, uses, with, cache, node-version
 
-### Community 37 - "guard.test.ts"
+### Community 37 - "grounding.ts"
 Cohesion: 0.19
 Nodes (9): Uji coba + panel X-ray, Reranker otomatis dokumen Inggris, Cek sitasi pasca-generasi, checkCitations(), CitationCheck, detectDocLang(), EN_WORDS, ID_WORDS (+1 more)
 
-### Community 38 - ".renderFrame"
+### Community 38 - "WgpuDevice"
 Cohesion: 0.18
 Nodes (4): wgslPostlude, wgslPrelude, compile(), WgpuDevice
 
@@ -316,16 +316,16 @@ Nodes (5): Tambahan: banyak dokumen per bot dan penyedia OpenAI, activeFile(), d
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
-- **Why does `Batas yang diperiksa` connect `TanyaSayaChat` to `scheduler.ts`?**
-  _High betweenness centrality (0.404) - this node is a cross-community bridge._
+- **Why does `run()` connect `scheduler.ts` to `TanyaSayaChat`, `renderer.ts`?**
+  _High betweenness centrality (0.376) - this node is a cross-community bridge._
 - **Are the 2 inferred relationships involving `answer()` (e.g. with `paint()` and `Nara platform (chatbot dokumen)`) actually correct?**
   _`answer()` has 2 INFERRED edges - model-reasoned connections that need verification._
 - **What connects `Device`, `Dashboard pemilik bot`, `Audit keamanan 1–3` to the rest of the system?**
   _11 weakly-connected nodes found - possible documentation gaps or missing edges._
 - **Should `src/index.ts` be split into smaller, more focused modules?**
   _Cohesion score 0.08199643493761141 - nodes in this community are weakly interconnected._
-- **Why does `run()` connect `scheduler.ts` to `TanyaSayaChat`, `renderer.ts`?**
-  _High betweenness centrality (0.398) - this node is a cross-community bridge._
+- **Why does `Batas yang diperiksa` connect `TanyaSayaChat` to `scheduler.ts`?**
+  _High betweenness centrality (0.376) - this node is a cross-community bridge._
 - **Are the 3 inferred relationships involving `mountGradient()` (e.g. with `.isLost()` and `.renderFrame()`) actually correct?**
   _`mountGradient()` has 3 INFERRED edges - model-reasoned connections that need verification._
 - **Should `channels.ts` be split into smaller, more focused modules?**
