@@ -26,34 +26,20 @@ export function permanentBots(env: Bindings): string[] {
     .filter((id) => /^[a-z0-9]{6,32}$/.test(id));
 }
 
-/** E-mail addresses from PERMANENT_EMAILS (comma-separated) whose accounts never expire, e.g. the site owner's. */
-export function permanentEmails(env: Bindings): string[] {
-  return String(env.PERMANENT_EMAILS || '')
-    .split(',')
-    .map((s) => normalizeEmail(s))
-    .filter((e): e is string => !!e);
-}
-
 /**
- * Moves the expiry of every account that owns a permanent bot (PERMANENT_BOTS) or has a
- * permanent e-mail (PERMANENT_EMAILS) to NO_EXPIRY, so the usual expiry checks (sign-in,
- * sessions, widget, daily purge) all treat it as active. Sessions that were cut short to the
- * old account expiry get their normal SESSION_DAYS back. Returns the number of accounts changed.
+ * Moves the expiry of every account that owns a permanent bot (PERMANENT_BOTS) to NO_EXPIRY,
+ * so the usual expiry checks (sign-in, sessions, widget, daily purge) all treat it as active.
+ * Sessions that were cut short to the old account expiry get their normal SESSION_DAYS back.
+ * Returns the number of accounts changed.
  */
 export async function keepPermanentAccounts(env: Bindings): Promise<number> {
   const ids = permanentBots(env);
-  const emails = permanentEmails(env);
-  if (!ids.length && !emails.length) return 0;
-  const marks = (n: number) => Array.from({ length: n }, () => '?').join(',');
-  const owners = [
-    ...(ids.length ? [`SELECT owner_id FROM bots WHERE id IN (${marks(ids.length)})`] : []),
-    ...(emails.length ? [`SELECT id FROM users WHERE email IN (${marks(emails.length)})`] : []),
-  ].join(' UNION ');
-  const args = [...ids, ...emails];
+  if (!ids.length) return 0;
+  const owners = `SELECT owner_id FROM bots WHERE id IN (${ids.map(() => '?').join(',')})`;
   const full = `strftime('%Y-%m-%dT%H:%M:%fZ', created_at, '+${SESSION_DAYS} days')`;
   const [users] = await env.DB.batch([
-    env.DB.prepare(`UPDATE users SET expires_at = ? WHERE expires_at < ? AND id IN (${owners})`).bind(NO_EXPIRY, NO_EXPIRY, ...args),
-    env.DB.prepare(`UPDATE sessions SET expires_at = ${full} WHERE expires_at < ${full} AND user_id IN (${owners})`).bind(...args),
+    env.DB.prepare(`UPDATE users SET expires_at = ? WHERE expires_at < ? AND id IN (${owners})`).bind(NO_EXPIRY, NO_EXPIRY, ...ids),
+    env.DB.prepare(`UPDATE sessions SET expires_at = ${full} WHERE expires_at < ${full} AND user_id IN (${owners})`).bind(...ids),
   ]);
   return users.meta?.changes ?? 0;
 }
@@ -62,7 +48,7 @@ export async function keepPermanentAccounts(env: Bindings): Promise<number> {
  * Applies the platform's account-expiry switch to existing accounts.
  * Off: every account (and every session cut short by it) stays active.
  * On again: accounts that had no end date get a fresh ACCOUNT_DAYS from now, so nobody is deleted
- * at once; permanent accounts (PERMANENT_BOTS / PERMANENT_EMAILS) keep no end date.
+ * at once; accounts behind a permanent bot (PERMANENT_BOTS) keep no end date.
  */
 export async function applyAccountExpiry(env: Bindings, limited: boolean): Promise<void> {
   if (!limited) {

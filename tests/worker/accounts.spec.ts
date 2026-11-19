@@ -148,13 +148,6 @@ test('a permanent bot account that still has days left loses its limit at sign-i
   expect((await me.json()).user.expires_at).toMatch(/^9999-/);
 });
 
-test('an account in PERMANENT_EMAILS keeps working after its 7 days', async ({ request }) => {
-  const signIn = await login(request, 'owner-forever@qa.test', 'owner-forever-password');
-  expect(signIn.status).toBe(200);
-  expect(signIn.body.user.expires_at).toMatch(/^9999-/);
-  expect((await request.get('/api/public/info?bot=qaforever1')).status()).toBe(200);
-});
-
 test('the platform admin can switch the 7-day account limit off and on', async ({ request }) => {
   const admin = { Authorization: `Bearer ${QA_PASSWORD}` };
   // Only the platform admin may change it.
