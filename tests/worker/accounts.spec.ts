@@ -155,6 +155,32 @@ test('an account in PERMANENT_EMAILS keeps working after its 7 days', async ({ r
   expect((await request.get('/api/public/info?bot=qaforever1')).status()).toBe(200);
 });
 
+test('the platform admin can switch the 7-day account limit off and on', async ({ request }) => {
+  const admin = { Authorization: `Bearer ${QA_PASSWORD}` };
+  // Only the platform admin may change it.
+  const owner = await login(request, 'owner-a@qa.test', 'owner-a-password');
+  expect((await request.post('/api/admin/platform', { headers: { Authorization: `Bearer ${owner.body.token}`, 'X-Bot-Id': 'qabotaaaa1' }, data: { accountExpiry: false } })).status()).toBe(403);
+  expect((await request.get('/api/auth/policy').then((r) => r.json())).accountExpiry).toBe(true);
+
+  // Off: existing accounts and new sign-ups never expire.
+  expect((await request.post('/api/admin/platform', { headers: admin, data: { accountExpiry: false } })).ok()).toBeTruthy();
+  expect(await request.get('/api/auth/policy').then((r) => r.json())).toEqual({ accountExpiry: false, accountDays: null });
+  expect((await login(request, 'owner-a@qa.test', 'owner-a-password')).body.user.expires_at).toMatch(/^9999-/);
+  const signup = await request.post('/api/auth/signup', { headers: { 'cf-connecting-ip': '198.51.100.77' }, data: { email: 'forever-signup@qa.test', password: 'kuda-biru-melompat' } });
+  const fresh = await signup.json();
+  expect(signup.status(), JSON.stringify(fresh)).toBe(201);
+  expect(fresh.user.expires_at).toMatch(/^9999-/);
+  expect(fresh.accountDays).toBeNull();
+
+  // On again: accounts get a fresh 7 days from now (nobody is deleted at once); permanent ones stay.
+  expect((await request.post('/api/admin/platform', { headers: admin, data: { accountExpiry: true } })).ok()).toBeTruthy();
+  const days = (Date.parse((await login(request, 'owner-a@qa.test', 'owner-a-password')).body.user.expires_at) - Date.now()) / 864e5;
+  expect(days).toBeGreaterThan(6.9);
+  expect(days).toBeLessThanOrEqual(7);
+  expect((await login(request, 'tsbot-active@qa.test', 'tsbot-active-password')).body.user.expires_at).toMatch(/^9999-/);
+  expect((await request.post('/api/admin/platform', { headers: admin, data: { accountExpiry: 'no' } })).status()).toBe(400);
+});
+
 test('bots can be created up to the limit and deleted with their data', async ({ request }) => {
   const b = await login(request, 'owner-b@qa.test', 'owner-b-password');
   const auth = { Authorization: `Bearer ${b.body.token}` };

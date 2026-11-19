@@ -58,6 +58,26 @@ export async function keepPermanentAccounts(env: Bindings): Promise<number> {
   return users.meta?.changes ?? 0;
 }
 
+/**
+ * Applies the platform's account-expiry switch to existing accounts.
+ * Off: every account (and every session cut short by it) stays active.
+ * On again: accounts that had no end date get a fresh ACCOUNT_DAYS from now, so nobody is deleted
+ * at once; permanent accounts (PERMANENT_BOTS / PERMANENT_EMAILS) keep no end date.
+ */
+export async function applyAccountExpiry(env: Bindings, limited: boolean): Promise<void> {
+  if (!limited) {
+    const full = `strftime('%Y-%m-%dT%H:%M:%fZ', created_at, '+${SESSION_DAYS} days')`;
+    await env.DB.batch([
+      env.DB.prepare('UPDATE users SET expires_at = ? WHERE expires_at < ?').bind(NO_EXPIRY, NO_EXPIRY),
+      env.DB.prepare(`UPDATE sessions SET expires_at = ${full} WHERE expires_at < ${full}`),
+    ]);
+    return;
+  }
+  const until = new Date(Date.now() + ACCOUNT_DAYS * 86_400_000).toISOString();
+  await env.DB.prepare('UPDATE users SET expires_at = ? WHERE expires_at >= ?').bind(until, NO_EXPIRY).run();
+  await keepPermanentAccounts(env);
+}
+
 export type User = { id: string; email: string; name: string; expires_at: string };
 export type BotRow = { id: string; owner_id: string; name: string; created_at: string };
 
@@ -103,11 +123,12 @@ export function passwordProblem(password: unknown, email: string): 'short' | 'lo
   return null;
 }
 
-export async function createUser(env: Bindings, email: string, password: string, name: string): Promise<User | null> {
+/** `limited`: the account is active for ACCOUNT_DAYS; otherwise it never expires (platform setting). */
+export async function createUser(env: Bindings, email: string, password: string, name: string, limited = true): Promise<User | null> {
   const salt = random(16);
   const hash = await pbkdf2(password, salt, PBKDF2_ITERATIONS);
   const id = newId(16);
-  const expires = new Date(Date.now() + ACCOUNT_DAYS * 86_400_000).toISOString();
+  const expires = limited ? new Date(Date.now() + ACCOUNT_DAYS * 86_400_000).toISOString() : NO_EXPIRY;
   const res = await env.DB.prepare('INSERT OR IGNORE INTO users (id, email, name, pass_hash, pass_salt, pass_iter, expires_at) VALUES (?, ?, ?, ?, ?, ?, ?)')
     .bind(id, email, name.slice(0, 80), hash, hex(salt), PBKDF2_ITERATIONS, expires)
     .run();

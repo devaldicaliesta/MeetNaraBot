@@ -17,6 +17,7 @@ import {
   tenantEnv,
   getSuggestions,
   getSalt,
+  getPlatform,
   asLang,
   type Lang,
   type BotSettings,
@@ -33,6 +34,7 @@ import { channelRoutes } from './channels';
 import { bodyTooLarge } from './body';
 import {
   ACCOUNT_DAYS,
+  applyAccountExpiry,
   DEFAULT_BOT,
   MAX_BOTS_PER_USER,
   MIN_PASSWORD,
@@ -309,8 +311,10 @@ async function purgeAccount(env: Bindings, userId: string) {
 }
 
 async function purgeExpiredAccounts(env: Bindings) {
-  // Accounts behind a permanent bot (PERMANENT_BOTS, e.g. TSbot) are never deleted.
+  // Accounts behind a permanent bot (PERMANENT_BOTS, e.g. TSbot) are never deleted, and with the
+  // platform's account expiry switched off no account is.
   await keepPermanentAccounts(env).catch((e) => console.error('permanent accounts not updated', e));
+  if (!(await getPlatform(env.DB)).accountExpiry) await applyAccountExpiry(env, false);
   const now = new Date().toISOString();
   let purged = 0;
   for (let round = 0; round < PURGE_ROUNDS; round++) {
@@ -567,11 +571,18 @@ app.post('/api/auth/signup', async (c) => {
   }
 
   const name = String(body.name || '').trim().replace(/[\r\n<>]/g, '').slice(0, 80) || email.split('@')[0];
-  const user = await createUser(c.env, email, String(body.password), name);
+  const { accountExpiry } = await getPlatform(c.env.DB);
+  const user = await createUser(c.env, email, String(body.password), name, accountExpiry);
   if (!user) return c.json({ error: tr(c, 'Email ini sudah terdaftar. Silakan masuk.', 'This e-mail is already registered. Please sign in.') }, 409);
   const first = await createBot(c.env, user.id, `Bot ${name}`.slice(0, 60));
   const token = await createSession(c.env, user.id);
-  return c.json({ token, user, bots: first === 'limit' ? [] : [first], accountDays: ACCOUNT_DAYS }, 201);
+  return c.json({ token, user, bots: first === 'limit' ? [] : [first], accountDays: accountExpiry ? ACCOUNT_DAYS : null }, 201);
+});
+
+/** Whether accounts expire, for the sign-up form and the landing page. */
+app.get('/api/auth/policy', async (c) => {
+  const { accountExpiry } = await getPlatform(c.env.DB);
+  return c.json({ accountExpiry, accountDays: accountExpiry ? ACCOUNT_DAYS : null });
 });
 
 app.post('/api/auth/login', async (c) => {
@@ -715,6 +726,28 @@ app.get('/api/admin/status', async (c) => {
     })(),
     stats,
   });
+});
+
+/* ---------- Platform switches (platform admin only) ---------- */
+
+const platformAdminOnly = (c: Context<Env>) =>
+  c.get('principal').kind === 'platform' ? null : c.json({ error: tr(c, 'Hanya admin platform yang bisa mengubah ini.', 'Only the platform admin can change this.') }, 403);
+
+app.get('/api/admin/platform', async (c) => {
+  const denied = platformAdminOnly(c);
+  if (denied) return denied;
+  const { accountExpiry } = await getPlatform(c.env.DB);
+  return c.json({ accountExpiry, accountDays: ACCOUNT_DAYS });
+});
+
+app.post('/api/admin/platform', async (c) => {
+  const denied = platformAdminOnly(c);
+  if (denied) return denied;
+  const body = await c.req.json<{ accountExpiry?: unknown }>().catch(() => null);
+  if (typeof body?.accountExpiry !== 'boolean') return c.json({ error: tr(c, 'Data pengaturan tidak valid.', 'Invalid settings data.') }, 400);
+  await writeSetting(c.env.DB, 'platform', { accountExpiry: body.accountExpiry });
+  await applyAccountExpiry(c.env, body.accountExpiry);
+  return c.json({ accountExpiry: body.accountExpiry, accountDays: ACCOUNT_DAYS });
 });
 
 app.get('/api/admin/config', async (c) => {
