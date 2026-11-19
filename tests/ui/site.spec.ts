@@ -69,6 +69,54 @@ test('dashboard rejects a wrong password', async ({ page }) => {
   await expect(page.locator('#loginErr')).toContainText(/salah|Wrong/);
 });
 
+test('the platform admin switches the 7-day account limit, and sign-up and landing text follow', async ({ page }) => {
+  await page.goto('/admin.html');
+  await page.click('#platformToggle');
+  await page.fill('#pass', QA_PASSWORD);
+  await page.press('#pass', 'Enter');
+  await expect(page.locator('#app')).toBeVisible();
+  const panel = page.locator('#platformPanel');
+  await expect(panel).toBeVisible();
+  const box = page.locator('#accountExpiry');
+  await expect(box).toBeEnabled();
+  await expect(box).toBeChecked();
+  await expect(page.locator('#accountExpiryState')).toContainText('dihapus 7 hari');
+
+  // Off: no confirmation needed, state and toast say every account has no time limit. Keyboard works too.
+  await box.focus();
+  await page.keyboard.press('Space');
+  await expect(box).not.toBeChecked();
+  await expect(page.locator('#accountExpiryState')).toContainText('tanpa batas waktu');
+  await expect(page.locator('#toast')).toContainText('Batas 7 hari dimatikan');
+
+  // The sign-up note and the landing page drop the 7-day sentence.
+  const other = await page.context().newPage();
+  await other.goto('/admin.html#daftar');
+  await expect(other.locator('#authNote')).toHaveText('Minimal 10 karakter. Akun aktif tanpa batas waktu.');
+  await other.goto('/');
+  await expect(other.locator('#bandNote')).not.toContainText('7 hari');
+  await other.close();
+
+  // On again asks first; dismissing keeps it off, accepting turns it on.
+  page.once('dialog', (d) => d.dismiss());
+  await box.click();
+  await expect(box).not.toBeChecked();
+  page.once('dialog', (d) => d.accept());
+  await box.click();
+  await expect(box).toBeChecked();
+  await expect(page.locator('#accountExpiryState')).toContainText('dihapus 7 hari');
+});
+
+test('a bot owner does not see the platform switch', async ({ page }) => {
+  await page.goto('/admin.html#daftar');
+  await page.fill('#name', 'Rani');
+  await page.fill('#email', `switch-${Date.now()}@qa.test`);
+  await page.fill('#pass', 'rani-password-123');
+  await page.click('#authSubmit');
+  await expect(page.locator('#app')).toBeVisible();
+  await expect(page.locator('#platformPanel')).toBeHidden();
+});
+
 test('the dashboard links back to the landing page', async ({ page }) => {
   await page.goto('/admin');
   await page.locator('.back-home').click();

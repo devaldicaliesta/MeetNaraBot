@@ -51,9 +51,7 @@ const sql = [
   // The bot TSbot shows (PERMANENT_BOTS): its account is past 7 days but must keep working.
   account('qausertsbot00004', 'tsbot@qa.test', 'tsbot-password', past),
   `INSERT INTO bots (id, owner_id, name) VALUES ('qatsbot001', 'qausertsbot00004', 'TSbot');`,
-  // Past their 7 days: one listed in PERMANENT_EMAILS (must keep working), one that signs up again.
-  account('qauseremail00006', 'owner-forever@qa.test', 'owner-forever-password', past),
-  `INSERT INTO bots (id, owner_id, name) VALUES ('qaforever1', 'qauseremail00006', 'Bot pemilik');`,
+  // Past its 7 days: signs up again with the same e-mail.
   account('qauseragain00007', 'again@qa.test', 'again-old-password', past),
   `INSERT INTO bots (id, owner_id, name) VALUES ('qaagainold', 'qauseragain00007', 'Bot lama');`,
   // A second permanent bot whose account still has days left: the limit is lifted before it runs out.
@@ -76,7 +74,6 @@ const vars = {
   WHATSAPP_APP_SECRET: 'qa-app-secret',
   WHATSAPP_API_BASE: `http://127.0.0.1:${fakePort}/whatsapp`,
   PERMANENT_BOTS: 'qatsbot001,qatsbot002',
-  PERMANENT_EMAILS: 'Owner-Forever@qa.test',
 };
 const args = ['wrangler', 'dev', '--local', '--test-scheduled', '--port', port, '--ip', '127.0.0.1', '--persist-to', state, ...Object.entries(vars).flatMap(([k, v]) => ['--var', `${k}:${v}`])];
 const child = spawn('npx', args, { stdio: 'inherit' });
