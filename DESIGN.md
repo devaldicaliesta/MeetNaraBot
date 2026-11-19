@@ -150,6 +150,14 @@ Teks tidak pernah diletakkan langsung di atas gradien hidup: kilau `#cefdf6` di 
 
 Lebar konten maksimum 1200px. Hero rata kiri dan terbagi dua: teks di kiri, panggung gradien berisi mock produk di kanan; di ponsel keduanya bertumpuk. Bagian berikutnya sengaja berbeda bentuk: fitur sebagai baris editorial, "Cara kerja" sebagai judul sticky di samping daftar bernomor, penutup sebagai blok `deep`. Breakpoint 960px, 640px, dan 420px dipilih di titik konten mulai sesak.
 
+Dashboard adalah alat kerja, jadi dial-nya lebih tenang: ENERGY 1 / RHYTHM 2 / MOTION 1. Aturannya:
+
+- Ringkasan dibuka dengan daftar Persiapan (dengan hitungan "x dari y"), karena keputusan di layar ini adalah "apa yang masih kurang". Angka 7 hari terakhir berupa satu strip di bawahnya, bukan tiga kartu besar.
+- Menu aktif memakai permukaan `surface-2` dengan tepi `teal` 3px, bukan pil aqua. Aqua tetap untuk tombol utama dan manik sumber.
+- Di bawah 900px, menu menjadi tombol berlabel "Menu: <halaman>" yang membuka daftar; bahasa, kembali ke beranda, dan keluar ada di dalamnya.
+- Tombol aksi menyebut tindakannya ("Simpan kunci", "Atur domain"), bukan "Buka".
+- Daftar panjang yang jarang dipakai (kunci penyedia AI) dilipat: yang dipakai tampil, sisanya di "Penyedia lain".
+
 ## Elevation & Depth
 
 Kedalaman datang dari tingkat permukaan (`bg`, `surface`, `surface-2`) dan satu garis kilau tipis di tepi atas kartu (`inset 0 1px 0` aqua 8%), meniru pantulan logam. Bayangan besar hanya untuk panel widget yang melayang di atas situs orang lain. Tidak ada glow.

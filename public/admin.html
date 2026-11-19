@@ -47,7 +47,7 @@ code,pre{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:13px}
 .hidden{display:none!important}
 
 /* ---------- Buttons & inputs ---------- */
-.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;height:42px;padding:0 20px;border:1px solid var(--solid);border-radius:var(--pill);background:var(--solid);color:var(--on-solid);font:inherit;font-weight:700;font-size:14px;cursor:pointer;transition:background .15s,border-color .15s,transform .1s;white-space:nowrap}
+.btn{text-decoration:none;display:inline-flex;align-items:center;justify-content:center;gap:8px;height:42px;padding:0 20px;border:1px solid var(--solid);border-radius:var(--pill);background:var(--solid);color:var(--on-solid);font:inherit;font-weight:700;font-size:14px;cursor:pointer;transition:background .15s,border-color .15s,transform .1s;white-space:nowrap}
 .btn:hover{background:var(--solid-hover);border-color:var(--solid-hover)}
 .btn:active{transform:translateY(1px)}
 .btn:disabled{opacity:.5;cursor:not-allowed}
@@ -126,14 +126,20 @@ input[type=range]{width:100%;accent-color:var(--laut)}
 .side{position:sticky;top:0;height:100vh;display:flex;flex-direction:column;padding:22px 14px;border-right:1px solid var(--line);background:var(--surface)}
 .side .brand{margin:0 8px 26px}
 .nav{display:grid;gap:2px}
-.nav a{display:flex;align-items:center;gap:10px;padding:9px 14px;border-radius:var(--pill);color:var(--ink-2);text-decoration:none;font-weight:600;font-size:14px;position:relative}
+.nav a{display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:var(--r-sm);color:var(--ink-2);text-decoration:none;font-weight:600;font-size:14px;position:relative}
 .nav a:hover{background:var(--surface-2);color:var(--ink)}
-.nav a[aria-current=page]{background:var(--solid);color:var(--on-solid)}
+/* Current page: raised tier + teal edge (5.6:1), the edge marks real state; aqua stays for primary actions. */
+.nav a[aria-current=page]{background:var(--surface-2);color:var(--ink);box-shadow:inset 3px 0 0 var(--laut)}
+.nav a[aria-current=page] svg{color:var(--laut)}
+/* Phones get a labelled menu button instead of a sideways-scrolling row of pills. */
+.nav-toggle{display:none}
 
 .nav svg{flex:none;width:18px;height:18px}
 .nav .dot{margin-left:auto;width:8px;height:8px;border-radius:50%;background:var(--kunyit)}
 .side-foot{margin-top:auto;display:grid;gap:8px;padding:0 8px}
 .side-foot .lang-switch{justify-self:start}
+.side-link{display:inline-flex;align-items:center;gap:6px;justify-self:start;min-height:32px;padding:0;border:0;background:none;font:inherit;font-size:13.5px;font-weight:600;color:var(--ink-2);text-decoration:none;cursor:pointer}
+.side-link:hover{color:var(--ink);text-decoration:underline}
 .main{min-width:0;padding:32px clamp(18px,4vw,48px) 120px}
 .page{max-width:920px}
 .page-head{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;margin-bottom:22px;flex-wrap:wrap}
@@ -155,13 +161,18 @@ input[type=range]{width:100%;accent-color:var(--laut)}
 .setup li.done .tick{background:var(--laut);border-color:var(--laut);color:var(--on-solid)}
 .setup b{display:block;font-size:14px}
 .setup span{font-size:13px;color:var(--ink-2)}
-.figures{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:18px}
-.figure{padding:22px 22px 20px;border-radius:var(--r);background:var(--surface);border:1px solid var(--line);box-shadow:var(--edge)}
+/* Last 7 days: three counts in one strip (secondary to the checklist), divided by hairlines, not three cards. */
+.figures{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));margin:0 0 18px;border:1px solid var(--line);border-radius:var(--r);background:var(--surface)}
+.figure{padding:14px 18px;border-left:1px solid var(--line)}
+.figure:first-child{border-left:0}
 .figure.warn b{color:var(--bata)}
-.figure b{display:block;font:700 42px/1.02 var(--display);letter-spacing:-.03em;margin-bottom:6px}
-.figure span{font-size:13.5px;font-weight:600;color:var(--ink-2)}
+.figure b{display:block;font:700 26px/1.1 var(--display);letter-spacing:-.02em}
+.figure span{display:block;margin-top:2px;font-size:13px;color:var(--ink-2)}
+.figures-label{margin:0 0 8px;font-size:13px;font-weight:600;color:var(--ink-2)}
+.setup-progress{flex:none;font:700 15px/1.2 var(--display);color:var(--ink);white-space:nowrap}
+.setup-progress small{display:block;font-family:"Instrument Sans",ui-sans-serif,system-ui,sans-serif;font-size:12.5px;font-weight:600;line-height:1.3;color:var(--ink-2)}
 .chain-view{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
-.chain-step{padding:5px 12px;border:1px solid var(--line-2);border-radius:var(--pill);font-size:13px;background:var(--canvas)}
+.chain-step{padding:5px 12px;border:1px solid var(--line-2);border-radius:6px;font-size:13px;background:var(--canvas)}
 .chain-step small{color:var(--ink-3)}
 .chain-step.is-skipped{border-style:dashed;background:transparent;color:var(--ink-2)}
 .chain-skip{display:block;font-style:normal;font-size:12px;font-weight:600;color:var(--bata)}
@@ -185,7 +196,13 @@ input[type=range]{width:100%;accent-color:var(--laut)}
 .chunk p{color:var(--ink-2);white-space:pre-wrap;display:-webkit-box;-webkit-line-clamp:4;-webkit-box-orient:vertical;overflow:hidden}
 .chunk.open p{-webkit-line-clamp:unset}
 .sug-list{display:flex;flex-wrap:wrap;gap:8px}
-.sug-list span{padding:6px 14px;border:1px solid transparent;border-radius:99px;font-size:13px;background:var(--sky)}
+.more-keys{margin-top:6px;border-top:1px solid var(--line)}
+.more-keys summary{display:flex;align-items:center;gap:8px;min-height:44px;font-weight:600;font-size:14px;color:var(--ink);cursor:pointer;list-style:none}
+.more-keys summary::-webkit-details-marker{display:none}
+.more-keys summary::before{content:"";width:8px;height:8px;border-right:2px solid var(--ink-2);border-bottom:2px solid var(--ink-2);transform:rotate(-45deg);transition:transform .15s}
+.more-keys[open] summary::before{transform:rotate(45deg)}
+.more-keys summary small{font-weight:400;color:var(--ink-2)}
+.sug-list span{padding:6px 12px;border:1px solid transparent;border-radius:6px;font-size:13px;background:var(--sky)}
 
 /* ---------- Model chain ---------- */
 .chain{display:grid;gap:8px;counter-reset:step}
@@ -279,10 +296,17 @@ input[type=range]{width:100%;accent-color:var(--laut)}
   .bot-switch .row{grid-template-columns:auto auto}
   .bot-switch .row .btn{width:auto;padding:0 10px}
   body > tanyasaya-chat{display:none}
-  .nav{grid-auto-flow:column;overflow:auto;grid-auto-columns:max-content}
-  .nav a[aria-current=page]::before{display:none}
-  .side-foot{position:absolute;top:16px;right:14px;display:flex;margin:0;padding:0}
-  .side-foot .btn{display:none}
+  .nav-toggle{display:flex;align-items:center;justify-content:space-between;gap:10px;width:100%;min-height:44px;padding:0 12px;border:1px solid var(--control);border-radius:var(--r-sm);background:var(--surface-2);color:var(--ink);font:inherit;font-size:14px;font-weight:600;cursor:pointer}
+  .nav-toggle::after{content:"";width:8px;height:8px;border-right:2px solid var(--ink-2);border-bottom:2px solid var(--ink-2);transform:rotate(45deg);margin-top:-4px;transition:transform .15s}
+  .nav-toggle[aria-expanded=true]::after{transform:rotate(-135deg);margin-top:4px}
+  .nav{display:none;margin-top:6px}
+  .side.nav-open .nav{display:grid}
+  .nav a{min-height:44px}
+  /* Language, home and sign-out live inside the phone menu, so they never crowd the brand row
+     (before this, phones had no sign-out at all). */
+  .side-foot{display:none;margin:8px 0 0;padding:10px 4px 2px;border-top:1px solid var(--line);gap:6px}
+  .side.nav-open .side-foot{display:grid}
+  .side-link{min-height:44px}
   .play{grid-template-columns:1fr}
   .xray{position:static}
 }
@@ -291,9 +315,9 @@ input[type=range]{width:100%;accent-color:var(--laut)}
   .composer input{flex:1 1 100%}
   .composer .btn{flex:1}
   .grid2,.grid3{grid-template-columns:1fr}
-  .figures{grid-template-columns:1fr;gap:10px}
-  .figure{padding:16px 18px}
-  .figure b{font-size:32px}
+  .figure{padding:12px}
+  .figure b{font-size:22px}
+  .figure span{font-size:12.5px}
   .page-head{margin-bottom:16px}
   .setup li{grid-template-columns:28px 1fr}
   .setup li>a{grid-column:2;justify-self:start}
@@ -351,7 +375,8 @@ input[type=range]{width:100%;accent-color:var(--laut)}
       <div class="row"><button class="btn ghost sm" id="botNew" type="button">+ Bot baru</button><button class="btn danger sm" id="botDelete" type="button">Hapus bot</button></div>
       <div class="account-info" id="accountInfo" data-noi18n></div>
     </div>
-    <nav class="nav" aria-label="Menu">
+    <button class="nav-toggle" type="button" id="navToggle" aria-expanded="false" aria-controls="navMenu"><span>Menu: <b id="navCurrent" data-noi18n>Ringkasan</b></span></button>
+    <nav class="nav" id="navMenu" aria-label="Menu">
       <a href="#ringkasan"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 13h6V4H4zM14 20h6v-9h-6zM4 20h6v-3H4zM14 4v3h6V4z"/></svg>Ringkasan</a>
       <a href="#dokumen"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5M9 13h6M9 17h4"/></svg>Dokumen</a>
       <a href="#model"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1 7 17M17 7l2.1-2.1"/></svg>Bot &amp; model</a>
@@ -362,8 +387,8 @@ input[type=range]{width:100%;accent-color:var(--laut)}
     </nav>
     <div class="side-foot">
       <div class="lang-switch" role="group" aria-label="Bahasa / Language"><button type="button" data-lang="id" aria-pressed="true">ID</button><button type="button" data-lang="en" aria-pressed="false">EN</button></div>
-      <a class="btn ghost sm" href="/">← Kembali ke beranda</a>
-      <button class="btn ghost sm" id="logout" type="button">Keluar</button>
+      <a class="side-link" href="/">Kembali ke beranda</a>
+      <button class="side-link" id="logout" type="button">Keluar</button>
     </div>
   </aside>
 
@@ -372,15 +397,17 @@ input[type=range]{width:100%;accent-color:var(--laut)}
     <section class="page" data-page="ringkasan">
       <div class="page-head"><div><h1 id="hello">Ringkasan</h1><p>Status chatbot dan apa yang perlu disiapkan sebelum dipasang di website.</p></div></div>
       <div class="account-card hidden" id="accountCard" data-noi18n></div>
+      <div class="panel">
+        <div class="panel-head"><div><h2>Persiapan</h2><p>Selesaikan semua langkah agar chatbot siap menjawab pengunjung.</p></div><div class="setup-progress" id="setupProgress" data-noi18n></div></div>
+        <ul class="setup" id="setup"></ul>
+      </div>
+      <p class="figures-label">7 hari terakhir</p>
       <div class="figures">
-        <div class="figure"><b id="stTotal">–</b><span>pertanyaan pengunjung, 7 hari</span></div>
+        <div class="figure"><b id="stTotal">–</b><span>pertanyaan pengunjung</span></div>
         <div class="figure"><b id="stRefused">–</b><span>tidak ditemukan di dokumen</span></div>
         <div class="figure"><b id="stFailed">–</b><span>gagal karena penyedia AI</span></div>
       </div>
-      <div class="panel">
-        <div class="panel-head"><div><h2>Persiapan</h2><p>Selesaikan semua langkah agar chatbot siap menjawab pengunjung.</p></div></div>
-        <ul class="setup" id="setup"></ul>
-      </div>
+
       <div class="panel">
         <div class="panel-head"><div><h2>Urutan penyedia AI</h2><p>Jika penyedia pertama gagal, kuotanya habis, atau terlalu lambat, chatbot otomatis pindah ke penyedia berikutnya.</p></div><a class="btn ghost sm" href="#model">Atur</a></div>
         <div class="chain-view" id="chainView"></div>
@@ -544,7 +571,7 @@ input[type=range]{width:100%;accent-color:var(--laut)}
           <form class="composer" id="playForm"><input type="text" id="playQ" placeholder="Tulis pertanyaan…" autocomplete="off"><button class="btn" type="submit" id="playSend">Kirim</button><button class="btn ghost" type="button" id="playReset" title="Mulai percakapan baru">Baru</button></form>
         </div>
         <div class="panel xray" style="margin:0">
-          <div class="panel-head" style="margin-bottom:12px"><div><h2>Hasil pencarian</h2><p>Potongan berwarna kunyit dikirim ke AI.</p></div></div>
+          <div class="panel-head" style="margin-bottom:12px"><div><h2>Hasil pencarian</h2><p>Potongan yang ditandai dikirim ke AI.</p></div></div>
           <div id="xray"><div class="empty">Kirim pertanyaan untuk melihat hasil pencarian.</div></div>
         </div>
       </div>
@@ -667,7 +694,7 @@ const DICT = {
   'Tanya seperti pengunjung, lalu lihat potongan mana yang ditemukan dan kenapa. Uji coba dicatat terpisah dan tidak dihitung sebagai pertanyaan pengunjung.': 'Ask like a visitor, then see which chunks were found and why. Playground questions are logged separately and never counted as visitor questions.',
   'Pakai pengaturan belum disimpan': 'Use unsaved settings', 'Uji perubahan RAG/prompt sebelum menyimpan.': 'Test retrieval changes before saving.',
   'Belum ada percakapan. Coba salah satu saran pertanyaan di menu Dokumen.': 'No conversation yet. Try one of the suggested questions from the Document menu.', 'Tulis pertanyaan…': 'Type a question…', 'Kirim': 'Send', 'Baru': 'New', 'Mulai percakapan baru': 'Start a new conversation',
-  'Hasil pencarian': 'Retrieval results', 'Potongan berwarna kunyit dikirim ke AI.': 'Turmeric-coloured chunks are sent to the AI.', 'Kirim pertanyaan untuk melihat hasil pencarian.': 'Send a question to see the retrieval results.',
+  'Hasil pencarian': 'Retrieval results', 'Potongan yang ditandai dikirim ke AI.': 'Highlighted chunks are sent to the AI.', '7 hari terakhir': 'Last 7 days', 'pertanyaan pengunjung': 'visitor questions', 'Kirim pertanyaan untuk melihat hasil pencarian.': 'Send a question to see the retrieval results.',
   'Percakapan baru dimulai.': 'New conversation started.', 'Ditolak: tidak ada di dokumen': 'Refused: not in the document', 'Terjawab': 'Answered', 'Percobaan penyedia yang gagal:': 'Failed provider attempts:',
   'Dicari sebagai': 'Searched as', 'ditulis ulang': 'rewritten', 'Keputusan': 'Decision', 'Lanjut ke AI': 'Sent to AI', 'Ditolak sebelum AI': 'Refused before AI', 'Skor vektor terbaik': 'Best vector score',
   'Cocok kata kunci': 'Keyword matches', 'Embedding': 'Embedding', 'gagal, pakai kata kunci saja': 'failed, keyword-only', 'Waktu': 'Timing', 'Tidak ada kandidat.': 'No candidates.',
@@ -951,12 +978,23 @@ $('#logout').addEventListener('click', () => logout());
 /* =================================================================== */
 /*  Routing                                                             */
 /* =================================================================== */
+function setNavOpen(open) {
+  $('.side').classList.toggle('nav-open', open);
+  $('#navToggle').setAttribute('aria-expanded', String(open));
+}
+$('#navToggle').addEventListener('click', () => setNavOpen($('#navToggle').getAttribute('aria-expanded') !== 'true'));
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape' && $('#navToggle').getAttribute('aria-expanded') === 'true') { setNavOpen(false); $('#navToggle').focus(); }
+});
 function route() {
   const page = (location.hash || '#ringkasan').slice(1);
   const known = $$('[data-page]').map((p) => p.dataset.page);
   const cur = known.includes(page) ? page : 'ringkasan';
   $$('[data-page]').forEach((p) => p.classList.toggle('hidden', p.dataset.page !== cur));
   $$('.nav a').forEach((a) => { if (a.getAttribute('href') === '#' + cur) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current'); });
+  const curLink = $('.nav a[aria-current=page]');
+  if (curLink) $('#navCurrent').textContent = curLink.textContent.trim();
+  setNavOpen(false);
   if (cur === 'riwayat') loadLogs();
   if (cur === 'pencarian') loadCacheStats();
   if (cur === 'pasang') loadChannels();
@@ -1173,12 +1211,14 @@ function renderOverview() {
   const doc = st.file?.status === 'selesai';
   const steps = [
     { done: st.bindings.db && st.bindings.vectorize && st.bindings.ai, title: 'Binding Cloudflare aktif', text: 'D1, Vectorize, dan Workers AI terhubung.', link: null },
-    { done: geminiKey, title: 'Kunci Gemini tersimpan', text: geminiKey ? 'Gemini menjadi model utama.' : hasKey ? 'Penyedia lain sudah ada, tetapi Gemini belum.' : 'Tanpa kunci, chatbot memakai cadangan Workers AI.', link: '#model' },
-    { done: doc, title: 'Dokumen terindeks', text: doc ? `${st.file.name} · ${fmt(st.file.chunk_count)} potongan` : st.file ? 'Unggahan belum selesai. Hapus lalu unggah ulang.' : 'Unggah satu atau beberapa dokumen sebagai sumber jawaban.', link: '#dokumen' },
-    { done: (S.cfg.settings.allowedOrigins || []).length > 0, title: 'Domain website dibatasi', text: 'Disarankan agar widget hanya bisa dipakai di website Anda.', link: '#pasang' },
+    { done: geminiKey, cta: L('Simpan kunci', 'Save a key'), title: 'Kunci Gemini tersimpan', text: geminiKey ? 'Gemini menjadi model utama.' : hasKey ? 'Penyedia lain sudah ada, tetapi Gemini belum.' : 'Tanpa kunci, chatbot memakai cadangan Workers AI.', link: '#model' },
+    { done: doc, cta: L('Unggah dokumen', 'Upload a document'), title: 'Dokumen terindeks', text: doc ? `${st.file.name} · ${fmt(st.file.chunk_count)} potongan` : st.file ? 'Unggahan belum selesai. Hapus lalu unggah ulang.' : 'Unggah satu atau beberapa dokumen sebagai sumber jawaban.', link: '#dokumen' },
+    { done: (S.cfg.settings.allowedOrigins || []).length > 0, cta: L('Atur domain', 'Set domains'), title: 'Domain website dibatasi', text: 'Disarankan agar widget hanya bisa dipakai di website Anda.', link: '#pasang' },
     ...(st.platform === false ? [] : [{ done: !st.weakPassword, title: 'Kata sandi admin kuat', text: st.weakPassword ? 'Kata sandi kurang dari 12 karakter. Ganti secret ADMIN_PASSWORD dengan kalimat sandi yang lebih panjang.' : 'Kata sandi admin minimal 12 karakter.', link: null }]),
   ];
-  $('#setup').innerHTML = steps.map((s) => `<li class="${s.done ? 'done' : ''}"><span class="tick">✓</span><div><b>${esc(s.title)}</b><span>${esc(s.text)}</span></div>${s.link && !s.done ? `<a class="btn ghost sm" href="${s.link}">Buka</a>` : '<span></span>'}</li>`).join('');
+  $('#setup').innerHTML = steps.map((s) => `<li class="${s.done ? 'done' : ''}"><span class="tick">✓</span><div><b>${esc(s.title)}</b><span>${esc(s.text)}</span></div>${s.link && !s.done ? `<a class="btn ghost sm" href="${s.link}">${esc(s.cta)}</a>` : '<span></span>'}</li>`).join('');
+  const doneCount = steps.filter((x) => x.done).length;
+  $('#setupProgress').innerHTML = `${doneCount} ${L('dari', 'of')} ${steps.length}<small>${doneCount === steps.length ? L('siap dipasang', 'ready to embed') : L('langkah selesai', 'steps done')}</small>`;
 
   const pname = (id) => S.providers.find((p) => p.id === id)?.name || id;
   $('#chainView').innerHTML = st.chain.map((c, i) => {
@@ -1577,6 +1617,8 @@ function renderChain() {
       </div>
       <div class="test-out muted"></div>
     </div>`).join('');
+  // Which provider keys are shown depends on the chain, so the key list follows it.
+  if (S.cfg?.keys) renderKeys();
   $('#chainTail').textContent = S.draft.workersAiFallback ? `Lalu cadangan Workers AI: ${S.wai.join(' → ')}` : 'Cadangan Workers AI dimatikan.';
 }
 $('#chainEdit').addEventListener('input', (e) => {
@@ -1606,14 +1648,19 @@ $('#addChain').addEventListener('click', () => { if (S.draft.chain.length >= 8) 
 $('[data-k=workersAiFallback]').addEventListener('change', renderChain);
 
 function renderKeys() {
-  $('#keys').innerHTML = S.cfg.keys.map((k) => {
+  const inChain = new Set((S.draft?.chain || []).map((c) => c.provider));
+  const shown = (k) => k.configured || inChain.has(k.id) || k.id in S.keyEdits;
+  const row = (k) => {
     const pending = k.id in S.keyEdits;
     const state = pending ? (S.keyEdits[k.id] ? '<span class="pill wait">Akan disimpan</span>' : '<span class="pill wait">Akan dihapus</span>')
       : k.source === 'dashboard' ? '<span class="pill ok">Tersimpan</span>' : k.source === 'secret' ? '<span class="pill ok">Dari secret</span>' : '<span class="pill">Belum ada</span>';
     return `<div class="key-row" data-id="${k.id}"><div><b>${esc(k.name)}</b><small>secret: ${esc(k.secret)}${k.id === 'cloudflare' ? ' · ' + L('format ACCOUNT_ID:API_TOKEN (token dengan izin Workers AI)', 'format ACCOUNT_ID:API_TOKEN (token with Workers AI permission)') : ''}</small></div>
       <input type="password" autocomplete="new-password" spellcheck="false" placeholder="${k.configured ? 'Tempel kunci baru untuk mengganti' : k.id === 'cloudflare' ? 'ACCOUNT_ID:API_TOKEN' : 'Tempel kunci API'}" aria-label="Kunci ${esc(k.name)}">
       <div class="row">${state}${k.source === 'dashboard' && !pending ? '<button class="btn ghost sm" type="button" data-a="clear">Hapus</button>' : ''}</div></div>`;
-  }).join('');
+  };
+  const main = S.cfg.keys.filter(shown), rest = S.cfg.keys.filter((k) => !shown(k));
+  $('#keys').innerHTML = main.map(row).join('')
+    + (rest.length ? `<details class="more-keys"><summary>${L('Penyedia lain', 'Other providers')} <small>(${rest.length})</small></summary>${rest.map(row).join('')}</details>` : '');
 }
 $('#keys').addEventListener('input', (e) => {
   const id = e.target.closest('.key-row').dataset.id, v = e.target.value.trim();

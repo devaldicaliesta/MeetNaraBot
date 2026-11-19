@@ -136,6 +136,42 @@ test('the platform admin can hide the permanent choice, and sign-up and landing 
   await after.close();
 });
 
+test('on a phone the dashboard menu is a labelled button, and sign-out is reachable', async ({ browser }) => {
+  const ctx = await browser.newContext({ viewport: { width: 375, height: 760 } });
+  const page = await ctx.newPage();
+  await page.goto('/admin.html');
+  await page.click('#platformToggle');
+  await page.fill('#pass', QA_PASSWORD);
+  await page.press('#pass', 'Enter');
+  const toggle = page.locator('#navToggle');
+  await expect(toggle).toBeVisible();
+  await expect(page.locator('#navMenu')).toBeHidden();
+  await toggle.click();
+  await expect(toggle).toHaveAttribute('aria-expanded', 'true');
+  await expect(page.locator('#logout')).toBeVisible();
+  await page.locator('#navMenu a[href="#model"]').click();
+  await expect(page.locator('#navCurrent')).toHaveText('Bot & model');
+  await expect(page.locator('#navMenu')).toBeHidden();
+  await toggle.click();
+  await page.keyboard.press('Escape');
+  await expect(toggle).toBeFocused();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBe(0);
+  await ctx.close();
+});
+
+test('only the provider keys in use are listed; the rest fold away', async ({ page }) => {
+  await page.goto('/admin.html#model');
+  await page.click('#platformToggle');
+  await page.fill('#pass', QA_PASSWORD);
+  await page.press('#pass', 'Enter');
+  const more = page.locator('#keys details.more-keys');
+  await expect(page.locator('#keys > .key-row[data-id="gemini"]')).toBeVisible();
+  await expect(more).not.toHaveAttribute('open', '');
+  await expect(more.locator('.key-row[data-id="groq"]')).toBeHidden();
+  await more.locator('summary').click();
+  await expect(more.locator('.key-row[data-id="groq"]')).toBeVisible();
+});
+
 test('a bot owner does not see the platform switch', async ({ page }) => {
   await page.goto('/admin.html#daftar');
   await page.fill('#name', 'Rani');
