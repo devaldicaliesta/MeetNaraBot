@@ -37,6 +37,7 @@ import {
   ACCOUNT_DAYS,
   endPermanentAccounts,
   ownsPermanentBot,
+  permanentBots,
   setAccountPermanent,
   DEFAULT_BOT,
   MAX_BOTS_PER_USER,
@@ -244,6 +245,19 @@ async function activeFile(db: D1Database, bot: string): Promise<(FileRow & { fil
   };
 }
 
+/**
+ * Origins a permanent bot (TSbot) is pinned to. With an empty allow-list a bot answers every site,
+ * so without this anyone could embed TSbot and spend its daily quota. The owner can still add more
+ * sites in the dashboard; they are added to these, never replace them.
+ */
+function pinnedOrigins(env: Bindings, bot: string): string[] {
+  if (!permanentBots(env).includes(bot)) return [];
+  return String(env.PERMANENT_BOT_ORIGINS || '')
+    .split(',')
+    .map((s) => s.trim().toLowerCase())
+    .filter((o) => /^https?:\/\/[^\s/]+$/.test(o));
+}
+
 function envOrigins(env: Bindings): string[] {
   const raw = env.ALLOWED_ORIGINS;
   if (Array.isArray(raw)) return raw.map(String);
@@ -374,7 +388,7 @@ app.use('/api/public/*', async (c, next) => {
   const settings = status === 'missing' ? DEFAULT_SETTINGS : await getSettings(c.env, bot);
   const lang = asLang(c.req.query('lang'), settings.language);
   const self = new URL(c.req.url).origin;
-  const allowed = [...envOrigins(c.env), ...settings.allowedOrigins].map((o) => o.toLowerCase());
+  const allowed = [...envOrigins(c.env), ...pinnedOrigins(c.env, bot), ...settings.allowedOrigins].map((o) => o.toLowerCase());
   const ok = !origin || origin === self || allowed.length === 0 || allowed.includes(origin.toLowerCase());
   const cors: Record<string, string> = ok && origin
     ? {

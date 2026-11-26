@@ -116,7 +116,14 @@ jobs:
             done
           done
       - name: Summary
+        env:
+          TSBOT_URL: ${{ steps.project.outputs.url }}
+          TSBOT_ORIGINS: ${{ vars.TSBOT_ORIGINS }}
         run: |
+          # deploy.yml pins the TSbot bot to TSBOT_ORIGINS (default https://tsbot-nara.pages.dev).
+          if [ "$TSBOT_URL" != "https://tsbot-nara.pages.dev" ] && [[ ",$TSBOT_ORIGINS," != *",$TSBOT_URL,"* ]]; then
+            echo "::warning::TSbot is at $TSBOT_URL. Set the TSBOT_ORIGINS repository variable to it and re-run Deploy to Cloudflare, or the bot refuses TSbot."
+          fi
           echo "TSbot is live at ${{ steps.project.outputs.url }}" >> "$GITHUB_STEP_SUMMARY"
           echo "IMTS (showing TSbot) is live at https://imtsbot.pages.dev" >> "$GITHUB_STEP_SUMMARY"
           echo "Add ${{ steps.project.outputs.url }} to the bot's allowed origins in the Nara dashboard (if that list is not empty)." >> "$GITHUB_STEP_SUMMARY"

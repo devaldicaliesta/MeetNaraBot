@@ -25,7 +25,7 @@
       "The bot's saved settings live in the production D1 and are not visible in the repository."
     ],
     "validation_plan": {
-      "deployment": "In the Nara dashboard, signed in as the TSbot bot owner, open Pasang widget and check the allowed domains. Set exactly https://tsbot-nara.pages.dev. Note that this limits browsers only; scripts without an Origin header are still bounded by the daily quotas."
+      "deployment": "Hardened in code: PERMANENT_BOTS bots are now pinned to PERMANENT_BOT_ORIGINS (deploy.yml, default https://tsbot-nara.pages.dev), so an empty allow-list no longer opens TSbot to every site. After deploying, check that a request from another Origin to /api/public/info?bot=<TSbot id> gets 403. Scripts without an Origin header remain bounded only by the daily quotas."
     }
   },
   {
@@ -258,7 +258,13 @@
       "observed_result": "The first account gets expires_at 9999-12-31. The second sign-up is refused with 409 'already registered', and no cleanup ever frees the address. Source trace; the worker test suite exercises the same permanent path."
     },
     "remediation": {
-      "strategy": "The smallest change without a code change: the platform admin turns permanent accounts off in the dashboard. If permanent accounts should stay, allow them only for accounts with a verified e-mail, or make the default allowPermanent=false so the admin opts in. The audit did not change this default, because the tests show it is a deliberate product choice."
+      "strategy": "Fixed: getPlatform() now treats a missing setting as allowPermanent=false, so permanent accounts are an explicit opt-in by the platform admin (dashboard switch). Accounts that were already permanent stay permanent; turning the switch on and then off gives them 7 days (except PERMANENT_BOTS owners). A fuller fix would be e-mail verification for permanent accounts.",
+      "code_changes": [
+        {
+          "file_name": "src/settings.ts",
+          "fixed_code": "return { allowPermanent: saved?.allowPermanent === true };"
+        }
+      ]
     },
     "severity": {
       "likelihood": {

@@ -17,6 +17,8 @@ export type Bindings = {
   PLATFORM_DAILY_EMBEDS?: string | number;
   /** Comma-separated bot ids whose owner accounts never expire (e.g. the bot TSbot shows). */
   PERMANENT_BOTS?: string;
+  /** Comma-separated origins every PERMANENT_BOTS bot accepts by default (TSbot's own site), set by deploy.yml. */
+  PERMANENT_BOT_ORIGINS?: string;
   GEMINI_API_KEY?: string;
   GROQ_API_KEY?: string;
   OPENROUTER_API_KEY?: string;

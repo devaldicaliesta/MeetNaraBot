@@ -150,6 +150,13 @@ test('a permanent bot account that still has days left loses its limit at sign-i
 
 test('users choose a permanent or 7-day account at sign-up and can change it later', async ({ request }) => {
   const ip = (n: number) => ({ 'cf-connecting-ip': `198.51.100.${n}` });
+  // Off by default (sign-up does not verify e-mail): asking for a permanent account gives 7 days.
+  expect(await request.get('/api/auth/policy').then((r) => r.json())).toEqual({ allowPermanent: false, accountDays: 7 });
+  const early = await (await request.post('/api/auth/signup', { headers: ip(70), data: { email: 'early@qa.test', password: 'kuda-biru-melompat', permanent: true } })).json();
+  expect(early.user.expires_at).not.toMatch(/^9999-/);
+  expect((await request.post('/api/auth/account', { headers: { Authorization: `Bearer ${early.token}` }, data: { permanent: true } })).status()).toBe(403);
+  // The platform admin opts in.
+  expect((await request.post('/api/admin/platform', { headers: { Authorization: `Bearer ${QA_PASSWORD}` }, data: { allowPermanent: true } })).ok()).toBeTruthy();
   expect(await request.get('/api/auth/policy').then((r) => r.json())).toEqual({ allowPermanent: true, accountDays: 7 });
 
   // Sign-up: permanent when asked for, 7 days otherwise.
