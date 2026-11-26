@@ -4,6 +4,27 @@ Halaman chat penuh dari Nara untuk ditampilkan di IMTS lewat iframe. Dipublikasi
 
 Isinya hanya widget Nara (`public/widget.js` dalam `mode="inline"`) yang disalin saat build, jadi halaman tidak memuat skrip dari domain lain.
 
+## Tampilan dan menu kategori
+
+Tampilan TSbot mengikuti desain "Menu kategori TSBOT":
+- header biru dengan judul TSBOT,
+- kartu kategori,
+- daftar pertanyaan siap pakai per kategori,
+- tombol "Kembali ke menu".
+
+Semua isinya ada di `tsbot/menu.json`:
+- `accent`: warna utama (`#rrggbb`).
+- `title`, `subtitle`: judul dan subjudul di header.
+- `heading`, `intro`: sapaan di layar awal.
+- `back`, `placeholder`, `note`: label tombol kembali, contoh di kolom tanya, dan catatan di bawahnya.
+- `categories`: daftar kategori. Setiap kategori punya `name`, `desc`, `icon` (data path SVG 24×24) dan `issues` (pertanyaan yang dikirim saat diklik).
+
+Batas isi menu:
+- maksimal 12 kategori,
+- maksimal 12 pertanyaan per kategori.
+
+`scripts/build-tsbot.mjs` memeriksa file ini. Kalau bentuknya salah, build gagal. Setelah lolos, isinya ditanam di halaman sebagai blok data JSON, bukan skrip. Untuk mengubah menu, edit file ini lalu jalankan workflow **Deploy TSbot**.
+
 ## Pengaturan sekali
 
 1. Token `CLOUDFLARE_API_TOKEN` perlu izin **Cloudflare Pages: Edit** (selain izin yang sudah dipakai `deploy.yml`).

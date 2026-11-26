@@ -10,7 +10,9 @@
 </head>
 <body>
   <main>
-    <tanyasaya-chat mode="inline" api-base="__NARA_API__" bot="__NARA_BOT__" css="/widget.css" lang="auto"></tanyasaya-chat>
+    <tanyasaya-chat mode="inline" api-base="__NARA_API__" bot="__NARA_BOT__" css="/widget.css" lang="id" menu="tsbot-menu"></tanyasaya-chat>
+    <!-- The category menu (tsbot/menu.json, checked by scripts/build-tsbot.mjs). A data block: it never runs as script. -->
+    <script type="application/json" id="tsbot-menu">__MENU_JSON__</script>
   </main>
   <noscript>TSbot butuh JavaScript untuk menampilkan chat. Aktifkan JavaScript, lalu muat ulang halaman ini.</noscript>
 </body>
