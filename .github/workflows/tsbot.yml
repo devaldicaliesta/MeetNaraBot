@@ -45,12 +45,15 @@ jobs:
       NARA_BOT_ID: ${{ vars.NARA_BOT_ID || secrets.NARA_BOT_ID }}
       IMTS_ORIGIN: ${{ vars.IMTS_ORIGIN || secrets.IMTS_ORIGIN }}
     steps:
-      - uses: actions/checkout@v5
-      - uses: actions/setup-node@v5
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
         with:
           node-version: 22
           cache: npm
-      - run: npm ci
+      # The Cloudflare token is in this job's env: install without running dependency lifecycle scripts.
+      - run: npm ci --ignore-scripts
       - name: Check settings
         run: |
           if [ -z "$CLOUDFLARE_API_TOKEN" ] || [ -z "$CLOUDFLARE_ACCOUNT_ID" ]; then

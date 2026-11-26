@@ -12,7 +12,10 @@
     <p>Tanyakan apa saja kepada asisten di bawah. Jawabannya disusun dari dokumen referensi asisten, lengkap dengan sumbernya.</p>
   </header>
   <main>
-    <iframe src="__TSBOT_URL__/" title="Asisten TSbot" allow="clipboard-write"></iframe>
+    <!-- sandbox: TSbot may run its widget (scripts, its own storage, the chat form) but cannot open
+         popups, navigate this page, start downloads or show dialogs. allow-same-origin keeps TSbot's real
+         origin, which the Nara API checks against the bot's allowed origins. -->
+    <iframe src="__TSBOT_URL__/" title="Asisten TSbot" allow="clipboard-write" sandbox="allow-scripts allow-same-origin allow-forms" referrerpolicy="no-referrer"></iframe>
   </main>
 </body>
 </html>

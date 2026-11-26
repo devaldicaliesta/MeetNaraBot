@@ -71,6 +71,16 @@ test('the IMTS page shows TSbot in an iframe', async ({ page, request }) => {
   }
 });
 
+test('the IMTS iframe is sandboxed and the chat still answers inside it', async ({ page }) => {
+  await page.goto(`http://127.0.0.1:${IMTS_PORT}/`);
+  const sandbox = (await page.locator('iframe').getAttribute('sandbox')) || '';
+  expect(sandbox.split(/\s+/).sort()).toEqual(['allow-forms', 'allow-same-origin', 'allow-scripts']);
+  const chat = page.frameLocator('iframe').locator('tanyasaya-chat');
+  await chat.locator('textarea').fill('Berapa biaya pendaftaran?');
+  await chat.locator('.send').click(); // the submit button path, which needs allow-forms
+  await expect(chat.locator('.cite').first()).toBeVisible();
+});
+
 test('other sites cannot embed TSbot', async ({ page }) => {
   await page.goto(`http://127.0.0.1:${OTHER_PORT}/`);
   await page.waitForTimeout(1500);

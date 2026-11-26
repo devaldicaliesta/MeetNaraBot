@@ -32,6 +32,7 @@ import { answer, buildSystemPrompt, buildUserTurn, generateSuggestions, normaliz
 import { buildChain, embed, pickEmbedder } from './llm';
 import { channelRoutes } from './channels';
 import { bodyTooLarge } from './body';
+import { clientKey } from './net';
 import {
   ACCOUNT_DAYS,
   endPermanentAccounts,
@@ -158,7 +159,8 @@ async function recordLoginFailure(c: Context<Env>, scope: { email?: string; plat
 const lockedMessage = (c: Context<Env>) =>
   tr(c, `Terlalu banyak percobaan masuk yang salah. Tunggu ${LOGIN_WINDOW_MIN} menit, lalu coba lagi.`, `Too many failed sign-in attempts. Wait ${LOGIN_WINDOW_MIN} minutes, then try again.`);
 
-const ip = (c: Context<Env>) => c.req.header('cf-connecting-ip') || 'local';
+// IPv6 clients are keyed by /64 so one host cannot rotate addresses past the per-IP limits.
+const ip = (c: Context<Env>) => clientKey(c.req.header('cf-connecting-ip'));
 
 /** Admin/dashboard messages follow the dashboard's X-Lang header (default Indonesian). */
 const tr = (c: Context<Env>, id: string, en: string) => ((c.req.header('X-Lang') || c.req.query('lang')) === 'en' ? en : id);

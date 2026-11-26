@@ -1,0 +1,303 @@
+[
+  {
+    "verdict": "needs_validation",
+    "fingerprint": "deploy:tsbot:allowed-origins-empty",
+    "title": "The TSbot bot may accept requests from every website",
+    "description": "When a bot's allowedOrigins list is empty, the public API serves every origin. If TSbot's bot was never given an allow-list, any site can embed it and spend its daily quota from visitors' browsers.",
+    "claimed_root_cause": "An empty allowedOrigins list means all origins are allowed (by design).",
+    "trace": [
+      {
+        "kind": "sink",
+        "file": "src/index.ts",
+        "line": 378,
+        "scope": "/api/public/* CORS middleware",
+        "description": "allowed.length === 0 → ok."
+      }
+    ],
+    "evidence": [
+      {
+        "file": "tsbot/README.md",
+        "line": 14,
+        "description": "The setup step asks the owner to add the TSbot URL only if the list is not empty."
+      }
+    ],
+    "blockers": [
+      "The bot's saved settings live in the production D1 and are not visible in the repository."
+    ],
+    "validation_plan": {
+      "deployment": "In the Nara dashboard, signed in as the TSbot bot owner, open Pasang widget and check the allowed domains. Set exactly https://tsbot-nara.pages.dev. Note that this limits browsers only; scripts without an Origin header are still bounded by the daily quotas."
+    }
+  },
+  {
+    "verdict": "rejected",
+    "fingerprint": "public/widget.js:xss:markdown-and-info",
+    "title": "XSS in the TSbot widget from AI answers or bot info",
+    "description": "Rechecked after the TSbot build.",
+    "claimed_root_cause": "AI text rendered as HTML.",
+    "trace": [
+      {
+        "kind": "sink",
+        "file": "public/widget.js",
+        "line": 361,
+        "scope": "paintBot()",
+        "description": "innerHTML of rendered markdown."
+      }
+    ],
+    "evidence": [
+      {
+        "file": "public/widget.js",
+        "line": 74,
+        "description": "Text is escaped before any formatting; only fixed tags are added and numbers go through Number()."
+      }
+    ],
+    "reason": "Everything is escaped or set as textContent, themeColor is regex-checked, and the TSbot CSP has script-src 'self' without unsafe-inline."
+  },
+  {
+    "verdict": "rejected",
+    "fingerprint": "src/index.ts:cors:reflected-origin",
+    "title": "Reflected CORS origin exposes private data",
+    "description": "Origin is reflected when allowedOrigins is empty.",
+    "claimed_root_cause": "Access-Control-Allow-Origin mirrors the request.",
+    "trace": [
+      {
+        "kind": "sink",
+        "file": "src/index.ts",
+        "line": 378,
+        "scope": "/api/public/* CORS middleware",
+        "description": "Reflects Origin."
+      }
+    ],
+    "evidence": [
+      {
+        "file": "src/index.ts",
+        "line": 381,
+        "description": "No Access-Control-Allow-Credentials header; the widget uses credentials: omit."
+      }
+    ],
+    "reason": "Only public bot data is served and no credential travels, so there is no confidentiality impact."
+  },
+  {
+    "verdict": "confirmed",
+    "fingerprint": "src/index.ts:ip:ipv6-per-address-keying",
+    "title": "Per-IP limits key on the full IPv6 address, so one host can rotate past them",
+    "description": "Every per-IP control (sign-up 5 per day, sign-in lock 8 per 10 minutes, chat per-minute and daily per-visitor quotas) uses the raw cf-connecting-ip. A single IPv6 host normally owns a /64, so it gets a fresh bucket per address. That leaves only the global, per-bot and per-e-mail caps. One host can then use up the global sign-up cap (200 per day) and the bot's daily question cap, which affects TSbot, and can keep the platform admin locked out (100 failures per 10 minutes).",
+    "root_cause": "ip() returned cf-connecting-ip unchanged.",
+    "intended_behavior": "A per-IP limit should bound one client, so IPv6 should be grouped by /64.",
+    "trace": [
+      {
+        "kind": "entrypoint",
+        "file": "src/index.ts",
+        "line": 163,
+        "scope": "ip()",
+        "description": "Raw cf-connecting-ip value."
+      },
+      {
+        "kind": "propagation",
+        "file": "src/index.ts",
+        "line": 135,
+        "scope": "loginKeys()",
+        "description": "Per-IP sign-in lock key."
+      },
+      {
+        "kind": "propagation",
+        "file": "src/index.ts",
+        "line": 465,
+        "scope": "POST /api/public/chat",
+        "description": "allow() per-minute and dailyQuota per visitor."
+      },
+      {
+        "kind": "sink",
+        "file": "src/index.ts",
+        "line": 560,
+        "scope": "POST /api/auth/signup",
+        "description": "5 sign-ups per IP per day."
+      }
+    ],
+    "evidence": [
+      {
+        "file": "src/index.ts",
+        "line": 137,
+        "description": "The platform-admin global counter (100 per 10 minutes) refuses even the correct password once reached."
+      },
+      {
+        "file": "src/index.ts",
+        "line": 96,
+        "description": "Global sign-up cap of 200 per day, shared by everyone."
+      },
+      {
+        "file": "src/settings.ts",
+        "line": 157,
+        "description": "Bot dailyTotal 3000 and dailyPerIp 100."
+      }
+    ],
+    "conditions": [
+      {
+        "kind": "network_routing",
+        "description": "The client reaches Cloudflare over IPv6 and Pseudo-IPv4 overwrite is off (the default)."
+      }
+    ],
+    "execution": {
+      "attacker_perspective": "Anonymous client with one IPv6 /64.",
+      "payloads": [
+        "cf-connecting-ip: 2001:db8:1:2::<n> for n = 1..N"
+      ],
+      "instructions": [
+        "In a local worker test, send sign-ups with cf-connecting-ip values from the same /64.",
+        "Count how many are accepted before the per-IP limit."
+      ],
+      "observed_result": "Before the fix, each address was a new bucket, so the per-IP limit never triggered. After the fix, clientKey() maps them all to 2001:db8:1:2::/64 (tests/unit/net.test.ts)."
+    },
+    "remediation": {
+      "strategy": "Group IPv6 addresses by /64 before keying limits: src/net.ts clientKey(), used by ip() in src/index.ts. IPv4 and IPv4-mapped addresses stay per address.",
+      "code_changes": [
+        {
+          "file_name": "src/index.ts",
+          "fixed_code": "const ip = (c: Context<Env>) => clientKey(c.req.header('cf-connecting-ip'));"
+        }
+      ]
+    },
+    "severity": {
+      "likelihood": {
+        "score": "medium",
+        "reason": "Most hosting and home connections give a /64."
+      },
+      "impact": {
+        "score": "low",
+        "reason": "Availability only: global caps still bound spend and no data is exposed."
+      },
+      "overall_severity": "low"
+    },
+    "confidence": {
+      "score": "high",
+      "reason": "Source trace, confirmed by an independent verifier. The fix has unit tests, and the worker suite passes."
+    }
+  },
+  {
+    "verdict": "confirmed",
+    "fingerprint": "src/index.ts:signup:permanent-default-removes-expiry",
+    "title": "Permanent accounts are on by default, so an unverified e-mail can be claimed forever",
+    "description": "Sign-up needs no e-mail verification. Earlier audits accepted that because an account expired after 7 days. The platform setting allowPermanent defaults to true, so anyone can register another person's e-mail as a permanent account. The real owner of that address can then never sign up, and nothing in the app can free the address except deleting the row by hand.",
+    "root_cause": "getPlatform() treats a missing platform setting as allowPermanent=true, and sign-up and /api/auth/account give a never-expiring account to any anonymous caller who asks.",
+    "intended_behavior": "An account whose e-mail was never verified must not hold that e-mail for good. Either it expires (7 days) or the address must be verified first.",
+    "trace": [
+      {
+        "kind": "entrypoint",
+        "file": "src/index.ts",
+        "line": 551,
+        "scope": "POST /api/auth/signup",
+        "description": "Anonymous sign-up with any e-mail and permanent:true."
+      },
+      {
+        "kind": "propagation",
+        "file": "src/settings.ts",
+        "line": 379,
+        "scope": "getPlatform()",
+        "description": "allowPermanent: saved?.allowPermanent !== false, so true when never set."
+      },
+      {
+        "kind": "propagation",
+        "file": "src/index.ts",
+        "line": 579,
+        "scope": "POST /api/auth/signup",
+        "description": "permanent = allowPermanent && body.permanent === true"
+      },
+      {
+        "kind": "sink",
+        "file": "src/auth.ts",
+        "line": 137,
+        "scope": "createUser()",
+        "description": "expires_at = NO_EXPIRY (9999-12-31)."
+      }
+    ],
+    "evidence": [
+      {
+        "file": "src/index.ts",
+        "line": 570,
+        "description": "An e-mail is freed for a new sign-up only when the old account has expired, which a permanent one never does."
+      },
+      {
+        "file": "src/index.ts",
+        "line": 324,
+        "description": "The daily purge selects only expires_at <= now."
+      },
+      {
+        "file": "src/index.ts",
+        "line": 594,
+        "description": "A 7-day account can also switch itself to permanent through /api/auth/account."
+      },
+      {
+        "file": "public/admin.html",
+        "line": 361,
+        "description": "The sign-up checkbox #permanent is checked by default."
+      },
+      {
+        "file": "tests/worker/accounts.spec.ts",
+        "line": 153,
+        "description": "The test asserts the default policy is allowPermanent: true."
+      }
+    ],
+    "conditions": [
+      {
+        "kind": "system_configuration",
+        "description": "The platform admin has never turned off 'Izinkan pengguna memilih akun permanen' (the default)."
+      },
+      {
+        "kind": "data_state",
+        "description": "The victim's e-mail is not registered yet."
+      }
+    ],
+    "execution": {
+      "attacker_perspective": "Anonymous visitor of the Nara dashboard.",
+      "payloads": [
+        "POST /api/auth/signup {\"email\":\"victim@example.test\",\"password\":\"<10+ chars>\",\"permanent\":true}"
+      ],
+      "instructions": [
+        "On a local wrangler dev instance with a fresh D1, sign up as victim@example.test with permanent:true.",
+        "Sign up again with the same e-mail from another client."
+      ],
+      "observed_result": "The first account gets expires_at 9999-12-31. The second sign-up is refused with 409 'already registered', and no cleanup ever frees the address. Source trace; the worker test suite exercises the same permanent path."
+    },
+    "remediation": {
+      "strategy": "The smallest change without a code change: the platform admin turns permanent accounts off in the dashboard. If permanent accounts should stay, allow them only for accounts with a verified e-mail, or make the default allowPermanent=false so the admin opts in. The audit did not change this default, because the tests show it is a deliberate product choice."
+    },
+    "severity": {
+      "likelihood": {
+        "score": "low",
+        "reason": "The attacker has to target a specific e-mail before its owner signs up."
+      },
+      "impact": {
+        "score": "low",
+        "reason": "The victim is permanently denied registration with their own address. No data or bot of the victim is exposed."
+      },
+      "overall_severity": "low"
+    },
+    "confidence": {
+      "score": "high",
+      "reason": "Fully traced in source and confirmed by an independent verifier."
+    }
+  },
+  {
+    "verdict": "rejected",
+    "fingerprint": "src/openai-compat.ts:ssrf:cloudflare-account",
+    "title": "SSRF through a crafted Cloudflare Workers AI key",
+    "description": "The account id from the key is placed in the URL.",
+    "claimed_root_cause": "User data in a URL.",
+    "trace": [
+      {
+        "kind": "sink",
+        "file": "src/openai-compat.ts",
+        "line": 34,
+        "scope": "endpointFor()",
+        "description": "URL built from the key's account part."
+      }
+    ],
+    "evidence": [
+      {
+        "file": "src/openai-compat.ts",
+        "line": 33,
+        "description": "The account must match ^[0-9a-f]{32}$; the host is fixed to api.cloudflare.com."
+      }
+    ],
+    "reason": "Neither the host nor the path can be changed."
+  }
+]
