@@ -1,0 +1,455 @@
+[
+  {
+    "coverage_id": ".github%2Fworkflows%2Ftsbot.yml%23deploy::.github%2Fworkflows%2Ftsbot.yml%23permissions::profile%2Fquick%2Fall-in-scope-subsystems::SUPPLY-CHAIN-AND-RELEASE.md%23CI%20and%20automation%20attack%20classes",
+    "canonical_refs": {
+      "surface": ".github/workflows/tsbot.yml#deploy",
+      "boundary": ".github/workflows/tsbot.yml#permissions",
+      "attack_class": "SUPPLY-CHAIN-AND-RELEASE.md#CI and automation attack classes",
+      "subsystem": "profile/quick/all-in-scope-subsystems"
+    },
+    "surface": "Deploy TSbot workflow",
+    "boundary": "Secrets and triggers",
+    "subsystem": "All TSbot-scope subsystems (quick profile)",
+    "attack_class": "CI script injection",
+    "starting_paths": [
+      ".github/workflows/tsbot.yml"
+    ],
+    "ordinary_attack_class_block": null,
+    "selected_companion_blocks": [
+      "SUPPLY-CHAIN-AND-RELEASE.md#CI and automation attack classes",
+      "SUPPLY-CHAIN-AND-RELEASE.md#Core discipline",
+      "SUPPLY-CHAIN-AND-RELEASE.md#Universal moves",
+      "SUPPLY-CHAIN-AND-RELEASE.md#Validation rules"
+    ],
+    "excluded_blocks": [],
+    "prior_status": "none",
+    "attempts": [],
+    "wave": 1,
+    "status": "covered",
+    "agent_id": "hunter-1",
+    "reviewed_paths": [
+      ".github/workflows/tsbot.yml"
+    ],
+    "local_checks": [
+      {
+        "agent_id": "hunter-1",
+        "reviewed_paths": [
+          ".github/workflows/tsbot.yml"
+        ],
+        "invariant": "Untrusted input cannot reach a run step or the Cloudflare token.",
+        "method": "source",
+        "result": "No pull_request trigger, contents: read, variables passed through env.",
+        "artifact": null
+      }
+    ],
+    "result_fingerprints": [],
+    "unresolved": []
+  },
+  {
+    "coverage_id": "imts%2Findex.html%23iframe::imts%2F_headers%23Content-Security-Policy::profile%2Fquick%2Fall-in-scope-subsystems::CLIENT-SIDE.md%23Cross-origin%20messaging%20and%20network%20attack%20classes",
+    "canonical_refs": {
+      "surface": "imts/index.html#iframe",
+      "boundary": "imts/_headers#Content-Security-Policy",
+      "attack_class": "CLIENT-SIDE.md#Cross-origin messaging and network attack classes",
+      "subsystem": "profile/quick/all-in-scope-subsystems"
+    },
+    "surface": "IMTS page",
+    "boundary": "frame-src and iframe attributes",
+    "subsystem": "All TSbot-scope subsystems (quick profile)",
+    "attack_class": "Framed content steering the host",
+    "starting_paths": [
+      "imts/index.html",
+      "imts/_headers"
+    ],
+    "ordinary_attack_class_block": null,
+    "selected_companion_blocks": [
+      "CLIENT-SIDE.md#Cross-origin messaging and network attack classes",
+      "CLIENT-SIDE.md#Core discipline",
+      "CLIENT-SIDE.md#Universal moves",
+      "CLIENT-SIDE.md#Validation rules"
+    ],
+    "excluded_blocks": [],
+    "prior_status": "none",
+    "attempts": [],
+    "wave": 1,
+    "status": "covered",
+    "agent_id": "hunter-1",
+    "reviewed_paths": [
+      "imts/index.html",
+      "imts/_headers"
+    ],
+    "local_checks": [
+      {
+        "agent_id": "hunter-1",
+        "reviewed_paths": [
+          "imts/index.html",
+          "imts/_headers"
+        ],
+        "invariant": "The framed chat cannot act on the IMTS page.",
+        "method": "source",
+        "result": "Cross-origin frame, no postMessage handler; sandbox added as hardening.",
+        "artifact": null
+      }
+    ],
+    "result_fingerprints": [],
+    "unresolved": []
+  },
+  {
+    "coverage_id": "public%2Fwidget.js%23TanyaSayaChat.paintBot::public%2Fwidget.js%23esc::profile%2Fquick%2Fall-in-scope-subsystems::CLIENT-SIDE.md%23DOM%20and%20object-state%20attack%20classes",
+    "canonical_refs": {
+      "surface": "public/widget.js#TanyaSayaChat.paintBot",
+      "boundary": "public/widget.js#esc",
+      "attack_class": "CLIENT-SIDE.md#DOM and object-state attack classes",
+      "subsystem": "profile/quick/all-in-scope-subsystems"
+    },
+    "surface": "Widget answer rendering",
+    "boundary": "HTML escaping before markdown",
+    "subsystem": "All TSbot-scope subsystems (quick profile)",
+    "attack_class": "DOM XSS",
+    "starting_paths": [
+      "public/widget.js"
+    ],
+    "ordinary_attack_class_block": "ATTACK-CLASSES.md#Injection",
+    "selected_companion_blocks": [
+      "CLIENT-SIDE.md#DOM and object-state attack classes",
+      "CLIENT-SIDE.md#Core discipline",
+      "CLIENT-SIDE.md#Universal moves",
+      "CLIENT-SIDE.md#Validation rules"
+    ],
+    "excluded_blocks": [],
+    "prior_status": "none",
+    "attempts": [],
+    "wave": 1,
+    "status": "candidate",
+    "agent_id": "hunter-1",
+    "reviewed_paths": [
+      "public/widget.js"
+    ],
+    "local_checks": [
+      {
+        "agent_id": "hunter-1",
+        "reviewed_paths": [
+          "public/widget.js"
+        ],
+        "invariant": "No server or model string reaches the DOM as markup.",
+        "method": "local",
+        "result": "Hostile answer, sources, suggestions, greeting and colour produce no element.",
+        "artifact": "agents/hunter-1/artifacts/dom-xss-harness.txt"
+      }
+    ],
+    "result_fingerprints": [
+      "widget-innerhtml-xss"
+    ],
+    "unresolved": []
+  },
+  {
+    "coverage_id": "scripts%2Fbuild-tsbot.mjs%23env::scripts%2Forigin.mjs%23toOrigin::profile%2Fquick%2Fall-in-scope-subsystems::ATTACK-CLASSES.md%23Injection",
+    "canonical_refs": {
+      "surface": "scripts/build-tsbot.mjs#env",
+      "boundary": "scripts/origin.mjs#toOrigin",
+      "attack_class": "ATTACK-CLASSES.md#Injection",
+      "subsystem": "profile/quick/all-in-scope-subsystems"
+    },
+    "surface": "Build inputs",
+    "boundary": "Origin and bot id validation",
+    "subsystem": "All TSbot-scope subsystems (quick profile)",
+    "attack_class": "Header and HTML injection at build",
+    "starting_paths": [
+      "scripts/build-tsbot.mjs",
+      "scripts/build-imts.mjs",
+      "scripts/origin.mjs"
+    ],
+    "ordinary_attack_class_block": "ATTACK-CLASSES.md#Injection",
+    "selected_companion_blocks": [],
+    "excluded_blocks": [],
+    "prior_status": "none",
+    "attempts": [],
+    "wave": 1,
+    "status": "covered",
+    "agent_id": "hunter-1",
+    "reviewed_paths": [
+      "scripts/build-tsbot.mjs",
+      "scripts/build-imts.mjs",
+      "scripts/origin.mjs"
+    ],
+    "local_checks": [
+      {
+        "agent_id": "hunter-1",
+        "reviewed_paths": [
+          "scripts/build-tsbot.mjs",
+          "scripts/build-imts.mjs",
+          "scripts/origin.mjs"
+        ],
+        "invariant": "Build values cannot add CSP directives or HTML.",
+        "method": "source",
+        "result": "Only bare https origins and [a-z0-9]{0,32} pass; leftover placeholders fail the build.",
+        "artifact": null
+      }
+    ],
+    "result_fingerprints": [],
+    "unresolved": []
+  },
+  {
+    "coverage_id": "src%2Findex.ts%23%2Fapi%2Fpublic%2F%2A::src%2Findex.ts%23allowedOrigins%20check::profile%2Fquick%2Fall-in-scope-subsystems::ATTACK-CLASSES.md%23Access%20control",
+    "canonical_refs": {
+      "surface": "src/index.ts#/api/public/*",
+      "boundary": "src/index.ts#allowedOrigins check",
+      "attack_class": "ATTACK-CLASSES.md#Access control",
+      "subsystem": "profile/quick/all-in-scope-subsystems"
+    },
+    "surface": "Public API CORS",
+    "boundary": "Per-bot origin allowlist",
+    "subsystem": "All TSbot-scope subsystems (quick profile)",
+    "attack_class": "Quota use from other sites",
+    "starting_paths": [
+      "src/index.ts",
+      "wrangler.jsonc"
+    ],
+    "ordinary_attack_class_block": "ATTACK-CLASSES.md#Access control",
+    "selected_companion_blocks": [],
+    "excluded_blocks": [
+      {
+        "block": "WEB-PROTOCOL-AND-AUTH.md#Core discipline",
+        "reason": "The public API carries no cookies or credentials (credentials: omit)."
+      }
+    ],
+    "prior_status": "none",
+    "attempts": [],
+    "wave": 1,
+    "status": "candidate",
+    "agent_id": "hunter-1",
+    "reviewed_paths": [
+      "src/index.ts",
+      "wrangler.jsonc"
+    ],
+    "local_checks": [
+      {
+        "agent_id": "hunter-1",
+        "reviewed_paths": [
+          "src/index.ts",
+          "wrangler.jsonc"
+        ],
+        "invariant": "Only listed origins may use a bot from a browser.",
+        "method": "source",
+        "result": "An empty allowlist accepts every origin; the list is runtime data.",
+        "artifact": null
+      }
+    ],
+    "result_fingerprints": [
+      "public-api-open-origin-allowlist"
+    ],
+    "unresolved": [
+      "The allowed origins of bot 7stk3pruaq are stored in D1, not in the repository."
+    ]
+  },
+  {
+    "coverage_id": "src%2Findex.ts%23POST%20%2Fapi%2Fpublic%2Fchat::src%2Fcache.ts%23normalizeQuestion::profile%2Fquick%2Fall-in-scope-subsystems::DATA-ISOLATION-AND-LIFECYCLE.md%23Derived-data%20and%20disclosure%20attack%20classes",
+    "canonical_refs": {
+      "surface": "src/index.ts#POST /api/public/chat",
+      "boundary": "src/cache.ts#normalizeQuestion",
+      "attack_class": "DATA-ISOLATION-AND-LIFECYCLE.md#Derived-data and disclosure attack classes",
+      "subsystem": "profile/quick/all-in-scope-subsystems"
+    },
+    "surface": "Public chat question",
+    "boundary": "Shared answer cache key",
+    "subsystem": "All TSbot-scope subsystems (quick profile)",
+    "attack_class": "Cache poisoning across visitors",
+    "starting_paths": [
+      "src/rag.ts",
+      "src/cache.ts"
+    ],
+    "ordinary_attack_class_block": "ATTACK-CLASSES.md#Chained vulnerabilities and trust boundaries",
+    "selected_companion_blocks": [
+      "DATA-ISOLATION-AND-LIFECYCLE.md#Derived-data and disclosure attack classes",
+      "DATA-ISOLATION-AND-LIFECYCLE.md#Core discipline",
+      "DATA-ISOLATION-AND-LIFECYCLE.md#Universal moves",
+      "DATA-ISOLATION-AND-LIFECYCLE.md#Validation rules"
+    ],
+    "excluded_blocks": [],
+    "prior_status": "none",
+    "attempts": [],
+    "wave": 1,
+    "status": "candidate",
+    "agent_id": "hunter-1",
+    "reviewed_paths": [
+      "src/rag.ts",
+      "src/cache.ts"
+    ],
+    "local_checks": [
+      {
+        "agent_id": "verifier-1",
+        "reviewed_paths": [
+          "src/rag.ts",
+          "src/cache.ts"
+        ],
+        "invariant": "A cached answer is only reused for the same question the model answered.",
+        "method": "local",
+        "result": "A question plus a tag-character instruction has the same cache key as the plain question.",
+        "artifact": "agents/verifier-1/artifacts/cache-key.txt"
+      }
+    ],
+    "result_fingerprints": [
+      "answer-cache-hidden-instruction"
+    ],
+    "unresolved": [
+      "Whether the configured models follow instructions written in Unicode tag characters is not visible in source."
+    ]
+  },
+  {
+    "coverage_id": "src%2Findex.ts%23POST%20%2Fapi%2Fpublic%2Fchat::src%2Fguard.ts%23detectInjection::profile%2Fquick%2Fall-in-scope-subsystems::AI-AND-LLM.md%23Context%2C%20retrieval%2C%20and%20memory%20attack%20classes",
+    "canonical_refs": {
+      "surface": "src/index.ts#POST /api/public/chat",
+      "boundary": "src/guard.ts#detectInjection",
+      "attack_class": "AI-AND-LLM.md#Context, retrieval, and memory attack classes",
+      "subsystem": "profile/quick/all-in-scope-subsystems"
+    },
+    "surface": "Public chat question",
+    "boundary": "Prompt-injection input guard",
+    "subsystem": "All TSbot-scope subsystems (quick profile)",
+    "attack_class": "Prompt injection and token smuggling",
+    "starting_paths": [
+      "src/index.ts",
+      "src/guard.ts",
+      "src/rag.ts"
+    ],
+    "ordinary_attack_class_block": "ATTACK-CLASSES.md#Injection",
+    "selected_companion_blocks": [
+      "AI-AND-LLM.md#Context, retrieval, and memory attack classes",
+      "AI-AND-LLM.md#Core discipline",
+      "AI-AND-LLM.md#Universal moves",
+      "AI-AND-LLM.md#Validation rules"
+    ],
+    "excluded_blocks": [],
+    "prior_status": "none",
+    "attempts": [],
+    "wave": 1,
+    "status": "candidate",
+    "agent_id": "hunter-1",
+    "reviewed_paths": [
+      "src/index.ts",
+      "src/guard.ts",
+      "src/rag.ts"
+    ],
+    "local_checks": [
+      {
+        "agent_id": "hunter-1",
+        "reviewed_paths": [
+          "src/index.ts",
+          "src/guard.ts",
+          "src/rag.ts"
+        ],
+        "invariant": "detectInjection flags injection phrasing however it is spelled.",
+        "method": "local",
+        "result": "ZWSP, soft hyphen, word joiner and tag characters inside the phrase return false.",
+        "artifact": "agents/hunter-1/artifacts/guard-probe.txt"
+      }
+    ],
+    "result_fingerprints": [
+      "guard-invisible-unicode-bypass"
+    ],
+    "unresolved": []
+  },
+  {
+    "coverage_id": "src%2Frag.ts%23rewriteQuestion::src%2Fguard.ts%23INJECTION%20tag%20pattern::profile%2Fquick%2Fall-in-scope-subsystems::AI-AND-LLM.md%23Output%20and%20disclosure%20attack%20classes",
+    "canonical_refs": {
+      "surface": "src/rag.ts#rewriteQuestion",
+      "boundary": "src/guard.ts#INJECTION tag pattern",
+      "attack_class": "AI-AND-LLM.md#Output and disclosure attack classes",
+      "subsystem": "profile/quick/all-in-scope-subsystems"
+    },
+    "surface": "Follow-up rewrite prompt",
+    "boundary": "Prompt tag framing",
+    "subsystem": "All TSbot-scope subsystems (quick profile)",
+    "attack_class": "Delimiter escape",
+    "starting_paths": [
+      "src/rag.ts",
+      "src/guard.ts"
+    ],
+    "ordinary_attack_class_block": "ATTACK-CLASSES.md#Injection",
+    "selected_companion_blocks": [
+      "AI-AND-LLM.md#Output and disclosure attack classes",
+      "AI-AND-LLM.md#Core discipline",
+      "AI-AND-LLM.md#Universal moves",
+      "AI-AND-LLM.md#Validation rules"
+    ],
+    "excluded_blocks": [],
+    "prior_status": "none",
+    "attempts": [],
+    "wave": 1,
+    "status": "candidate",
+    "agent_id": "hunter-1",
+    "reviewed_paths": [
+      "src/rag.ts",
+      "src/guard.ts"
+    ],
+    "local_checks": [
+      {
+        "agent_id": "hunter-1",
+        "reviewed_paths": [
+          "src/rag.ts",
+          "src/guard.ts"
+        ],
+        "invariant": "A visitor cannot change what the rewrite step returns beyond their own search.",
+        "method": "source",
+        "result": "The rewrite output is only this bot's retrieval query, never shown or cached.",
+        "artifact": null
+      }
+    ],
+    "result_fingerprints": [
+      "rewrite-follow-up-tag-escape"
+    ],
+    "unresolved": []
+  },
+  {
+    "coverage_id": "tsbot%2F_headers%23%2F%2A::tsbot%2F_headers%23Content-Security-Policy::profile%2Fquick%2Fall-in-scope-subsystems::CLIENT-SIDE.md%23UI-redress%20and%20navigation%20attack%20classes",
+    "canonical_refs": {
+      "surface": "tsbot/_headers#/*",
+      "boundary": "tsbot/_headers#Content-Security-Policy",
+      "attack_class": "CLIENT-SIDE.md#UI-redress and navigation attack classes",
+      "subsystem": "profile/quick/all-in-scope-subsystems"
+    },
+    "surface": "TSbot page",
+    "boundary": "CSP frame-ancestors and script-src",
+    "subsystem": "All TSbot-scope subsystems (quick profile)",
+    "attack_class": "Clickjacking and script injection",
+    "starting_paths": [
+      "tsbot/_headers",
+      "tsbot/index.html",
+      "scripts/build-tsbot.mjs"
+    ],
+    "ordinary_attack_class_block": null,
+    "selected_companion_blocks": [
+      "CLIENT-SIDE.md#UI-redress and navigation attack classes",
+      "CLIENT-SIDE.md#Core discipline",
+      "CLIENT-SIDE.md#Universal moves",
+      "CLIENT-SIDE.md#Validation rules"
+    ],
+    "excluded_blocks": [],
+    "prior_status": "none",
+    "attempts": [],
+    "wave": 1,
+    "status": "covered",
+    "agent_id": "hunter-1",
+    "reviewed_paths": [
+      "tsbot/_headers",
+      "tsbot/index.html",
+      "scripts/build-tsbot.mjs"
+    ],
+    "local_checks": [
+      {
+        "agent_id": "hunter-1",
+        "reviewed_paths": [
+          "tsbot/_headers",
+          "tsbot/index.html",
+          "scripts/build-tsbot.mjs"
+        ],
+        "invariant": "Only IMTS_ORIGIN can frame TSbot and only same-origin script runs.",
+        "method": "source",
+        "result": "frame-ancestors comes from IMTS_ORIGIN (else none); script-src self; existing e2e test passes.",
+        "artifact": null
+      }
+    ],
+    "result_fingerprints": [],
+    "unresolved": []
+  }
+]

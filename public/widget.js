@@ -10,7 +10,7 @@
 
   var STR = {
     id: {
-      loading: "Memuat…", newChat: "Mulai percakapan baru", close: "Tutup chat", closeShort: "Tutup",
+      loading: "Memuat…", newChat: "Mulai percakapan baru", back: "Kembali ke saran pertanyaan", close: "Tutup chat", closeShort: "Tutup",
       askLabel: "Tulis pertanyaan", placeholder: "Tulis pertanyaanmu…", send: "Kirim pertanyaan",
       note: "Jawaban disusun dari dokumen dan bisa keliru. Cek sumbernya.", launcher: "Tanya dokumen",
       copied: "Tersalin", copyFailed: "Gagal menyalin", copy: "Salin", offline: "Tidak bisa terhubung ke server", cite: "Lihat sumber ",
@@ -19,7 +19,7 @@
       network: "Koneksi terputus. Periksa internetmu lalu coba lagi.", switchTo: "Switch to English", langBtn: "EN"
     },
     en: {
-      loading: "Loading…", newChat: "Start a new conversation", close: "Close chat", closeShort: "Close",
+      loading: "Loading…", newChat: "Start a new conversation", back: "Back to suggested questions", close: "Close chat", closeShort: "Close",
       askLabel: "Type a question", placeholder: "Type your question…", send: "Send question",
       note: "Answers come from the document and can be wrong. Check the sources.", launcher: "Ask the document",
       copied: "Copied", copyFailed: "Couldn't copy", copy: "Copy", offline: "Can't reach the server", cite: "Show source ",
@@ -35,6 +35,8 @@
     close: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg>',
     reset: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></svg>',
     send: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h13M13 6l6 6-6 6"/></svg>',
+    // The send arrow, mirrored: "back" in TSbot (mode="inline") returns to the suggested questions.
+    back: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H6M11 6l-6 6 6 6"/></svg>',
     copy: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg>',
     retry: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-3-6.7L21 8"/><path d="M21 3v5h-5"/></svg>'
   };
@@ -71,7 +73,8 @@
   /* ---------- Tiny, safe markdown renderer (escape first, then format) ---------- */
   function inline(text, sourceCount) {
     var codes = [];
-    var html = esc(text).replace(/`([^`]+)`/g, function (_, c) { codes.push(c); return "\u0000" + (codes.length - 1) + "\u0000"; });
+    // \u0000 marks code spans below, so a stray one in the answer is dropped first.
+    var html = esc(String(text).replace(/\u0000/g, "")).replace(/`([^`]+)`/g, function (_, c) { codes.push(c); return "\u0000" + (codes.length - 1) + "\u0000"; });
     html = html
       .replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>")
       .replace(/(^|[^*\w])\*([^*\s][^*]*?)\*(?!\w)/g, "$1<em>$2</em>")
@@ -160,7 +163,8 @@
       var t = this.t.bind(this), $ = this.$;
       CITE_LABEL = t("cite");
       this.setAttribute("lang", this.lang);
-      $(".reset").setAttribute("aria-label", t("newChat")); $(".reset").title = t("newChat");
+      var resetLabel = t(this.inline ? "back" : "newChat");
+      $(".reset").setAttribute("aria-label", resetLabel); $(".reset").title = resetLabel;
       $(".close").setAttribute("aria-label", t("close")); $(".close").title = t("closeShort");
       this.el.input.setAttribute("aria-label", t("askLabel")); this.el.input.placeholder = t("placeholder");
       this.el.send.setAttribute("aria-label", t("send"));
@@ -201,7 +205,7 @@
             '<div class="avatar" aria-hidden="true">N</div>' +
             '<div class="title"><strong id="ts-title">Nara</strong><span class="sub"></span></div>' +
             '<button type="button" class="icon-btn lang"></button>' +
-            '<button type="button" class="icon-btn reset">' + ICONS.reset + "</button>" +
+            '<button type="button" class="icon-btn reset">' + (this.inline ? ICONS.back : ICONS.reset) + "</button>" +
             '<button type="button" class="icon-btn close">' + ICONS.close + "</button>" +
           "</header>" +
           '<div class="log" aria-live="polite" aria-relevant="additions"></div>' +
@@ -228,7 +232,13 @@
 
       el.launcher.addEventListener("click", function () { self.setOpen(true); });
       $(".close").addEventListener("click", function () { if (!self.inline) { self.setOpen(false); el.launcher.focus(); } });
-      $(".reset").addEventListener("click", function () { if (!self.busy) { self.history = []; self.save(); self.paintAll(); el.input.focus(); } });
+      $(".reset").addEventListener("click", function () {
+        if (self.busy) return;
+        self.history = []; self.save(); self.paintAll();
+        // Back (TSbot) hides itself, so focus moves to the first suggested question it brought back.
+        var chip = self.inline && el.log.querySelector(".chip");
+        (chip || el.input).focus();
+      });
       $("form").addEventListener("submit", function (e) { e.preventDefault(); self.ask(el.input.value); });
       el.input.addEventListener("keydown", function (e) {
         if (e.key === "Enter" && !e.shiftKey && !e.isComposing) { e.preventDefault(); self.ask(el.input.value); }
@@ -256,9 +266,10 @@
         }
         if (t.dataset.action === "reload-info") { self.el.sub.textContent = self.t("loading"); return self.fetchInfo(); }
         if (t.dataset.action === "retry") {
-          var last = self.history.filter(function (h) { return h.role === "user"; }).pop();
-          self.history = self.history.filter(function (h) { return h.role !== "error"; });
-          if (last) { self.history.pop(); self.save(); self.paintAll(); self.ask(last.text); }
+          // Drop the failed question and anything after it (a partial answer, the error), then ask it again.
+          var at = -1;
+          self.history.forEach(function (h, i) { if (h.role === "user") at = i; });
+          if (at >= 0) { var q = self.history[at].text; self.history = self.history.slice(0, at); self.save(); self.paintAll(); self.ask(q); }
         }
       });
 
@@ -273,7 +284,8 @@
     }
 
     fetchInfo(resetChat) {
-      var self = this;
+      // Only the newest request may paint: switching language twice must not end on the older reply.
+      var self = this, seq = this.infoSeq = (this.infoSeq || 0) + 1;
       fetch(this.base + "/api/public/info?" + this.q + "lang=" + this.lang, { credentials: "omit" })
         // On an HTTP error, keep the server's reason ("bot not found", "domain not allowed") for the visitor.
         .then(function (r) {
@@ -281,6 +293,7 @@
           return r.json().catch(function () { return {}; }).then(function (b) { return Promise.reject(b && typeof b.error === "string" ? b.error : ""); });
         })
         .then(function (info) {
+          if (seq !== self.infoSeq) return;
           self.info = info;
           var accent = info.themeColor || "#00a691";
           self.style.setProperty("--ts-accent", accent);
@@ -295,6 +308,7 @@
           self.syncInput();
         })
         .catch(function (why) {
+          if (seq !== self.infoSeq) return;
           var reason = typeof why === "string" && why ? why : "";
           self.el.sub.textContent = reason ? "" : self.t("offline");
           if (self.info) return;
@@ -320,6 +334,8 @@
       el.input.style.height = "auto";
       el.input.style.height = Math.min(el.input.scrollHeight, 120) + "px";
       el.send.disabled = this.busy || !el.input.value.trim() || (this.info && !this.info.ready);
+      // Leaving mid-answer would strand the reply that is still streaming, so reset/back waits for it.
+      this.$(".reset").disabled = this.busy;
       el.count.textContent = len > max * 0.8 ? len + "/" + max : "";
       el.count.classList.toggle("warn", len >= max);
     }
@@ -386,6 +402,7 @@
       greet.msg.querySelector(".msg-tools") && greet.msg.querySelector(".msg-tools").remove();
 
       var asked = this.history.some(function (h) { return h.role === "user"; });
+      this.syncBack(asked);
       if (info && info.ready && !asked && info.suggestions && info.suggestions.length) {
         var box = document.createElement("div");
         box.className = "suggest";
@@ -400,6 +417,11 @@
         else if (h.role === "error") self.paintError(h.text);
       });
       this.scroll(false);
+    }
+
+    /** TSbot's back button only shows once there is a conversation to leave. */
+    syncBack(asked) {
+      if (this.inline) this.$(".reset").hidden = !asked;
     }
 
     paintError(text) {
@@ -424,6 +446,7 @@
       if (sug) sug.remove();
       this.history.push({ role: "user", text: question });
       this.save();
+      this.syncBack(true);
       this.bubble("user").bubble.textContent = question;
       el.input.value = "";
       this.busy = true;

@@ -27,7 +27,7 @@ import {
 } from './settings';
 import { cacheStats, clearCache, purgeExpiredCache } from './cache';
 import { detectDocLang } from './grounding';
-import { redactPii, signingEmitter, verifyHistory } from './guard';
+import { redactPii, signingEmitter, stripInvisible, verifyHistory } from './guard';
 import { answer, buildSystemPrompt, buildUserTurn, generateSuggestions, normalizeHistory } from './rag';
 import { buildChain, embed, pickEmbedder } from './llm';
 import { channelRoutes } from './channels';
@@ -451,7 +451,7 @@ app.post('/api/public/chat', async (c) => {
   const wantsStream = (c.req.header('Accept') || '').includes('ndjson');
   if (await bodyTooLarge(c, MAX_PUBLIC_BODY)) return c.json({ error: msg('rejected', asLang(c.req.query('lang'), settings.language)) }, 413);
   const body = await c.req.json<{ question?: string; history?: unknown; website?: string; lang?: string }>().catch(() => ({} as any));
-  const question = String(body.question || '').trim();
+  const question = stripInvisible(String(body.question || '')).trim();
   const lang = asLang(body.lang, settings.language);
 
   const fail = (message: string, status: 400 | 403 | 429 | 503) =>
@@ -994,7 +994,7 @@ app.post('/api/admin/suggestions/regenerate', async (c) => {
 app.post('/api/admin/test-chat', async (c) => {
   const bot = c.get('bot');
   const body = await c.req.json<{ question?: string; history?: unknown; settings?: unknown; lang?: string; cache?: boolean }>().catch(() => ({} as any));
-  const question = String(body.question || '').trim().slice(0, 2000);
+  const question = stripInvisible(String(body.question || '')).trim().slice(0, 2000);
   // Lets the owner try unsaved RAG/prompt settings before saving them.
   const settings = body.settings ? normalizeSettings(body.settings) : await getSettings(c.env, bot);
   const file = await activeFile(c.env.DB, bot);

@@ -5,7 +5,7 @@ import { AllProvidersFailed, completeChat, embed, streamChat } from './llm';
 import { cacheScope, lookupExact, lookupSemantic, storeAnswer } from './cache';
 import { checkCitations, detectDocLang } from './grounding';
 import { visibleLabel } from './channel-format';
-import { detectInjection, hasPii, injectionReply, piiKeys, redactPii } from './guard';
+import { detectInjection, hasPii, injectionReply, piiKeys, redactPii, stripInvisible } from './guard';
 
 /* ------------------------------------------------------------------ */
 /*  7-layer system prompt                                               */
@@ -304,7 +304,7 @@ export function normalizeHistory(raw: unknown, max: number): ChatMessage[] {
   return raw
     .map((m: any) => {
       const role = m?.role === 'user' ? 'user' : m?.role === 'assistant' || m?.role === 'model' ? 'assistant' : null;
-      const content = typeof m?.content === 'string' ? m.content : typeof m?.text === 'string' ? m.text : '';
+      const content = stripInvisible(typeof m?.content === 'string' ? m.content : typeof m?.text === 'string' ? m.text : '');
       return role && content.trim() ? ({ role, content: content.slice(0, 2000) } as ChatMessage) : null;
     })
     .filter((m): m is ChatMessage => !!m)
@@ -359,8 +359,10 @@ export type AnswerInput = {
   useCache?: boolean;
 };
 
-export async function answer({ env: rawEnv, settings: baseSettings, question, history, file, lang, debug, emit, examples = [], bot, useCache = true }: AnswerInput) {
+export async function answer({ env: rawEnv, settings: baseSettings, question: rawQuestion, history, file, lang, debug, emit, examples = [], bot, useCache = true }: AnswerInput) {
   const started = Date.now();
+  // Invisible characters never reach the guard, the cache or the model (see stripInvisible).
+  const question = stripInvisible(rawQuestion).trim();
   const env = tenantEnv(rawEnv, bot);
   // The bge reranker mostly helps English text, so 'auto' turns it on for English documents only.
   const docLang = await documentLanguage(env, bot, file);

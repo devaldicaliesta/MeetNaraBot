@@ -110,11 +110,22 @@ const INJECTION: RegExp[] = [
   /\b(?:you are now|from now on you are|pretend (?:to be|you are)|act as (?:an? )?(?:unrestricted|uncensored|different))\b/i,
   /\b(?:kamu|anda) sekarang (?:adalah|menjadi)\b/iu,
   /\b(?:developer mode|jailbreak|DAN mode|do anything now)\b/i,
-  /<\/?\s*(?:system|knowledge|rules|role|instructions?|history|question)\s*>/i,
+  // Every tag the prompts in rag.ts wrap text in, so visitor text cannot close one and open its own.
+  /<\/?\s*(?:system|knowledge(?:_policy)?|rules|role|instructions?|history|question|follow_up|interface_language|context|task|output_format|examples|self_check)\s*>/i,
 ];
 
+/**
+ * Removes characters that render as nothing: format characters (zero-width space, soft hyphen,
+ * word joiner, bidi controls, and the Unicode "tag" block that can spell out a hidden instruction
+ * a model still reads) plus variation selectors used for the same trick (U+FE0F stays: emoji need it).
+ * Without this, "ig\u200Bnore all previous instructions" slipped past every pattern below.
+ */
+export function stripInvisible(text: string): string {
+  return text.replace(/[\p{Cf}\u{FE00}-\u{FE0E}\u{E0100}-\u{E01EF}]/gu, '');
+}
+
 export function detectInjection(text: string): boolean {
-  const t = text.normalize('NFKC');
+  const t = stripInvisible(text.normalize('NFKC'));
   return INJECTION.some((re) => re.test(t));
 }
 
