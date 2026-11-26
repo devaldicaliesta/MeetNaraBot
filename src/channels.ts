@@ -5,7 +5,7 @@
 // WhatsApp: Meta WhatsApp Cloud API webhook, authenticated with the X-Hub-Signature-256 HMAC of the
 // raw body (app secret); GET verification uses WHATSAPP_VERIFY_TOKEN.
 
-import { redactPii } from './guard';
+import { redactPii, stripInvisible } from './guard';
 import { bodyTooLarge } from './body';
 import type { Context, Hono } from 'hono';
 import type { AppEnv, Bindings, ChatMessage } from './types';
@@ -143,7 +143,7 @@ async function converse(env: Bindings, deps: ChannelDeps, channel: Channel, user
   }
   if (!ready) return { text: t('noDoc', lang, { name: settings.name }), sources: [] };
 
-  const question = text.trim();
+  const question = stripInvisible(text).trim();
   if (question.length > settings.limits.maxQuestionLength) return { text: t('tooLong', lang, { n: settings.limits.maxQuestionLength }), sources: [] };
   if (!deps.allow(`chat:${key}`, settings.limits.requestsPerMinute)) return { text: t('perMinute', lang), sources: [] };
   if (!(await deps.dailyQuota(env, key, settings.limits.dailyPerIp, settings.limits.dailyTotal))) return { text: t('daily', lang), sources: [] };

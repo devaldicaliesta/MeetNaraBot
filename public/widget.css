@@ -161,6 +161,9 @@ svg { display: block; }
 }
 .icon-btn:hover { background: color-mix(in srgb, currentColor 14%, transparent); opacity: 1; }
 .icon-btn:active { background: color-mix(in srgb, currentColor 24%, transparent); }
+.icon-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+.icon-btn:disabled:hover { background: transparent; }
+.icon-btn[hidden] { display: none; }
 
 /* ---------- Messages ---------- */
 .log {

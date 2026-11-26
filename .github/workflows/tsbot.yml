@@ -89,7 +89,7 @@ jobs:
             echo "url=https://$sub" >> "$GITHUB_OUTPUT"
           }
           ensure tsbot-nara || ensure nara-tsbot || { echo "::error::tsbot-nara.pages.dev and nara-tsbot.pages.dev are both taken."; exit 1; }
-          # IMTS must be exactly imtsbot.pages.dev: that is the origin TSbot allows to frame it.
+          # IMTS must be exactly imtsbot.pages.dev: set that origin in IMTS_ORIGIN so TSbot lets it frame the chat.
           sub=$(subdomain imtsbot)
           if [ -z "$sub" ]; then
             npx wrangler pages project create imtsbot --production-branch=main > /dev/null

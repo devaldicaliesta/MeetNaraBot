@@ -79,6 +79,11 @@ test('the IMTS iframe is sandboxed and the chat still answers inside it', async 
   await chat.locator('textarea').fill('Berapa biaya pendaftaran?');
   await chat.locator('.send').click(); // the submit button path, which needs allow-forms
   await expect(chat.locator('.cite').first()).toBeVisible();
+  // A sandboxed frame cannot navigate the IMTS page away.
+  const frame = page.frames().find((f) => f !== page.mainFrame())!;
+  await frame.evaluate(() => { try { window.top!.location.href = 'about:blank#hijack'; } catch {} });
+  await page.waitForTimeout(300);
+  expect(page.url()).toBe(`http://127.0.0.1:${IMTS_PORT}/`);
 });
 
 test('other sites cannot embed TSbot', async ({ page }) => {
@@ -109,4 +114,109 @@ test('names the problem and offers a retry when the API is unreachable', async (
   await retry.click();
   await expect(retry).toBeHidden();
   await expect(chat.locator('.msg.bot').first()).toContainText('panduan-pendaftaran.md');
+});
+
+/** Serves the real info reply with the owner's manual suggested questions in place of the automatic ones. */
+const MANUAL = ['Berapa biaya pendaftaran?', 'Kapan kursus dimulai?'];
+async function withManualSuggestions(page: import('@playwright/test').Page) {
+  await page.route(`${API}/api/public/info**`, async (r) => {
+    const res = await r.fetch();
+    r.fulfill({ response: res, json: { ...(await res.json()), suggestions: MANUAL } });
+  });
+}
+
+test('the back button returns to the manual suggested questions', async ({ page }) => {
+  await withManualSuggestions(page);
+  await page.goto('/');
+  const chat = page.locator('tanyasaya-chat');
+  const back = chat.getByRole('button', { name: 'Kembali ke saran pertanyaan' });
+  await expect(chat.locator('.chip')).toHaveText(MANUAL);
+  // Nothing to go back from yet, so the button is not offered.
+  await expect(back).toBeHidden();
+
+  await chat.locator('.chip').first().click();
+  await expect(chat.locator('.msg.user')).toHaveText(MANUAL[0]);
+  await expect(chat.locator('.cite').first()).toBeVisible();
+  await expect(chat.locator('.chip')).toHaveCount(0);
+  await expect(back).toBeVisible();
+  await expect(chat.locator('.reset svg path')).toHaveAttribute('d', 'M19 12H6M11 6l-6 6 6 6');
+
+  // Back waits until the answer has finished streaming.
+  await expect(back).toBeEnabled();
+  await back.press('Enter');
+  await expect(chat.locator('.chip')).toHaveText(MANUAL);
+  await expect(chat.locator('.msg.user')).toHaveCount(0);
+  await expect(back).toBeHidden();
+  await expect(chat.locator('.chip').first()).toBeFocused();
+  // The conversation is gone for good, not just hidden until the next reload.
+  await page.reload();
+  await expect(chat.locator('.chip')).toHaveText(MANUAL);
+  await expect(chat.locator('.msg.user')).toHaveCount(0);
+});
+
+test('the back button follows the language switch', async ({ page }) => {
+  await page.goto('/');
+  const chat = page.locator('tanyasaya-chat');
+  await chat.locator('.lang').click();
+  await expect(chat.locator('.reset')).toHaveAttribute('aria-label', 'Back to suggested questions');
+});
+
+test('server and model text never becomes markup (DOM XSS harness)', async ({ page }) => {
+  const payloads = [
+    '<img src=x onerror="window.__xss=1">',
+    '**<svg onload="window.__xss=2">**',
+    '`<script>window.__xss=3</script>`',
+    '[1]"><img src=x onerror="window.__xss=4">',
+    '*<a href="javascript:window.__xss=5">x</a>*',
+    '\u00000\u0000<iframe srcdoc="<script>parent.__xss=6</script>">',
+    '1. <details open ontoggle="window.__xss=7">',
+    '# <style>*{display:none}</style>',
+  ];
+  const evil = payloads.join('\n');
+  await page.route(`${API}/api/public/info**`, (r) =>
+    r.fulfill({
+      contentType: 'application/json',
+      headers: { 'Access-Control-Allow-Origin': '*' },
+      json: { name: '<b>Nara</b>', ready: true, greeting: evil, subtitle: '<i>x</i>', suggestions: ['<img src=x onerror="window.__xss=8">'], themeColor: 'red;background:url(//evil.example/x)', maxQuestionLength: 500, maxHistory: 6 },
+    })
+  );
+  await page.route(`${API}/api/public/chat**`, (r) => {
+    const events = [
+      { type: 'sources', items: [{ number: '1"><img src=x onerror="window.__xss=9">', label: '<img src=x onerror="window.__xss=10">', snippet: '<svg onload="window.__xss=11">', document: 'd' }] },
+      { type: 'delta', text: evil + ' [1]' },
+      { type: 'done', refused: false, sig: '"><img>' },
+    ];
+    r.fulfill({ contentType: 'application/x-ndjson', headers: { 'Access-Control-Allow-Origin': '*' }, body: events.map((e) => JSON.stringify(e)).join('\n') + '\n' });
+  });
+  await page.goto('/');
+  const chat = page.locator('tanyasaya-chat');
+  await chat.locator('.chip').click();
+  await expect(chat.locator('.msg.bot .msg-tools')).toHaveCount(1);
+  const injected = await chat.evaluate((el) =>
+    [...el.shadowRoot!.querySelectorAll('.log img, .log script, .log iframe, .log style, .log a, .log details, .log svg:not(.tool svg)')].map((n) => n.outerHTML)
+  );
+  expect(injected).toEqual([]);
+  await expect(chat.locator('.msg.bot').last()).toContainText('<img src=x onerror=');
+  expect(await page.evaluate(() => (window as any).__xss)).toBeUndefined();
+  // The colour is not a hex value, so the widget's own accent stays in place.
+  expect(await chat.evaluate((el) => getComputedStyle(el).getPropertyValue('--ts-accent').trim())).not.toContain('url(');
+});
+
+test('retrying after a broken answer asks the question once', async ({ page }) => {
+  let calls = 0;
+  await page.route(`${API}/api/public/chat**`, (r) => {
+    calls++;
+    const events = calls === 1
+      ? [{ type: 'sources', items: [] }, { type: 'delta', text: 'Biaya pendaft' }, { type: 'error', message: 'Koneksi ke model terputus.' }]
+      : [{ type: 'sources', items: [] }, { type: 'delta', text: 'Biaya pendaftaran Rp150.000.' }, { type: 'done', refused: false }];
+    r.fulfill({ contentType: 'application/x-ndjson', headers: { 'Access-Control-Allow-Origin': '*' }, body: events.map((e) => JSON.stringify(e)).join('\n') + '\n' });
+  });
+  await page.goto('/');
+  const chat = page.locator('tanyasaya-chat');
+  await chat.locator('textarea').fill('Berapa biaya pendaftaran?');
+  await chat.locator('textarea').press('Enter');
+  await chat.locator('[data-action="retry"]').click();
+  await expect(chat.locator('.msg.bot').last()).toContainText('Rp150.000');
+  await expect(chat.locator('.msg.user')).toHaveCount(1);
+  await expect(chat.locator('.msg.error')).toHaveCount(0);
 });
