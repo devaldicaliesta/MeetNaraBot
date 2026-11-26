@@ -49,6 +49,19 @@ Putaran ini memeriksa ulang seluruh kode setelah fitur multi-pengguna, dengan fo
 | XSS lewat nama bot atau nama akun di dashboard | Ditolak | – | Di-escape atau memakai `textContent`; server membuang `<`, `>`, dan baris baru |
 | Menghabiskan CPU lewat hashing password saat login | Ditolak | – | Kunci login dicek sebelum hashing; tiap request adalah invokasi Worker terpisah |
 
+## Audit kelima: TSbot, IMTS, dan akun permanen (November 2026)
+
+Profil quick dengan verifikator independen. Rinciannya ada di `docs/security/audit-2026-11-run5.md` dan `.json` (lolos `validate-findings.cjs`).
+
+| Temuan | Status | Tingkat | Perbaikan |
+|---|---|---|---|
+| Akun permanen aktif secara default, sehingga email orang lain bisa ditahan selamanya tanpa verifikasi | Terkonfirmasi | Rendah | Akun permanen kini opt-in oleh admin platform (default mati) |
+| Batas per IP memakai alamat IPv6 penuh (satu host bisa berganti alamat di dalam /64) | Terkonfirmasi | Rendah | IPv6 dikelompokkan per /64 (`src/net.ts`, ada tesnya) |
+| *Allowed origins* bot TSbot mungkin kosong | Perlu validasi | – | Bot TSbot dikunci ke `PERMANENT_BOT_ORIGINS` (default `https://tsbot-nara.pages.dev`) |
+| Cache semantik bisa diracuni pertanyaan berarahan (run 4) | Perlu validasi | – | Jawaban cache tidak dipakai ulang bila pertanyaan tersimpan memuat kata tambahan (`sameIntent()`) |
+
+Penguatan: `npm ci --ignore-scripts` di job deploy, action dipin ke SHA, iframe IMTS diberi `sandbox`, dan header COOP/CORP ditambahkan.
+
 ## Guardrail data pribadi dan prompt injection (November 2026)
 
 Semua guardrail berikut berjalan tanpa panggilan AI (`src/guard.ts`, `src/grounding.ts`).

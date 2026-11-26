@@ -74,6 +74,7 @@ const vars = {
   WHATSAPP_APP_SECRET: 'qa-app-secret',
   WHATSAPP_API_BASE: `http://127.0.0.1:${fakePort}/whatsapp`,
   PERMANENT_BOTS: 'qatsbot001,qatsbot002',
+  PERMANENT_BOT_ORIGINS: 'https://tsbot.qa.test',
 };
 const args = ['wrangler', 'dev', '--local', '--test-scheduled', '--port', port, '--ip', '127.0.0.1', '--persist-to', state, ...Object.entries(vars).flatMap(([k, v]) => ['--var', `${k}:${v}`])];
 const child = spawn('npx', args, { stdio: 'inherit' });

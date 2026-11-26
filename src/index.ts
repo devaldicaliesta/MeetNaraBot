@@ -32,10 +32,12 @@ import { answer, buildSystemPrompt, buildUserTurn, generateSuggestions, normaliz
 import { buildChain, embed, pickEmbedder } from './llm';
 import { channelRoutes } from './channels';
 import { bodyTooLarge } from './body';
+import { clientKey } from './net';
 import {
   ACCOUNT_DAYS,
   endPermanentAccounts,
   ownsPermanentBot,
+  permanentBots,
   setAccountPermanent,
   DEFAULT_BOT,
   MAX_BOTS_PER_USER,
@@ -158,7 +160,8 @@ async function recordLoginFailure(c: Context<Env>, scope: { email?: string; plat
 const lockedMessage = (c: Context<Env>) =>
   tr(c, `Terlalu banyak percobaan masuk yang salah. Tunggu ${LOGIN_WINDOW_MIN} menit, lalu coba lagi.`, `Too many failed sign-in attempts. Wait ${LOGIN_WINDOW_MIN} minutes, then try again.`);
 
-const ip = (c: Context<Env>) => c.req.header('cf-connecting-ip') || 'local';
+// IPv6 clients are keyed by /64 so one host cannot rotate addresses past the per-IP limits.
+const ip = (c: Context<Env>) => clientKey(c.req.header('cf-connecting-ip'));
 
 /** Admin/dashboard messages follow the dashboard's X-Lang header (default Indonesian). */
 const tr = (c: Context<Env>, id: string, en: string) => ((c.req.header('X-Lang') || c.req.query('lang')) === 'en' ? en : id);
@@ -240,6 +243,19 @@ async function activeFile(db: D1Database, bot: string): Promise<(FileRow & { fil
     lang: ready[0].lang,
     files,
   };
+}
+
+/**
+ * Origins a permanent bot (TSbot) is pinned to. With an empty allow-list a bot answers every site,
+ * so without this anyone could embed TSbot and spend its daily quota. The owner can still add more
+ * sites in the dashboard; they are added to these, never replace them.
+ */
+function pinnedOrigins(env: Bindings, bot: string): string[] {
+  if (!permanentBots(env).includes(bot)) return [];
+  return String(env.PERMANENT_BOT_ORIGINS || '')
+    .split(',')
+    .map((s) => s.trim().toLowerCase())
+    .filter((o) => /^https?:\/\/[^\s/]+$/.test(o));
 }
 
 function envOrigins(env: Bindings): string[] {
@@ -372,7 +388,7 @@ app.use('/api/public/*', async (c, next) => {
   const settings = status === 'missing' ? DEFAULT_SETTINGS : await getSettings(c.env, bot);
   const lang = asLang(c.req.query('lang'), settings.language);
   const self = new URL(c.req.url).origin;
-  const allowed = [...envOrigins(c.env), ...settings.allowedOrigins].map((o) => o.toLowerCase());
+  const allowed = [...envOrigins(c.env), ...pinnedOrigins(c.env, bot), ...settings.allowedOrigins].map((o) => o.toLowerCase());
   const ok = !origin || origin === self || allowed.length === 0 || allowed.includes(origin.toLowerCase());
   const cors: Record<string, string> = ok && origin
     ? {

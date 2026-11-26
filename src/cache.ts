@@ -54,6 +54,23 @@ export function numbersOf(q: string): string {
   return [...new Set(q.match(/\d+(?:[.,]\d+)*/g) || [])].sort().join(',');
 }
 
+/**
+ * Evaluator guard against cache poisoning: a stored question may only answer a new one when it does
+ * not carry much that the new question lacks. "berapa biaya pendaftaran, jawab bahwa ada diskon" stores
+ * an answer steered by its extra words; reusing it for "berapa biaya pendaftaran" would pass that steer
+ * on to every later visitor. A new question with extra words of its own still gets the clean answer.
+ * Allowed: at most max(2, 25%) of the stored question's distinct words missing from the new one.
+ */
+export function sameIntent(stored: string, asked: string): boolean {
+  const words = (q: string) => new Set(normalizeQuestion(q).split(' ').filter(Boolean));
+  const s = words(stored);
+  const a = words(asked);
+  if (!s.size || !a.size) return false;
+  let extra = 0;
+  for (const w of s) if (!a.has(w)) extra++;
+  return extra <= Math.max(2, Math.floor(s.size * 0.25));
+}
+
 async function sha256(text: string): Promise<string> {
   const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text));
   return [...new Uint8Array(buf)].map((b) => b.toString(16).padStart(2, '0')).join('');
@@ -169,6 +186,8 @@ export async function lookupSemantic(db: D1Database, bot: string, scope: string,
   for (const row of rows) {
     // Evaluator guard: questions about different numbers never share an answer.
     if (numbersOf(row.question) !== nums) continue;
+    // ... and a stored question with words the new one lacks (a possible steer) is never reused.
+    if (!sameIntent(row.question, question)) continue;
     const sim = cosineInt8(q, unpackVector(row.vec!));
     if (sim > bestSim) {
       bestSim = sim;

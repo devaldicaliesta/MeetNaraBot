@@ -51,7 +51,7 @@ const sessions = new Map(); // token -> userId
 const MAX_BOTS = 3;
 const ACCOUNT_DAYS = 7;
 const NO_EXPIRY = '9999-12-31T23:59:59.999Z';
-const platform = { allowPermanent: true };
+const platform = { allowPermanent: false }; // same default as the Worker (getPlatform)
 const rid = (n = 10) => [...crypto.randomBytes(n)].map((b) => 'abcdefghijkmnpqrstuvwxyz23456789'[b % 32]).join('');
 
 const keyStatus = (st) => PROVIDERS.filter(([id]) => id !== 'workers-ai').map(([id, name, secret]) => ({ id, name, secret, configured: !!st.keys[id], source: st.keys[id] ? 'dashboard' : null }));

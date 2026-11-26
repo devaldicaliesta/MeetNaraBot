@@ -11,7 +11,7 @@ Isinya hanya widget Nara (`public/widget.js` dalam `mode="inline"`) yang disalin
    - `NARA_API_URL`: origin worker Nara, mis. `https://nara.<subdomain>.workers.dev`
    - `NARA_BOT_ID`: id bot yang dipakai (kosong = bot platform). Workflow deploy Nara meneruskannya ke Worker sebagai `PERMANENT_BOTS`, jadi akun pemilik bot ini tidak kena batas 7 hari dan tidak dihapus cron. Jalankan ulang workflow **Deploy to Cloudflare** setelah mengisi atau mengubahnya.
    - `IMTS_ORIGIN`: origin IMTS yang boleh meng-iframe, mis. `https://imtsbot.pages.dev` (pisahkan dengan koma bila lebih dari satu)
-3. Di dashboard Nara, bila daftar *allowed origins* bot tidak kosong, tambahkan URL TSbot (`https://tsbot-nara.pages.dev`; lihat ringkasan run workflow).
+3. Bot TSbot otomatis hanya menjawab dari `https://tsbot-nara.pages.dev`. Workflow **Deploy to Cloudflare** mengirim `PERMANENT_BOT_ORIGINS` ke Worker, jadi situs lain tidak bisa memakai kuotanya. Bila TSbot ada di alamat lain (misalnya cadangan `nara-tsbot.pages.dev`), isi repository variable `TSBOT_ORIGINS` dengan alamat itu, lalu jalankan ulang workflow deploy. Domain tambahan bisa diisi di dashboard (*allowed origins*). Domain itu ditambahkan, tidak menggantikan.
 4. Push ke branch `tsbot` atau jalankan workflow **Deploy TSbot** secara manual.
 
 ## Halaman IMTS (https://imtsbot.pages.dev)

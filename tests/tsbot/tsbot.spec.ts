@@ -71,6 +71,21 @@ test('the IMTS page shows TSbot in an iframe', async ({ page, request }) => {
   }
 });
 
+test('the IMTS iframe is sandboxed and the chat still answers inside it', async ({ page }) => {
+  await page.goto(`http://127.0.0.1:${IMTS_PORT}/`);
+  const sandbox = (await page.locator('iframe').getAttribute('sandbox')) || '';
+  expect(sandbox.split(/\s+/).sort()).toEqual(['allow-forms', 'allow-same-origin', 'allow-scripts']);
+  const chat = page.frameLocator('iframe').locator('tanyasaya-chat');
+  await chat.locator('textarea').fill('Berapa biaya pendaftaran?');
+  await chat.locator('.send').click(); // the submit button path, which needs allow-forms
+  await expect(chat.locator('.cite').first()).toBeVisible();
+  // A sandboxed frame cannot navigate the IMTS page away.
+  const frame = page.frames().find((f) => f !== page.mainFrame())!;
+  await frame.evaluate(() => { try { window.top!.location.href = 'about:blank#hijack'; } catch {} });
+  await page.waitForTimeout(300);
+  expect(page.url()).toBe(`http://127.0.0.1:${IMTS_PORT}/`);
+});
+
 test('other sites cannot embed TSbot', async ({ page }) => {
   await page.goto(`http://127.0.0.1:${OTHER_PORT}/`);
   await page.waitForTimeout(1500);
@@ -204,18 +219,4 @@ test('retrying after a broken answer asks the question once', async ({ page }) =
   await expect(chat.locator('.msg.bot').last()).toContainText('Rp150.000');
   await expect(chat.locator('.msg.user')).toHaveCount(1);
   await expect(chat.locator('.msg.error')).toHaveCount(0);
-});
-
-test('TSbot inside the IMTS iframe is sandboxed and still answers', async ({ page }) => {
-  await page.goto(`http://127.0.0.1:${IMTS_PORT}/`);
-  await expect(page.locator('iframe')).toHaveAttribute('sandbox', 'allow-scripts allow-same-origin');
-  const chat = page.frameLocator('iframe').locator('tanyasaya-chat');
-  await chat.locator('textarea').fill('Berapa biaya pendaftaran?');
-  await chat.locator('textarea').press('Enter');
-  await expect(chat.locator('.cite').first()).toBeVisible();
-  // A sandboxed frame cannot navigate the IMTS page away.
-  const frame = page.frames().find((f) => f !== page.mainFrame())!;
-  await frame.evaluate(() => { try { window.top!.location.href = 'about:blank#hijack'; } catch {} });
-  await page.waitForTimeout(300);
-  expect(page.url()).toBe(`http://127.0.0.1:${IMTS_PORT}/`);
 });

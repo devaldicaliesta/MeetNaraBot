@@ -45,12 +45,15 @@ jobs:
       NARA_BOT_ID: ${{ vars.NARA_BOT_ID || secrets.NARA_BOT_ID }}
       IMTS_ORIGIN: ${{ vars.IMTS_ORIGIN || secrets.IMTS_ORIGIN }}
     steps:
-      - uses: actions/checkout@v5
-      - uses: actions/setup-node@v5
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
         with:
           node-version: 22
           cache: npm
-      - run: npm ci
+      # The Cloudflare token is in this job's env: install without running dependency lifecycle scripts.
+      - run: npm ci --ignore-scripts
       - name: Check settings
         run: |
           if [ -z "$CLOUDFLARE_API_TOKEN" ] || [ -z "$CLOUDFLARE_ACCOUNT_ID" ]; then
@@ -113,7 +116,14 @@ jobs:
             done
           done
       - name: Summary
+        env:
+          TSBOT_URL: ${{ steps.project.outputs.url }}
+          TSBOT_ORIGINS: ${{ vars.TSBOT_ORIGINS }}
         run: |
+          # deploy.yml pins the TSbot bot to TSBOT_ORIGINS (default https://tsbot-nara.pages.dev).
+          if [ "$TSBOT_URL" != "https://tsbot-nara.pages.dev" ] && [[ ",$TSBOT_ORIGINS," != *",$TSBOT_URL,"* ]]; then
+            echo "::warning::TSbot is at $TSBOT_URL. Set the TSBOT_ORIGINS repository variable to it and re-run Deploy to Cloudflare, or the bot refuses TSbot."
+          fi
           echo "TSbot is live at ${{ steps.project.outputs.url }}" >> "$GITHUB_STEP_SUMMARY"
           echo "IMTS (showing TSbot) is live at https://imtsbot.pages.dev" >> "$GITHUB_STEP_SUMMARY"
           echo "Add ${{ steps.project.outputs.url }} to the bot's allowed origins in the Nara dashboard (if that list is not empty)." >> "$GITHUB_STEP_SUMMARY"

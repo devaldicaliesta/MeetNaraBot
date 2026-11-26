@@ -1,4 +1,4 @@
-import { expect, test, type Page } from '@playwright/test';
+import { expect, test, type APIRequestContext, type Page } from '@playwright/test';
 import { QA_PASSWORD } from '../../playwright.config';
 
 const overflow = (page: Page) => page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
@@ -69,7 +69,19 @@ test('dashboard rejects a wrong password', async ({ page }) => {
   await expect(page.locator('#loginErr')).toContainText(/salah|Wrong/);
 });
 
-test('a new user picks a permanent account at sign-up and can switch it in the dashboard', async ({ page }) => {
+/** Permanent accounts are off by default; these tests start with the platform admin's opt-in. */
+const allowPermanent = (request: APIRequestContext, on: boolean) =>
+  request.post('/api/admin/platform', { headers: { Authorization: `Bearer ${QA_PASSWORD}` }, data: { allowPermanent: on } }).then((r) => expect(r.ok()).toBeTruthy());
+
+test('sign-up offers no permanent account until the platform admin allows it', async ({ page, request }) => {
+  await allowPermanent(request, false);
+  await page.goto('/admin.html#daftar');
+  await expect(page.locator('#fPermanent')).toBeHidden();
+  await expect(page.locator('#authNote')).toContainText('Akun aktif selama 7 hari');
+});
+
+test('a new user picks a permanent account at sign-up and can switch it in the dashboard', async ({ page, request }) => {
+  await allowPermanent(request, true);
   await page.goto('/admin.html#daftar');
   const choice = page.locator('#permanent');
   await expect(page.locator('#fPermanent')).toBeVisible();
@@ -99,7 +111,8 @@ test('a new user picks a permanent account at sign-up and can switch it in the d
   await expect(page.locator('#accountCard .days')).toHaveCount(0);
 });
 
-test('the platform admin can hide the permanent choice, and sign-up and landing text follow', async ({ page }) => {
+test('the platform admin can hide the permanent choice, and sign-up and landing text follow', async ({ page, request }) => {
+  await allowPermanent(request, true);
   await page.goto('/admin.html');
   await page.click('#platformToggle');
   await page.fill('#pass', QA_PASSWORD);

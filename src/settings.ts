@@ -368,15 +368,17 @@ export async function getSettings(env: Bindings, bot = 'default'): Promise<BotSe
 /** Platform-wide switches, set by the platform admin. */
 export type PlatformSettings = {
   /**
-   * true (default): each user chooses at sign-up, and later in the dashboard, whether their account
-   * is permanent or active for ACCOUNT_DAYS. false: every account is active for ACCOUNT_DAYS only.
+   * true: each user chooses at sign-up, and later in the dashboard, whether their account is
+   * permanent or active for ACCOUNT_DAYS. false (default): every account is active for ACCOUNT_DAYS.
+   * Off by default because sign-up does not verify e-mail: a permanent account would let anyone hold
+   * someone else's address for good (audit run 5). The platform admin opts in from the dashboard.
    */
   allowPermanent: boolean;
 };
 
 export async function getPlatform(db: D1Database): Promise<PlatformSettings> {
   const saved = await readSetting<Partial<PlatformSettings>>(db, 'platform');
-  return { allowPermanent: saved?.allowPermanent !== false };
+  return { allowPermanent: saved?.allowPermanent === true };
 }
 
 export async function getKeys(env: Bindings, bot = 'default'): Promise<KeyStore> {

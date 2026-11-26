@@ -38,6 +38,17 @@ test('public chat rejects oversized bodies, honeypot and missing user agent', as
   expect(honeypot.status()).toBe(400);
 });
 
+test('TSbot answers only its own site even with an empty allow-list', async ({ request }) => {
+  // qatsbot001 is a PERMANENT_BOTS bot with no allowed origins saved; PERMANENT_BOT_ORIGINS pins it.
+  const other = await request.get('/api/public/info?bot=qatsbot001', { headers: { Origin: 'https://copycat.example' } });
+  expect(other.status()).toBe(403);
+  const own = await request.get('/api/public/info?bot=qatsbot001', { headers: { Origin: 'https://tsbot.qa.test' } });
+  expect(own.status()).toBe(200);
+  expect(own.headers()['access-control-allow-origin']).toBe('https://tsbot.qa.test');
+  // Ordinary user bots keep the open default.
+  expect((await request.get('/api/public/info?bot=qabotaaaa1', { headers: { Origin: 'https://copycat.example' } })).status()).toBe(200);
+});
+
 test('a refused origin can read why it was refused', async ({ request }) => {
   // TSbot 2 (seeded) only allows one site; any other site gets a readable "domain not allowed".
   const signIn = await (await request.post('/api/auth/login', { data: { email: 'tsbot-active@qa.test', password: 'tsbot-active-password' } })).json();
