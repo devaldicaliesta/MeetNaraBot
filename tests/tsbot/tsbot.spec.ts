@@ -66,9 +66,12 @@ test('the IMTS page shows TSbot in an iframe', async ({ page, request }) => {
   for (const [w, h] of [[390, 844], [1280, 900]] as const) {
     await page.setViewportSize({ width: w, height: h });
     await page.goto(`http://127.0.0.1:${IMTS_PORT}/`);
-    await expect(page.locator('h1')).toHaveText('IMTS');
+    // The title stays for screen readers; TSbot itself fills the whole window and the page never scrolls.
+    await expect(page.getByRole('heading', { level: 1, name: 'IMTS' })).toBeAttached();
     await expect(page.frameLocator('iframe').locator('tanyasaya-chat textarea')).toBeVisible();
-    expect(await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth)).toBe(0);
+    const box = await page.locator('iframe').boundingBox();
+    expect(box).toEqual({ x: 0, y: 0, width: w, height: h });
+    expect(await page.evaluate(() => [document.documentElement.scrollWidth - innerWidth, document.documentElement.scrollHeight - innerHeight])).toEqual([0, 0]);
   }
 });
 
