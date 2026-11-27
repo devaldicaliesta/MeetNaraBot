@@ -1,0 +1,44 @@
+# Fills Nara's answer cache with the answers to every TSbot menu question (tsbot/menu.json), so a menu click
+# is answered from the cache instead of waiting for a model. See scripts/warm-tsbot-cache.mjs.
+#
+# Runs after a successful deploy (a new document or settings change starts a fresh cache), once a day (cached
+# answers last 7 days; questions still cached cost no model call), and on demand.
+# Uses only the repository variables NARA_API_URL and NARA_BOT_ID (the same as Deploy TSbot); no secrets.
+name: Warm TSbot answers
+
+on:
+  workflow_run:
+    workflows: [Deploy TSbot, Deploy to Cloudflare]
+    types: [completed]
+  schedule:
+    # 23:41 UTC = 06:41 WIB, before the working day.
+    - cron: '41 23 * * *'
+  workflow_dispatch:
+
+concurrency:
+  group: warm-tsbot
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  warm:
+    if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      NARA_API_URL: ${{ vars.NARA_API_URL || secrets.NARA_API_URL }}
+      NARA_BOT_ID: ${{ vars.NARA_BOT_ID || secrets.NARA_BOT_ID }}
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
+        with:
+          node-version: 22
+      # The script uses only Node's own modules, so nothing is installed.
+      - name: Ask every menu question once
+        run: |
+          if [ -z "$NARA_API_URL" ]; then echo "::warning::NARA_API_URL is not set, so there is nothing to warm."; exit 0; fi
+          node scripts/warm-tsbot-cache.mjs
