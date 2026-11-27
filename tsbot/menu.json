@@ -1,0 +1,64 @@
+{
+  "accent": "#1200e6",
+  "title": "TSBOT",
+  "subtitle": "Helpdesk IT untuk karyawan",
+  "heading": "Halo, ada kendala apa?",
+  "intro": "Pilih kategori, atau ceritakan masalahmu di kolom bawah.",
+  "back": "Kembali ke menu",
+  "placeholder": "Contoh: laptop saya tidak bisa konek Wi-Fi",
+  "note": "Jawaban diambil dari dokumen dan bisa salah. Jangan kirim password, PIN, atau kode OTP.",
+  "categories": [
+    {
+      "name": "Laptop",
+      "desc": "Lambat, tidak menyala, layar, baterai, panas",
+      "icon": "M5 5h14v10H5zM2 19h20",
+      "issues": [
+        "Laptop saya lambat atau sering hang",
+        "Laptop saya tidak mau menyala",
+        "Layar laptop hitam atau tidak ada tampilan",
+        "Muncul layar biru atau restart sendiri",
+        "Baterai cepat habis atau tidak mengisi",
+        "Laptop panas dan kipas berisik",
+        "Laptop saya kena air atau jatuh"
+      ]
+    },
+    {
+      "name": "Jaringan & Wi-Fi",
+      "desc": "Tidak bisa konek, sering putus, cek IP",
+      "icon": "M2 9a15 15 0 0 1 20 0M5 12.5a10 10 0 0 1 14 0M8.5 16a5 5 0 0 1 7 0M12 20h.01",
+      "issues": [
+        "Saya tidak bisa konek Wi-Fi atau internet",
+        "Wi-Fi sering putus atau lambat",
+        "Bagaimana cara cek IP address laptop?"
+      ]
+    },
+    {
+      "name": "Akun & Password",
+      "desc": "Password, akun terkunci, PIN, BitLocker",
+      "icon": "M6 11h12v10H6zM8 11V7a4 4 0 0 1 8 0v4",
+      "issues": [
+        "Saya lupa password atau akun terkunci",
+        "Saya lupa PIN Windows",
+        "Laptop meminta BitLocker Recovery Key"
+      ]
+    },
+    {
+      "name": "Office 365",
+      "desc": "Aplikasi Office hang atau tidak bisa dibuka",
+      "icon": "M6 3h9l4 4v14H6zM14 3v5h5M9 13h7M9 17h7",
+      "issues": ["Aplikasi Office saya hang atau tidak bisa dibuka"]
+    },
+    {
+      "name": "Printer & Scan",
+      "desc": "Hasil scan tidak masuk ke folder",
+      "icon": "M7 9V3h10v6M7 18H4V9h16v9h-3M7 14h10v7H7z",
+      "issues": ["Hasil scan tidak masuk ke folder sharing"]
+    },
+    {
+      "name": "Keamanan",
+      "desc": "Link mencurigakan, phishing, virus",
+      "icon": "M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6zM12 8v5M12 16h.01",
+      "issues": ["Saya klik link mencurigakan di email", "Laptop saya sepertinya kena virus"]
+    }
+  ]
+}

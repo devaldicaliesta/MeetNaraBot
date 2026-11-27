@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs';
 import { expect, test } from '@playwright/test';
 import { IMTS_PORT, OTHER_PORT, QA_PASSWORD } from '../../playwright.config';
 
@@ -98,9 +99,9 @@ test('shows the server reason when the bot cannot be loaded, not "connection los
     r.fulfill({ status: 404, contentType: 'application/json', headers: { 'Access-Control-Allow-Origin': '*' }, body: JSON.stringify({ error: 'Bot ini tidak ditemukan. Periksa kode widget di website Anda.' }) })
   );
   await page.goto('/');
-  const chat = page.locator('tanyasaya-chat');
-  await expect(chat.locator('.msg.bot').first()).toContainText('Bot ini tidak ditemukan');
-  await expect(chat.locator('.msg.bot').first()).not.toContainText('Koneksi terputus');
+  const status = page.locator('tanyasaya-chat .menu-status');
+  await expect(status).toContainText('Bot ini tidak ditemukan');
+  await expect(status).not.toContainText('Koneksi terputus');
 });
 
 test('names the problem and offers a retry when the API is unreachable', async ({ page }) => {
@@ -110,55 +111,85 @@ test('names the problem and offers a retry when the API is unreachable', async (
   const chat = page.locator('tanyasaya-chat');
   const retry = chat.locator('[data-action="reload-info"]');
   await expect(retry).toBeVisible();
+  await expect(chat.locator('.menu-status')).toContainText('Koneksi terputus');
   down = false;
   await retry.click();
   await expect(retry).toBeHidden();
-  await expect(chat.locator('.msg.bot').first()).toContainText('panduan-pendaftaran.md');
+  await expect(chat.locator('.menu-status')).toHaveCount(0);
 });
 
-/** Serves the real info reply with the owner's manual suggested questions in place of the automatic ones. */
-const MANUAL = ['Berapa biaya pendaftaran?', 'Kapan kursus dimulai?'];
-async function withManualSuggestions(page: import('@playwright/test').Page) {
+test('says why it cannot answer yet when the document is not ready', async ({ page }) => {
   await page.route(`${API}/api/public/info**`, async (r) => {
     const res = await r.fetch();
-    r.fulfill({ response: res, json: { ...(await res.json()), suggestions: MANUAL } });
+    r.fulfill({ response: res, json: { ...(await res.json()), ready: false, greeting: 'Dokumen referensiku **sedang disiapkan**. <img src=x onerror="window.__xss=1">' } });
   });
-}
+  await page.goto('/');
+  const status = page.locator('tanyasaya-chat .menu-status');
+  await expect(status).toContainText('sedang disiapkan');
+  // The server's text is escaped before its markdown is formatted.
+  await expect(status.locator('img')).toHaveCount(0);
+  await expect(status.locator('strong')).toHaveText('sedang disiapkan');
+});
 
-test('the back button returns to the manual suggested questions', async ({ page }) => {
-  await withManualSuggestions(page);
+/** The category menu from tsbot/menu.json (the owner's TSBOT design). */
+const MENU = JSON.parse(readFileSync('tsbot/menu.json', 'utf8')) as { title: string; subtitle: string; heading: string; back: string; categories: { name: string; issues: string[] }[] };
+
+test('starts on the category menu from the TSBOT design', async ({ page }) => {
   await page.goto('/');
   const chat = page.locator('tanyasaya-chat');
-  const back = chat.getByRole('button', { name: 'Kembali ke saran pertanyaan' });
-  await expect(chat.locator('.chip')).toHaveText(MANUAL);
-  // Nothing to go back from yet, so the button is not offered.
-  await expect(back).toBeHidden();
+  await expect(chat.locator('.title strong')).toHaveText(MENU.title);
+  await expect(chat.locator('.title span')).toHaveText(MENU.subtitle);
+  await expect(chat.getByRole('heading', { level: 1 })).toHaveText(MENU.heading);
+  await expect(chat.locator('.cat-name')).toHaveText(MENU.categories.map((c) => c.name));
+  // One language and no restart icon: the way back is the "Kembali ke menu" button.
+  await expect(chat.locator('.lang')).toBeHidden();
+  await expect(chat.locator('.reset')).toBeHidden();
+  expect(await chat.locator('.head').evaluate((el) => getComputedStyle(el).backgroundColor)).toBe('rgb(18, 0, 230)');
+});
 
-  await chat.locator('.chip').first().click();
-  await expect(chat.locator('.msg.user')).toHaveText(MANUAL[0]);
-  await expect(chat.locator('.cite').first()).toBeVisible();
-  await expect(chat.locator('.chip')).toHaveCount(0);
+test('a category lists its questions and leads back to the menu', async ({ page }) => {
+  await page.goto('/');
+  const chat = page.locator('tanyasaya-chat');
+  const wifi = MENU.categories[1];
+  await chat.locator('.cat').nth(1).click();
+  await expect(chat.getByRole('heading', { level: 2 })).toHaveText(wifi.name);
+  await expect(chat.locator('.issue')).toHaveText(wifi.issues);
+  await chat.getByRole('button', { name: MENU.back }).click();
+  await expect(chat.locator('.cat')).toHaveCount(MENU.categories.length);
+  await expect(chat.locator('.cat').first()).toBeFocused();
+});
+
+test('a question from the menu opens the conversation, and back returns to the menu for good', async ({ page }) => {
+  await page.goto('/');
+  const chat = page.locator('tanyasaya-chat');
+  await chat.locator('.cat').first().click();
+  await chat.locator('.issue').first().click();
+  await expect(chat.locator('.msg.user')).toHaveText(MENU.categories[0].issues[0]);
+  await expect(chat.locator('.cats')).toHaveCount(0);
+  const back = chat.getByRole('button', { name: MENU.back });
   await expect(back).toBeVisible();
-  await expect(chat.locator('.reset svg path')).toHaveAttribute('d', 'M19 12H6M11 6l-6 6 6 6');
-
   // Back waits until the answer has finished streaming.
+  await expect(chat.locator('.msg.bot .msg-tools')).toHaveCount(1);
   await expect(back).toBeEnabled();
   await back.press('Enter');
-  await expect(chat.locator('.chip')).toHaveText(MANUAL);
+  await expect(chat.locator('.cat')).toHaveCount(MENU.categories.length);
   await expect(chat.locator('.msg.user')).toHaveCount(0);
-  await expect(back).toBeHidden();
-  await expect(chat.locator('.chip').first()).toBeFocused();
-  // The conversation is gone for good, not just hidden until the next reload.
   await page.reload();
-  await expect(chat.locator('.chip')).toHaveText(MANUAL);
+  await expect(chat.locator('.cat')).toHaveCount(MENU.categories.length);
   await expect(chat.locator('.msg.user')).toHaveCount(0);
 });
 
-test('the back button follows the language switch', async ({ page }) => {
+test('typing a question on the menu goes straight to the conversation', async ({ page }) => {
   await page.goto('/');
   const chat = page.locator('tanyasaya-chat');
-  await chat.locator('.lang').click();
-  await expect(chat.locator('.reset')).toHaveAttribute('aria-label', 'Back to suggested questions');
+  await chat.locator('textarea').fill('Berapa biaya pendaftaran?');
+  await chat.locator('.send').click();
+  await expect(chat.locator('.msg.user')).toHaveText('Berapa biaya pendaftaran?');
+  await expect(chat.locator('.cite').first()).toBeVisible();
+  // The conversation survives a reload, still with its way back.
+  await page.reload();
+  await expect(chat.locator('.msg.user')).toHaveText('Berapa biaya pendaftaran?');
+  await expect(chat.getByRole('button', { name: MENU.back })).toBeVisible();
 });
 
 test('server and model text never becomes markup (DOM XSS harness)', async ({ page }) => {
@@ -190,7 +221,8 @@ test('server and model text never becomes markup (DOM XSS harness)', async ({ pa
   });
   await page.goto('/');
   const chat = page.locator('tanyasaya-chat');
-  await chat.locator('.chip').click();
+  await chat.locator('textarea').fill('Apa saja?');
+  await chat.locator('textarea').press('Enter');
   await expect(chat.locator('.msg.bot .msg-tools')).toHaveCount(1);
   const injected = await chat.evaluate((el) =>
     [...el.shadowRoot!.querySelectorAll('.log img, .log script, .log iframe, .log style, .log a, .log details, .log svg:not(.tool svg)')].map((n) => n.outerHTML)

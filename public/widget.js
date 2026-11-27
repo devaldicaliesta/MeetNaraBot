@@ -70,6 +70,30 @@
     return (1.05 / (L + 0.05)) >= 4.5 ? "#ffffff" : "#020a09";
   }
 
+  /**
+   * Optional start menu (TSbot): categories, each with ready-made questions. Read from a JSON data block
+   * on the page (menu="<element id>"). Anything malformed means no menu, and the widget works as before.
+   */
+  function readMenu(id) {
+    var el = id && document.getElementById(id), m;
+    if (!el) return null;
+    try { m = JSON.parse(el.textContent); } catch (e) { return null; }
+    var str = function (v, max) { return typeof v === "string" && v.trim() ? v.trim().slice(0, max) : ""; };
+    var cats = (Array.isArray(m && m.categories) ? m.categories : []).slice(0, 12).map(function (c) {
+      return {
+        name: str(c && c.name, 40), desc: str(c && c.desc, 120),
+        icon: typeof (c && c.icon) === "string" && /^[MmLlHhVvCcSsQqTtAaZz0-9 .,-]{1,400}$/.test(c.icon) ? c.icon : "",
+        issues: (Array.isArray(c && c.issues) ? c.issues : []).map(function (q) { return str(q, 300); }).filter(Boolean).slice(0, 12)
+      };
+    }).filter(function (c) { return c.name && c.issues.length; });
+    if (!cats.length) return null;
+    return {
+      accent: /^#[0-9a-f]{6}$/i.test(m.accent || "") ? m.accent : "",
+      title: str(m.title, 40), subtitle: str(m.subtitle, 80), heading: str(m.heading, 80), intro: str(m.intro, 200),
+      back: str(m.back, 40), placeholder: str(m.placeholder, 120), note: str(m.note, 200), categories: cats
+    };
+  }
+
   /* ---------- Tiny, safe markdown renderer (escape first, then format) ---------- */
   function inline(text, sourceCount) {
     var codes = [];
@@ -123,7 +147,11 @@
       this.bot = String(this.getAttribute("bot") || "").toLowerCase().replace(/[^a-z0-9]/g, "").slice(0, 32);
       this.q = this.bot ? "bot=" + this.bot + "&" : "";
       this.storeKey = "tanyasaya:" + this.base + (this.bot ? ":" + this.bot : "");
-      this.lang = this.pickLang();
+      // The menu is written in one language, so a page with a menu keeps that language (no ID/EN toggle).
+      this.menu = readMenu(this.getAttribute("menu"));
+      this.view = "home";
+      if (this.menu) this.setAttribute("data-menu", "");
+      this.lang = this.menu ? (this.getAttribute("lang") === "en" ? "en" : "id") : this.pickLang();
       this.info = null;
       this.busy = false;
       this.history = this.load();
@@ -168,10 +196,20 @@
       $(".close").setAttribute("aria-label", t("close")); $(".close").title = t("closeShort");
       this.el.input.setAttribute("aria-label", t("askLabel")); this.el.input.placeholder = t("placeholder");
       this.el.send.setAttribute("aria-label", t("send"));
-      $(".note").textContent = t("note");
+      $(".note").textContent = (this.menu && this.menu.note) || t("note");
+      if (this.menu && this.menu.placeholder) this.el.input.placeholder = this.menu.placeholder;
       var lb = $(".lang");
       lb.textContent = t("langBtn"); lb.setAttribute("aria-label", t("switchTo")); lb.title = t("switchTo");
       if (!this.info) { this.el.sub.textContent = t("loading"); $(".launcher-label").textContent = t("launcher"); }
+      if (this.menu) this.applyMenuHead();
+    }
+
+    /** Title, subtitle and colour from the menu win over the bot's own, so the page looks the same before the API answers. */
+    applyMenuHead() {
+      var m = this.menu;
+      if (m.title) { this.el.title.textContent = m.title; this.el.avatar.textContent = m.title.charAt(0).toUpperCase(); }
+      if (m.subtitle) this.el.sub.textContent = m.subtitle;
+      if (m.accent) { this.style.setProperty("--ts-accent", m.accent); this.style.setProperty("--ts-accent-ink", inkFor(m.accent)); }
     }
 
     setLang(lang) {
@@ -251,6 +289,14 @@
         var t = e.target.closest("button");
         if (!t) return;
         if (t.classList.contains("chip")) return self.ask(t.textContent);
+        if (t.dataset.cat) { self.view = "category"; self.cat = Number(t.dataset.cat); self.paintAll(); return self.$(".menu-title").focus(); }
+        if (t.dataset.issue) return self.ask(self.menu.categories[self.cat].issues[Number(t.dataset.issue)]);
+        if (t.dataset.action === "menu-home") {
+          if (self.busy) return;
+          self.history = []; self.view = "home"; self.save(); self.paintAll();
+          var first = el.log.querySelector(".cat");
+          return first && first.focus();
+        }
         if (t.dataset.cite) return self.focusSource(t.closest(".msg"), Number(t.dataset.cite));
         if (t.classList.contains("source")) return t.classList.toggle("is-active");
         if (t.dataset.action === "copy") {
@@ -264,7 +310,10 @@
             navigator.clipboard.writeText(txt.replace(/\s?\[\d+\]/g, "")).then(function () { done(true); }, function () { done(false); });
           } else done(false);
         }
-        if (t.dataset.action === "reload-info") { self.el.sub.textContent = self.t("loading"); return self.fetchInfo(); }
+        if (t.dataset.action === "reload-info") {
+          if (self.menu) { self.infoError = ""; self.paintAll(); } else self.el.sub.textContent = self.t("loading");
+          return self.fetchInfo();
+        }
         if (t.dataset.action === "retry") {
           // Drop the failed question and anything after it (a partial answer, the error), then ask it again.
           var at = -1;
@@ -295,12 +344,14 @@
         .then(function (info) {
           if (seq !== self.infoSeq) return;
           self.info = info;
+          self.infoError = "";
           var accent = info.themeColor || "#00a691";
           self.style.setProperty("--ts-accent", accent);
           self.style.setProperty("--ts-accent-ink", inkFor(accent));
           self.el.title.textContent = info.name;
           self.el.avatar.textContent = (info.name || "T").trim().charAt(0).toUpperCase();
           self.el.sub.textContent = info.subtitle || "";
+          if (self.menu) self.applyMenuHead();
           self.root.querySelector(".launcher-label").textContent = info.launcherLabel || self.t("launcher");
           self.el.input.maxLength = info.maxQuestionLength || 500;
           if (resetChat) { self.history = []; self.save(); }
@@ -310,6 +361,7 @@
         .catch(function (why) {
           if (seq !== self.infoSeq) return;
           var reason = typeof why === "string" && why ? why : "";
+          if (self.menu) { self.infoError = reason || self.t("network"); if (!self.info) self.paintAll(); return; }
           self.el.sub.textContent = reason ? "" : self.t("offline");
           if (self.info) return;
           // Say what went wrong and offer the next step instead of "getting ready" forever.
@@ -336,6 +388,8 @@
       el.send.disabled = this.busy || !el.input.value.trim() || (this.info && !this.info.ready);
       // Leaving mid-answer would strand the reply that is still streaming, so reset/back waits for it.
       this.$(".reset").disabled = this.busy;
+      var back = el.log.querySelector(".menu-back");
+      if (back) back.disabled = this.busy;
       el.count.textContent = len > max * 0.8 ? len + "/" + max : "";
       el.count.classList.toggle("warn", len >= max);
     }
@@ -397,6 +451,7 @@
     paintAll() {
       var self = this, log = this.el.log, info = this.info;
       log.innerHTML = "";
+      if (this.menu) return this.paintMenu();
       var greet = this.bubble("bot");
       this.paintBot(greet, info ? info.greeting : this.t("preparing"), [], true);
       greet.msg.querySelector(".msg-tools") && greet.msg.querySelector(".msg-tools").remove();
@@ -419,9 +474,55 @@
       this.scroll(false);
     }
 
+    /** Start screen with categories, one category's questions, or the conversation (each with a way back). */
+    paintMenu() {
+      var self = this, m = this.menu, log = this.el.log;
+      var asked = this.history.some(function (h) { return h.role === "user"; });
+      if (asked) this.view = "chat";
+      else if (this.view === "chat") this.view = "home";
+      log.classList.toggle("menu-home", this.view === "home");
+      var box = document.createElement("div");
+      box.className = "menu";
+      var back = '<button type="button" class="menu-back" data-action="menu-home">' + esc(m.back || this.t("back")) + "</button>";
+      if (this.view === "home") {
+        var status = "";
+        if (this.infoError) status = '<div class="menu-status error" role="alert"><p>' + esc(this.infoError) + '</p><button type="button" class="tool" data-action="reload-info">' + ICONS.retry + "<span>" + esc(this.t("retry")) + "</span></button></div>";
+        else if (!this.info) status = '<p class="menu-status" role="status">' + esc(this.t("preparing")) + "</p>";
+        // Not ready yet (document still indexing, or the bot is inactive): the server's greeting says which.
+        else if (!this.info.ready) status = '<div class="menu-status" role="status">' + markdown(this.info.greeting || "", 0) + "</div>";
+        box.innerHTML =
+          '<div class="menu-intro"><h1>' + esc(m.heading || this.t("tryAsking")) + "</h1>" + (m.intro ? "<p>" + esc(m.intro) + "</p>" : "") + "</div>" + status +
+          '<div class="cats">' + m.categories.map(function (c, n) {
+            return '<button type="button" class="cat" data-cat="' + n + '">' +
+              '<span class="cat-icon" aria-hidden="true">' + (c.icon ? '<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="' + esc(c.icon) + '"/></svg>' : "") + "</span>" +
+              '<span class="cat-name">' + esc(c.name) + "</span>" + (c.desc ? '<span class="cat-desc">' + esc(c.desc) + "</span>" : "") + "</button>";
+          }).join("") + "</div>";
+        log.appendChild(box);
+      } else if (this.view === "category") {
+        var cat = m.categories[this.cat] || m.categories[0];
+        box.innerHTML = back + '<h2 class="menu-title" tabindex="-1">' + esc(cat.name) + '</h2><div class="issues">' + cat.issues.map(function (q, n) {
+          return '<button type="button" class="issue" data-issue="' + n + '">' + esc(q) + "</button>";
+        }).join("") + "</div>";
+        log.appendChild(box);
+      } else {
+        box.classList.add("in-chat");
+        box.innerHTML = back;
+        log.appendChild(box);
+        this.history.forEach(function (h) {
+          if (h.role === "user") self.bubble("user").bubble.textContent = h.text;
+          else if (h.role === "bot") self.paintBot(self.bubble("bot"), h.text, h.sources, true, h.refused);
+          else if (h.role === "error") self.paintError(h.text);
+        });
+      }
+      if (this.el.send) this.syncInput();
+      this.scroll(false);
+      if (this.view !== "chat") log.scrollTop = 0;
+    }
+
     /** TSbot's back button only shows once there is a conversation to leave. */
     syncBack(asked) {
-      if (this.inline) this.$(".reset").hidden = !asked;
+      // With a menu, the way back lives in the conversation ("Kembali ke menu"), not in the header.
+      if (this.inline) this.$(".reset").hidden = !asked || !!this.menu;
     }
 
     paintError(text) {
@@ -447,7 +548,8 @@
       this.history.push({ role: "user", text: question });
       this.save();
       this.syncBack(true);
-      this.bubble("user").bubble.textContent = question;
+      if (this.menu) { this.view = "chat"; this.paintAll(); }
+      else this.bubble("user").bubble.textContent = question;
       el.input.value = "";
       this.busy = true;
       this.syncInput();
