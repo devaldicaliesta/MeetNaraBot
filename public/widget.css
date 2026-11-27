@@ -389,13 +389,16 @@ textarea:focus-visible { outline: none; }
 :host([data-menu]) .lang, :host([data-menu]) .reset { display: none; }
 :host([data-menu]) .cite:hover, :host([data-menu]) .cite[aria-expanded="true"] { color: var(--ts-accent-ink); }
 
-:host([data-menu]) .head { gap: 18px; padding: 22px 24px; }
+:host([data-menu]) .head { gap: 18px; padding: 22px max(24px, var(--ts-pad-x)); }
 :host([data-menu]) .avatar { width: 56px; height: 56px; border-radius: 14px; font-size: 22px; background: color-mix(in srgb, currentColor 18%, transparent); }
 :host([data-menu]) .title { margin-left: 0; }
 :host([data-menu]) .title strong { font-size: 24px; letter-spacing: 0; }
 :host([data-menu]) .title span { font-size: 16px; opacity: 1; color: color-mix(in srgb, var(--ts-accent-ink) 88%, var(--ts-accent)); }
 
-:host([data-menu]) .log { padding: 28px 32px; }
+:host([data-menu]) { --ts-pad-x: 32px; }
+/* On a very wide window (TSbot full page) the content keeps the design's width, centred; the header stays full width. */
+@media (min-width: 1184px) { :host([data-menu]) { --ts-pad-x: calc((100vw - 1120px) / 2); } }
+:host([data-menu]) .log { padding: 28px var(--ts-pad-x); }
 .menu { display: flex; flex-direction: column; gap: 22px; margin-bottom: 22px; }
 .menu-intro h1 { margin: 0 0 6px; font-size: 28px; font-weight: 700; line-height: 1.25; }
 .menu-intro p { margin: 0; color: var(--ts-ink-2); }
@@ -406,7 +409,7 @@ textarea:focus-visible { outline: none; }
 .menu-status.error .tool { color: var(--ts-error); }
 
 /* Three columns where they fit (the 1090px design), two on a tablet, one on a phone. */
-.cats { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 260px), 1fr)); gap: 16px; }
+.cats { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr)); gap: 16px; }
 .cat {
   min-height: 190px;
   display: flex;
@@ -441,7 +444,7 @@ textarea:focus-visible { outline: none; }
 .menu-back:active { background: var(--ts-tint); }
 .menu-back:disabled { opacity: 0.4; cursor: not-allowed; }
 /* In a conversation the way back stays in view while the answer scrolls under it. */
-.menu.in-chat { position: sticky; top: -28px; z-index: 1; margin: -28px -32px 22px; padding: 20px 32px 12px; background: var(--ts-canvas); }
+.menu.in-chat { position: sticky; top: -28px; z-index: 1; margin: -28px calc(-1 * var(--ts-pad-x)) 22px; padding: 20px var(--ts-pad-x) 12px; background: var(--ts-canvas); }
 .menu-title { margin: 0; font-size: 26px; font-weight: 700; line-height: 1.25; }
 .menu-title:focus { outline: none; }
 .issues { display: flex; flex-direction: column; gap: 12px; }
@@ -464,7 +467,7 @@ textarea:focus-visible { outline: none; }
 :host([data-menu]) .msg.bot .bubble { border-bottom-left-radius: 18px; }
 :host([data-menu]) .bubble h4 { font-size: 17px; }
 
-:host([data-menu]) .compose { padding: 16px 24px 14px; }
+:host([data-menu]) .compose { padding: 16px max(24px, var(--ts-pad-x)) 14px; }
 :host([data-menu]) .field { align-items: center; gap: 12px; padding: 7px 7px 7px 26px; border: 2px solid var(--ts-accent); border-radius: 40px; }
 :host([data-menu]) .field:focus-within { box-shadow: 0 0 0 3px var(--ts-focus); }
 :host([data-menu]) textarea { font-size: 18px; padding: 12px 0; }
@@ -478,9 +481,10 @@ textarea:focus-visible { outline: none; }
   :host([data-menu]) .avatar { width: 44px; height: 44px; font-size: 19px; border-radius: 12px; }
   :host([data-menu]) .title strong { font-size: 20px; }
   :host([data-menu]) .title span { font-size: 14px; }
-  :host([data-menu]) .log { padding: 20px 16px; }
+  :host([data-menu]) { --ts-pad-x: 16px; }
+  :host([data-menu]) .log { padding: 20px var(--ts-pad-x); }
   .menu { gap: 16px; }
-  .menu.in-chat { top: -20px; margin: -20px -16px 16px; padding: 14px 16px 10px; }
+  .menu.in-chat { top: -20px; margin: -20px calc(-1 * var(--ts-pad-x)) 16px; padding: 14px var(--ts-pad-x) 10px; }
   .menu-intro h1 { font-size: 23px; }
   .cats { gap: 10px; }
   .cat { min-height: 0; display: grid; grid-template-columns: auto 1fr; column-gap: 14px; row-gap: 2px; padding: 14px 16px; align-items: center; }

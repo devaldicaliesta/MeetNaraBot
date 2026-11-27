@@ -1,14 +1,16 @@
-/* IMTS: the page exists to host the TSbot chat, so the chat gets the space. */
+/* IMTS: the page exists to host the TSbot chat, so the chat fills the whole window.
+   The page itself never scrolls; TSbot scrolls inside. The TSBOT header names the page,
+   so the IMTS title and intro stay for screen readers and the browser tab only. */
 *, *::before, *::after { box-sizing: border-box; }
 html, body { height: 100%; margin: 0; }
 body {
-  display: flex; flex-direction: column; gap: 16px;
-  padding: 24px 16px; max-width: 760px; margin: 0 auto;
-  background: #f7f4ee; color: #1f1b2d;
+  height: 100vh;
+  /* dvh follows the visible area when mobile browser bars or the keyboard change it. */
+  height: 100dvh;
+  overflow: hidden;
+  background: #f6faf9;
   font: 16px/1.55 ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
 }
-h1 { margin: 0; font-size: 28px; letter-spacing: -0.01em; }
-header p { margin: 6px 0 0; color: #575269; max-width: 60ch; }
-main { flex: 1; min-height: 520px; }
-iframe { display: block; width: 100%; height: 100%; min-height: 520px; border: 1px solid #e7e0d4; border-radius: 12px; background: #fffdf9; }
-@media (max-width: 480px) { body { padding: 16px 0 0; gap: 12px; } header { padding: 0 16px; } iframe { border-radius: 0; border-width: 1px 0 0; } }
+.sr-only { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+main { height: 100%; }
+iframe { display: block; width: 100%; height: 100%; border: 0; background: #f6faf9; }
