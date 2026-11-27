@@ -67,3 +67,16 @@ test('also understands a streamed (NDJSON) reply', async () => {
   const rows = await warm({ api: 'https://x.example', bot: '', questions: ['A', 'B'], delayMs: 0, fetchImpl: async () => replies.shift()!, wait: async () => {} });
   assert.deepEqual(rows.map((r: { ok: boolean; error?: string }) => [r.ok, r.error ?? null]), [[true, null], [false, 'Kuota harian habis']]);
 });
+
+test('marks questions the bot refuses as not covered by the document', async () => {
+  const nd = (events: unknown[]) => new Response(events.map((e) => JSON.stringify(e)).join('\n') + '\n', { headers: { 'Content-Type': 'application/x-ndjson' } });
+  const replies = [
+    reply(200, { answer: 'Matikan lalu nyalakan Wi-Fi [1].', refused: false }),
+    reply(200, { answer: 'Maaf, informasi itu tidak ada di dokumen.', refused: true }),
+    nd([{ type: 'delta', text: 'Maaf, tidak ada di dokumen.' }, { type: 'done', refused: true }]),
+  ];
+  const lines: string[] = [];
+  const rows = await warm({ api: 'https://x.example', bot: '', questions: ['Wi-Fi', 'Air', 'Virus'], delayMs: 0, fetchImpl: async () => replies.shift()!, wait: async () => {}, log: (l: string) => lines.push(l) });
+  assert.deepEqual(rows.map((r: { ok: boolean; refused?: boolean }) => [r.ok, !!r.refused]), [[true, false], [true, true], [true, true]]);
+  assert.deepEqual(lines.map((l) => l.split(' ')[0]), ['ok', 'TOLAK', 'TOLAK']);
+});

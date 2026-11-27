@@ -6,6 +6,8 @@
 // A question that is already cached comes straight back from the cache and costs no model call, so running this
 // daily only spends model calls on answers that expired (7 days) or were dropped by a document or settings change.
 // It never fails the run over one question: the deploy is already done, and a cold answer is only slower.
+// A refused answer ("not in the document") is listed separately: that menu question needs the document to
+// cover it, or should leave the menu.
 import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
@@ -21,17 +23,17 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 async function readAnswer(res) {
   const text = await res.text().catch(() => '');
   if (!(res.headers.get('content-type') || '').includes('ndjson')) {
-    try { const b = JSON.parse(text); return { answer: typeof b.answer === 'string' ? b.answer : '', error: b.error }; } catch { return { answer: '' }; }
+    try { const b = JSON.parse(text); return { answer: typeof b.answer === 'string' ? b.answer : '', refused: b.refused === true, error: b.error }; } catch { return { answer: '' }; }
   }
-  let answer = '', error, done = false;
+  let answer = '', error, done = false, refused = false;
   for (const line of text.split('\n')) {
     let ev;
     try { ev = JSON.parse(line); } catch { continue; }
     if (ev.type === 'delta') answer += ev.text || '';
-    else if (ev.type === 'done') { done = true; if (typeof ev.text === 'string') answer = ev.text; }
+    else if (ev.type === 'done') { done = true; refused = ev.refused === true; if (typeof ev.text === 'string') answer = ev.text; }
     else if (ev.type === 'error') error = ev.message;
   }
-  return { answer: done && !error ? answer : '', error };
+  return { answer: done && !error ? answer : '', refused, error };
 }
 
 /** Every distinct menu question, in menu order. */
@@ -41,7 +43,7 @@ export function menuQuestions(menu) {
 
 /**
  * Asks each question the way the TSbot page does (Indonesian, no history), one at a time.
- * Returns one row per question: { question, ok, cached, ms, error }.
+ * Returns one row per question: { question, ok, refused, ms, error }.
  */
 export async function warm({ api, bot, questions, delayMs = 7000, fetchImpl = fetch, wait = sleep, log = () => {} }) {
   const url = `${api}/api/public/chat?${bot ? `bot=${encodeURIComponent(bot)}&` : ''}lang=id`;
@@ -68,13 +70,13 @@ export async function warm({ api, bot, questions, delayMs = 7000, fetchImpl = fe
       }
       const body = await readAnswer(res);
       row = res.ok && body.answer
-        ? { question, ok: true, ms: Date.now() - started }
+        ? { question, ok: true, refused: !!body.refused, ms: Date.now() - started }
         : { question, ok: false, ms: Date.now() - started, error: String(body.error || `HTTP ${res.status}`).slice(0, 200) };
     } catch (e) {
       row = { question, ok: false, ms: Date.now() - started, error: String(e?.message || e).slice(0, 200) };
     }
     rows.push(row);
-    log(`${row.ok ? 'ok  ' : 'FAIL'} ${String(row.ms).padStart(6)} ms  ${question}${row.error ? `  (${row.error})` : ''}`);
+    log(`${!row.ok ? 'FAIL' : row.refused ? 'TOLAK' : 'ok  '} ${String(row.ms).padStart(6)} ms  ${question}${row.error ? `  (${row.error})` : ''}`);
   }
   return rows;
 }
@@ -89,7 +91,9 @@ if (import.meta.url === pathToFileURL(process.argv[1] || '').href) {
   console.log(`warm-tsbot-cache: ${questions.length} questions to ${api} (bot ${bot || 'platform'}), ${delayMs} ms apart`);
   const rows = await warm({ api, bot, questions, delayMs, log: (l) => console.log(l) });
   const failed = rows.filter((r) => !r.ok);
-  console.log(`warm-tsbot-cache: ${rows.length - failed.length}/${rows.length} answered`);
+  const refused = rows.filter((r) => r.ok && r.refused);
+  console.log(`warm-tsbot-cache: ${rows.length - failed.length}/${rows.length} answered, ${refused.length} refused as not in the document`);
+  if (refused.length) console.log(`::warning::${refused.length} menu question(s) are not covered by the document (the bot refuses them): ${refused.map((r) => r.question).join(' | ').slice(0, 800)}`);
   // GitHub Actions annotation, so a cold menu shows up on the run without failing it.
   if (failed.length) console.log(`::warning::${failed.length} menu question(s) were not cached: ${failed.map((r) => r.error).join('; ').slice(0, 500)}`);
 }

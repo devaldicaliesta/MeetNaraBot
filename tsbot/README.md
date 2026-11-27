@@ -43,6 +43,7 @@ Workflow **Warm TSbot answers** (`.github/workflows/tsbot-warm.yml`) menanyakan 
 - Jawaban di cache berlaku 7 hari, dan cache dimulai ulang kalau dokumen atau pengaturan bot berubah. Pertanyaan yang masih ada di cache tidak memanggil model AI, jadi yang benar-benar diproses ulang hanya jawaban yang sudah kedaluwarsa.
 - Antar-pertanyaan diberi jeda 7 detik karena API publik membatasi 10 pertanyaan per menit. Satu putaran untuk 17 pertanyaan makan waktu sekitar 2 menit.
 - Kalau ada pertanyaan yang gagal, run tetap hijau dan menampilkan peringatan (misalnya dokumen belum siap atau kuota habis).
+- Pertanyaan yang ditolak bot karena tidak tercakup dokumen ditandai `TOLAK` di log, dan run menampilkan peringatan berisi daftar pertanyaannya. Untuk pertanyaan seperti itu, tambahkan topiknya ke dokumen referensi atau hapus pertanyaannya dari `tsbot/menu.json`.
 - Cache hanya bekerja kalau opsi cache jawaban di pengaturan bot tetap menyala (bawaannya menyala).
 
 Uji lokal ke mock:
