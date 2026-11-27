@@ -35,6 +35,22 @@ Batas isi menu:
 3. Bot TSbot otomatis hanya menjawab dari `https://tsbot-nara.pages.dev`. Workflow **Deploy to Cloudflare** mengirim `PERMANENT_BOT_ORIGINS` ke Worker, jadi situs lain tidak bisa memakai kuotanya. Bila TSbot ada di alamat lain (misalnya cadangan `nara-tsbot.pages.dev`), isi repository variable `TSBOT_ORIGINS` dengan alamat itu, lalu jalankan ulang workflow deploy. Domain tambahan bisa diisi di dashboard (*allowed origins*). Domain itu ditambahkan, tidak menggantikan.
 4. Push ke branch `tsbot` atau jalankan workflow **Deploy TSbot** secara manual.
 
+## Kecepatan jawaban menu
+
+Workflow **Warm TSbot answers** (`.github/workflows/tsbot-warm.yml`) menanyakan setiap pertanyaan di `tsbot/menu.json` satu kali ke Nara. Jawabannya masuk ke cache jawaban, sehingga klik di menu langsung dijawab dari cache tanpa menunggu model AI.
+
+- Berjalan otomatis setelah **Deploy TSbot** atau **Deploy to Cloudflare** berhasil, dan setiap hari pukul 06:41 WIB. Bisa juga dijalankan manual dari tab Actions.
+- Jawaban di cache berlaku 7 hari, dan cache dimulai ulang kalau dokumen atau pengaturan bot berubah. Pertanyaan yang masih ada di cache tidak memanggil model AI, jadi yang benar-benar diproses ulang hanya jawaban yang sudah kedaluwarsa.
+- Antar-pertanyaan diberi jeda 7 detik karena API publik membatasi 10 pertanyaan per menit. Satu putaran untuk 17 pertanyaan makan waktu sekitar 2 menit.
+- Kalau ada pertanyaan yang gagal, run tetap hijau dan menampilkan peringatan (misalnya dokumen belum siap atau kuota habis).
+- Cache hanya bekerja kalau opsi cache jawaban di pengaturan bot tetap menyala (bawaannya menyala).
+
+Uji lokal ke mock:
+
+```bash
+NARA_API_URL=http://127.0.0.1:8799 WARM_DELAY_MS=0 node scripts/warm-tsbot-cache.mjs
+```
+
 ## Halaman IMTS (https://imtsbot.pages.dev)
 
 Halaman IMTS ada di `imts/` dan dideploy oleh workflow yang sama ke project Pages `imtsbot`. Isinya judul IMTS dan TSbot dalam iframe:

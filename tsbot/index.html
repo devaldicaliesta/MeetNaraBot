@@ -6,6 +6,9 @@
   <meta name="robots" content="noindex">
   <title>TSbot</title>
   <link rel="stylesheet" href="/page.css">
+  <!-- Opens the connection to the Nara API while the page loads, so the first answer does not wait for it.
+       crossorigin: the widget fetches without credentials (CORS anonymous), and a preconnect only helps a matching request. -->
+  <link rel="preconnect" href="__NARA_API__" crossorigin>
   <script src="/widget.js" defer></script>
 </head>
 <body>
